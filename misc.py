@@ -34,7 +34,9 @@ def do_cv(model, X_train, y_train, n_samples=1000, n_iter=3, test_size=0.1, quie
   if (n_samples > len(X_train)): n_samples = len(X_train)
   cv = ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=seed)
   test_scores = cross_val_score(model, X_train, y_train, cv=cv)
-  if (not(quiet)): print(mean_score(test_scores))  
+  if (not(quiet)): 
+    print(mean_score(test_scores))  
+    sklearn.metrics.r2_score
   return (np.mean(test_scores), sem(test_scores))
 
 def do_gs(model, X_train, y_train, params, n_samples=1000, cv=3, n_jobs=-1):
