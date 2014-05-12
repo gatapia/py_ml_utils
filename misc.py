@@ -12,6 +12,7 @@ from collections import Counter
 from sklearn.cross_validation import train_test_split
 from sklearn.cross_validation import cross_val_score
 from sklearn.cross_validation import ShuffleSplit
+from sklearn.preprocessing import StandardScaler
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
 from sklearn.grid_search import GridSearchCV
@@ -26,7 +27,11 @@ selections = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 def mean_score(scores):
   return ("Mean: {0:.3f} (+/-{1:.3f})").format(np.mean(scores), sem(scores))
 
+def scale(X):
+  return StandardScaler().fit_transform(X)
+
 def do_cv(model, X_train, y_train, n_samples=1000, n_iter=3, test_size=0.1, quiet=False):
+  if (n_samples > len(X_train)): n_samples = len(X_train)
   cv = ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=seed)
   test_scores = cross_val_score(model, X_train, y_train, cv=cv)
   if (not(quiet)): print(mean_score(test_scores))  
