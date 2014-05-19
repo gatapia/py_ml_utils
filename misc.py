@@ -18,29 +18,53 @@ from scipy.stats.mstats import mode
 from sklearn.grid_search import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 
-seed = 0
-random.seed(seed)
-np.random.seed(seed) # Should be used by all sklearn algorithms also
+sys_seed = 0
+random.seed(sys_seed)
+np.random.seed(sys_seed) 
 NA = 99999.0
-selections = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 
 def mean_score(scores):
   return ("Mean: {0:.3f} (+/-{1:.3f})").format(np.mean(scores), sem(scores))
 
-def scale(X):
+def scale(X):  
   return StandardScaler().fit_transform(X)
 
-def do_cv(model, X_train, y_train, n_samples=1000, n_iter=3, test_size=0.1, quiet=False):
+def reseed_(clf):
+  clf.random_state = sys_seed
+  random.seed(sys_seed)
+  np.random.seed(sys_seed) 
+
+# Does a search through n_samples_arr to test what n_samples is acceptable
+#   for cross validation.  No use using very high n_samples if not required
+def do_n_sample_search(clf, X, y, n_samples_arr):
+  reseed_(clf)
+
+  scores = []
+  sems = []
+  for n_samples in n_samples_arr:
+    cv = do_cv(clf, X, y, n_samples, quiet=True)
+    print "n_samples:", n_samples, "cv:", cv
+    scores.append(cv[0])
+    sems.append(cv[1])
+  max_score_idx = scores.index(max(scores))
+  min_sem_idx = sems.index(min(sems))
+  print "Best Score n_samples:", n_samples_arr[max_score_idx], "Score:", scores[max_score_idx]
+  print "Best Sem n_samples:", n_samples_arr[min_sem_idx], "Sem:", sems[min_sem_idx]
+  return (scores, sems)
+
+
+def do_cv(clf, X_train, y_train, n_samples=1000, n_iter=3, test_size=0.1, quiet=False):
+  reseed_(clf)
   if (n_samples > len(X_train)): n_samples = len(X_train)
-  cv = ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=seed)
-  test_scores = cross_val_score(model, X_train, y_train, cv=cv)
+  cv = ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed)
+  test_scores = cross_val_score(clf, X_train, y_train, cv=cv)
   if (not(quiet)): 
     print(mean_score(test_scores))  
-    sklearn.metrics.r2_score
   return (np.mean(test_scores), sem(test_scores))
 
-def do_gs(model, X_train, y_train, params, n_samples=1000, cv=3, n_jobs=-1):
-  gs = GridSearchCV(model, params, cv=cv, n_jobs=n_jobs, verbose=2) 
+def do_gs(clf, X_train, y_train, params, n_samples=1000, cv=3, n_jobs=-1):
+  reseed_(clf)
+  gs = GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2) 
   gs.fit(X_train[:n_samples], y_train[:n_samples])
   print(gs.best_params_, gs.best_score_)
   return gs
@@ -83,9 +107,9 @@ def read_data(file):
     f.close()
     return data
 
-def make_and_save_predictions(model, train, y, test):
-  model.fit(train, y)
-  predictions = model.predict(test)
+def make_and_save_predictions(clf, train, y, test):
+  clf.fit(train, y)
+  predictions = clf.predict(test)
   make_and_save_predictions_impl(predictions)  
 
 def make_and_save_predictions_impl(predictions, file_suffix='submission'):
@@ -106,40 +130,5 @@ def idx(list, val):
   if (idx < 0): raise Exception('Error')
   return idx
 
-def fval(val):
-  return NA if val.isnull().iget(0) else float(val.iget(0))
-
-def get_policy(row):
-  return row.A.iget(0) + row.B.iget(0) + row.C.iget(0) + row.D.iget(0) + row.E.iget(0) + row.F.iget(0) + row.G.iget(0)
-
 def allsame(lst):
   return lst[1:] == lst[:-1]
-
-
-all_policies_ = None
-def policies_to_idx(data):
-  global all_policies_
-  if (all_policies_ == None): all_policies_ = read_data("all_policies_count.pz")
-  for r in data:
-    for i, v in enumerate(r):
-      if (type(v) is str and len(v) == 7):
-        r[i] = all_policies[v]['idx']
-
-def policies_arr_to_idx(arr):
-  global all_policies_
-  if (all_policies_ == None): all_policies_ = read_data("all_policies_count.pz")
-  for i, v in enumerate(arr):
-    if (type(v) is str and len(v) == 7):
-      arr[i] = all_policies[v]['idx']
-
-idx_to_pol_ = None
-def policy_idxs_to_strings(arr):
-  global all_policies_
-  global idx_to_pol_
-  if (all_policies_ == None): all_policies_ = read_data("all_policies_count.pz")
-  if (idx_to_pol_ == None):
-    idx_to_pol_ = {}
-    for key in all_policies: 
-      idx_to_pol_[all_policies[key]['idx']] = key
-
-  return map(lambda i: idx_to_pol_[i], arr)
