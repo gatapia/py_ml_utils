@@ -9,9 +9,7 @@ import datetime
 import random
 
 from collections import Counter
-from sklearn.cross_validation import train_test_split
-from sklearn.cross_validation import cross_val_score
-from sklearn.cross_validation import ShuffleSplit
+from sklearn.cross_validation import cross_val_score, train_test_split, ShuffleSplit, StratifiedShuffleSplit
 from sklearn.preprocessing import StandardScaler
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
@@ -53,11 +51,13 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
   return (scores, sems)
 
 
-def do_cv(clf, X_train, y_train, n_samples=1000, n_iter=3, test_size=0.1, quiet=False):
+def do_cv(clf, X_train, y_train, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False):
   reseed_(clf)
   if (n_samples > len(X_train)): n_samples = len(X_train)
-  cv = ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed)
-  test_scores = cross_val_score(clf, X_train, y_train, cv=cv)
+  cv = ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
+    if not(stratified) else StratifiedShuffleSplit(y_train, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
+
+  test_scores = cross_val_score(clf, X_train, y_train, cv=cv, scoring=scoring)
   if (not(quiet)): 
     print(mean_score(test_scores))  
   return (np.mean(test_scores), sem(test_scores))
