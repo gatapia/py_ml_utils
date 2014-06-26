@@ -3,7 +3,7 @@ import time
 import operator
 
 def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3, 
-    tol=0.00001, column_names=[]):
+    tol=0.00001, column_names=[], scoring=None):
   score_hist = []
   good_features = set([])
   last_score = 0
@@ -20,7 +20,7 @@ def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3,
         feats = list(good_features) + [f]
         Xt = X_train[:, feats]
         model.max_features = min(len(feats), 15)      
-        score, sem = do_cv(model, Xt, y_train, n_samples=n_samples, n_iter=n_iter, quiet=True)
+        score, sem = do_cv(model, Xt, y_train, n_samples=n_samples, n_iter=n_iter, scoring=scoring, quiet=True)
         scores.append((score, f))            
         if (score - last_score > 0.1): 
           print "> 10 percent improvement with feature, auto adding. %s -> %s" % (last_score, score)
