@@ -82,11 +82,11 @@ def save_train_test_and_y(file, xtrain, xtest, y):
 
 def save_data(file, data):
   if (file.endswith('z')):
-    f = gzip.GzipFile("../data/" + file, 'wb')
+    f = gzip.GzipFile(file, 'wb')
     f.write(pickle.dumps(data, 0))
     f.close()
   else:
-    f = open("../data/" + file, "wb" )
+    f = open(file, "wb" )
     pickle.dump(data, f)
     f.close()
 
