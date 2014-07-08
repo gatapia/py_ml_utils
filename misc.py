@@ -92,7 +92,7 @@ def save_data(file, data):
 
 def read_data(file):
   if (file.endswith('z')):
-    f = gzip.GzipFile("../data/" + file, 'rb')
+    f = gzip.GzipFile(file, 'rb')
     buffer = ""
     while True:
       data = f.read()
@@ -102,7 +102,7 @@ def read_data(file):
     f.close()
     return object
   else:
-    f = open("../data/" + file, "rb" )
+    f = open(file, "rb" )
     data = pickle.load(f)
     f.close()
     return data
