@@ -3,7 +3,7 @@ import time
 import operator
 
 def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3, 
-    tol=0.000001, column_names=[], scoring=None):
+    tol=0.00001, column_names=[], scoring=None):
   score_hist = []
   good_features = []
   good_scores = []
