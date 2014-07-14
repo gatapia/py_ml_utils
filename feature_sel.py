@@ -3,7 +3,7 @@ import time
 import operator
 
 def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3, 
-    tol=0.000001, column_names=[], scoring=None):
+    tol=0.00001, column_names=[], scoring=None):
   score_hist = []
   good_features = []
   good_scores = []
@@ -22,9 +22,6 @@ def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3,
         model.max_features = min(len(feats), 15)      
         score, sem = do_cv(model, Xt, y_train, n_samples=n_samples, n_iter=n_iter, scoring=scoring, quiet=True)
         scores.append((score, f))            
-        if (score - last_score > 0.1): 
-          print "> 10 percent improvement with feature %d [%s], auto adding. %s -> %s" % (f, column_names[f], last_score, score)
-          break
         if (score > this_best): 
           this_best = score
           print "Feature: %i [%s] Mean: %f (+/-%.2f) Diff: %.5f" % (f, column_names[f], score, sem, score - last_score)
@@ -35,12 +32,12 @@ def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3,
     good_features.append(best[1])
     good_scores.append(last_score)
     score_hist.append(best)
-    print "Iteration Took: %.2fm - Current Features:\n%s\n[%s]" % \
-      ((time.clock() - t0)/60, good_features, operator.itemgetter(good_features)(column_names))
+    print "Iteration Took: %.2fm - Current Features: %s" % \
+      ((time.clock() - t0)/60, good_features)
 
   # Remove last added feature from good_features
   good_features.pop()
   good_scores.pop()
   good_features = sorted(list(good_features))
-  print "Selected features [%s] - scores [%s] - names [%s]" % (good_features, good_scores, operator.itemgetter(good_features)(column_names))
+  print "Selected features [%s] - scores [%s]" % (good_features, good_scores)
   return good_features
