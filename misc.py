@@ -69,17 +69,6 @@ def do_gs(clf, X_train, y_train, params, n_samples=1000, cv=3, n_jobs=-1, scorin
   print(gs.best_params_, gs.best_score_)
   return gs
 
-def load_train_test_and_y(file):
-  data = read_data(file)
-  X_train = data['train_munged']
-  X_test = data['test_munged']
-  y_train = data['y']
-  print "Loaded train[" + `len(X_train)` + "]"
-  return (X_train, X_test, y_train)
-
-def save_train_test_and_y(file, xtrain, xtest, y):
-  save_data(file, {'train_munged': xtrain, 'test_munged': xtest, 'y': y})
-
 def save_data(file, data):
   if (file.endswith('z')):
     f = gzip.GzipFile(file, 'wb')
@@ -121,14 +110,3 @@ def make_and_save_predictions_impl(predictions, file_suffix='submission'):
   f = open('../data/submissions/' + str(datetime.date.today()) + file_suffix + '.csv', 'w')
   f.write('\n'.join(content))
   f.close()
-
-# For Data Munging
-def idx(list, val):
-  if (type(val) is pd.core.series.Series and val.isnull().iget(0)): return NA
-  if (type(val) is pd.core.series.Series): val = val.iget(0)  
-  idx = list[val]
-  if (idx < 0): raise Exception('Error')
-  return idx
-
-def allsame(lst):
-  return lst[1:] == lst[:-1]
