@@ -38,6 +38,6 @@ def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3,
   # Remove last added feature from good_features
   good_features.pop()
   good_scores.pop()
-  good_features = sorted(list(good_features))
-  print "Selected features [%s] - scores [%s]" % (good_features, good_scores)
-  return good_features
+  print "Selected features [%s] - scores [%s]" % 
+    (good_features, map(lambda f: "{0:.3f}".format(f), good_scores))
+  return (good_features, good_scores)
