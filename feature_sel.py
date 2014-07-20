@@ -2,6 +2,12 @@ from misc import *
 import time
 import operator
 
+ # TODO 1): We should take into account the SEM of a new feature.  There is no
+ #    point selecting a new feature if it improves score by 0.001% if the SEM
+ #    is +/-0.01 (i.e. 10x greater than the improvement).
+ # TODO 2): After each iteration we should do a test of all selected features
+ #    to ensure they are all still required.  May be that the last feature
+ #    added made another redundant.
 def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3, 
     tol=0.00001, column_names=[], scoring=None):
   score_hist = []
@@ -10,6 +16,8 @@ def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3,
   last_score = 0
   n_features = X_train.shape[1]
   column_names = column_names if len(column_names) == n_features else range(n_features)
+  print "Starting Greedy Feature Selection - Total Features: ", n_features
+
   while len(score_hist) < 2 or (score_hist[-1][0] - score_hist[-2][0] > tol):
     scores = []  
     this_best = last_score
