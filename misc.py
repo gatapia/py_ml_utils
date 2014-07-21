@@ -3,12 +3,9 @@ import numpy as np
 import pandas as pd
 import scipy as scipy
 import cPickle as pickle
-import gzip
-import math
-import datetime
-import random
-
 from collections import Counter
+import gzip, time, math, datetime, random
+
 from sklearn.cross_validation import cross_val_score, train_test_split, ShuffleSplit, StratifiedShuffleSplit
 from sklearn.preprocessing import StandardScaler
 from scipy.stats import sem 
@@ -52,6 +49,7 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
 
 
 def do_cv(clf, X_train, y_train, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False):
+  t0 = time.time()
   reseed_(clf)
   if (n_samples > len(X_train)): n_samples = len(X_train)
   cv = ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
@@ -59,7 +57,7 @@ def do_cv(clf, X_train, y_train, n_samples=1000, n_iter=3, test_size=0.1, quiet=
 
   test_scores = cross_val_score(clf, X_train, y_train, cv=cv, scoring=scoring)
   if (not(quiet)): 
-    print(mean_score(test_scores))  
+    print 'CV Score: %s Took: %.1f' % (mean_score(test_scores), time.time() - t0)
   return (np.mean(test_scores), sem(test_scores))
 
 def do_gs(clf, X_train, y_train, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None):
