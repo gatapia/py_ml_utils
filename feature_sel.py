@@ -40,8 +40,8 @@ def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3,
     good_features.append(best[1])
     good_scores.append(last_score)
     score_hist.append(best)
-    print "Iteration Took: %.2fm - Current Features: %s" % \
-      ((time.clock() - t0)/60, good_features)
+    print "Iteration %d Took: %.2fm - Current Features: %s" % \
+      (len(good_features), (time.clock() - t0)/60, good_features)
 
   # Remove last added feature from good_features
   good_features.pop()
