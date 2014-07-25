@@ -42,10 +42,14 @@ def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3,
     score_hist.append(best)
     print "Iteration %d Took: %.2fm - Current Features: %s" % \
       (len(good_features), (time.clock() - t0)/60, good_features)
+  
+  # Remove last added feature only if it did not improve at all.
+  #   If there was an improvement, just less than the tolerance then lets
+  #   leave in.
+  if score_hist[-1][0] - score_hist[-2][0] <= 0:    
+    good_features.pop()
+    good_scores.pop()
 
-  # Remove last added feature from good_features
-  good_features.pop()
-  good_scores.pop()
   print "Selected features [%s] - scores [%s]" % \
     (good_features, map(lambda f: "{0:.3f}".format(f), good_scores))
   return (good_features, good_scores)
