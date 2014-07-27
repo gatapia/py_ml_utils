@@ -1,5 +1,5 @@
 
-import inspect, warnings, sklearn, psutil
+import inspect, warnings, sklearn, psutil, numpy
 from sklearn import cluster, covariance, \
   decomposition, ensemble, feature_extraction, feature_selection, \
   gaussian_process, isotonic, kernel_approximation, lda, learning_curve, \
@@ -40,18 +40,48 @@ def get_classifiers(module):
 
       post_processes_length = get_python_processes()
       diff = post_processes_length - pre_processes_length
-      if diff > 1: raise Exception('After[%s] Processes increased by: %s' % (full_name, diff))
+      if diff > 1: raise Exception('After[%s] Processes increased by: %s' % \
+          (full_name, diff))
 
       if cls: classifiers.append(cls)
   return classifiers
 
-def test_all_classifiers():
+def test_all_classifiers(classifiers):
   boston_data = datasets.load_boston()
   X = boston_data['data']
   y = boston_data['target']
-  for classifier in get_classifiers(sklearn):
+  best = (0, None)
+  for classifier in classifiers:
     print 'testing classifier: ', classifier
-    score = sklearn.cross_validation.cross_val_score(classifier(), X, y)
-    print 'classifier:', classifier, 'score:', score
+    try:
+      scores = sklearn.cross_validation.cross_val_score(classifier(), X, y)
+      score = numpy.mean(scores)
+      if (score > best[0]): best = (score, classifier)
+      print 'classifier:', classifier, 'score:', score
+    except:
+      print 'error testing classifier:', classifier
+  print 'Best classifier is: ', best[1], 'Score: ', best[0]
 
-test_all_classifiers()
+def parse_classifier_meta(classifier):
+  doc = classifier.__doc__
+  lines = filter(None, [s.strip() for s in re.sub('-+', '\n', doc).split('\n')])
+  args = []
+  started = False
+  curr_arg = None
+  for l in lines:
+    if not started and l == 'Parameters': started = True
+    elif started and l == 'See Also': break
+    elif started:
+      if ':' in l: 
+        name_type = map(lambda s: s.strip(), l.split(':'))
+        curr_arg = { 'name:': name_type[0], 'type': name_type[1], 'description': '' }
+        args.append(curr_arg)
+      elif l:
+        if not curr_arg: print 'invalid line [%s] doc: %s' % (l, doc)
+        curr_arg['description'] += l
+  return {'classifier': classifier, 'args': args }
+
+# classifiers = get_classifiers(sklearn)
+# test_all_classifiers(classifiers)
+metas = [parse_classifier_meta(m) for m in classifiers]
+print metas
