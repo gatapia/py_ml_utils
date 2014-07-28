@@ -24,7 +24,7 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       X = itertools.repeat(X, len(self.models))
     all_preds = []
     if self.voter == 'mean' or self.voter == 'median' or \
-        self.voter == 'max' or self.voter == 'min'
+        self.voter == 'max' or self.voter == 'min':
       all_preds = [m.predict_proba(X[i]).T[1] for i, m in enumerate(self.models)]
     else:
       all_preds = [m.predict(X[i]) for i, m in enumerate(self.models)]
