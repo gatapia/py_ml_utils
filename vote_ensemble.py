@@ -23,7 +23,8 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       print 'X is a single dataset'
       X = itertools.repeat(X, len(self.models))
     all_preds = []
-    if self.voter == 'mean' or self.voter == 'median':  
+    if self.voter == 'mean' or self.voter == 'median' or \
+        self.voter == 'max' or self.voter == 'min'
       all_preds = [m.predict_proba(X[i]).T[1] for i, m in enumerate(self.models)]
     else:
       all_preds = [m.predict(X[i]) for i, m in enumerate(self.models)]
@@ -34,6 +35,8 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
 
       if (self.voter == 'majority'): predictions[i] = stats.mode(i_preds)[0]
       elif (self.voter == 'mean'): predictions[i] = np.mean(i_preds)
+      elif (self.voter == 'max'): predictions[i] = np.max(i_preds)
+      elif (self.voter == 'min'): predictions[i] = np.min(i_preds)
       elif (self.voter == 'median'): predictions[i] = stats.median(i_preds)[0]
       else: raise Error(self.voter + ' is not implemented')
     return predictions
