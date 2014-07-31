@@ -51,7 +51,7 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
 def do_cv(clf, X_train, y_train, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False):
   t0 = time.time()
   reseed_(clf)
-  if (n_samples > len(X_train)): n_samples = len(X_train)
+  if (n_samples > X_train.shape[0]): n_samples = X_train.shape[0]
   cv = ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
     if not(stratified) else StratifiedShuffleSplit(y_train, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
 
