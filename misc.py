@@ -94,6 +94,13 @@ def read_data(file):
     f.close()
     return data
 
+def to_index(df, columns, drop_original=True):
+  for col in columns:
+    labels = pd.Categorical.from_array(df[col]).labels
+    df[col_name + '_indexes'] = pd.Series(labels)
+  if (drop_original): df = df.drop(columns, 1)
+  return df
+
 def make_and_save_predictions(clf, train, y, test):
   clf.fit(train, y)
   predictions = clf.predict(test)
