@@ -97,7 +97,7 @@ def read_data(file):
 def to_index(df, columns, drop_original=True):
   for col in columns:
     labels = pd.Categorical.from_array(df[col]).labels
-    df[col_name + '_indexes'] = pd.Series(labels)
+    df[col + '_indexes'] = pd.Series(labels)
   if (drop_original): df = df.drop(columns, 1)
   return df
 
