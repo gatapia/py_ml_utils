@@ -21,7 +21,7 @@ def reseed_(clf):
   np.random.seed(sys_seed) 
 
 def mean_score(scores):
-  return ("Mean: {0:.3f} (+/-{1:.3f})").format(np.mean(scores), sem(scores))
+  return ("{0:.3f} (+/-{1:.3f})").format(np.mean(scores), sem(scores))
 
 def scale(X, min_max=None):  
   pp = preprocessing

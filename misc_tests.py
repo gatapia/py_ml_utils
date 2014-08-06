@@ -6,7 +6,7 @@ from sklearn import linear_model
 class TestMisc(unittest.TestCase):
 
     def test_mean_score(self):
-      self.assertEqual('Mean: 2.000 (+/-0.577)', mean_score([1., 2., 3.]))
+      self.assertEqual('2.000 (+/-0.577)', mean_score([1., 2., 3.]))
 
     def test_scale(self):
       arr = np.linspace(10, 100, 5)
