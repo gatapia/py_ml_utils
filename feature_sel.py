@@ -8,7 +8,7 @@ import operator
  # TODO 2): After each iteration we should do a test of all selected features
  #    to ensure they are all still required.  May be that the last feature
  #    added made another redundant.
-def feature_select(X_train, y_train, model, n_samples=3500, n_iter=3, 
+def feature_select(model, X_train, y_train, n_samples=3500, n_iter=3, 
     tol=0.00001, column_names=[], scoring=None):
   score_hist = []
   good_features = []
