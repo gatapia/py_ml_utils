@@ -42,8 +42,8 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
     sems.append(cv[1])
   max_score_idx = scores.index(max(scores))
   min_sem_idx = sems.index(min(sems))
-  print "Best Score n_samples:", n_samples_arr[max_score_idx], "Score:", scores[max_score_idx]
-  print "Best Sem n_samples:", n_samples_arr[min_sem_idx], "Sem:", sems[min_sem_idx]
+  print "best score n_samples:", n_samples_arr[max_score_idx], "score:", scores[max_score_idx]
+  print "best sem n_samples:", n_samples_arr[min_sem_idx], "sem:", sems[min_sem_idx]
   return (scores, sems)
 
 
@@ -56,7 +56,7 @@ def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scori
 
   test_scores = cross_val_score(clf, X, y, cv=cv, scoring=scoring)
   if (not(quiet)): 
-    print 'CV Score: %s Took: %.1f' % (mean_score(test_scores), time.time() - t0)
+    print '%s took: %.1f' % (mean_score(test_scores), time.time() - t0)
   return (np.mean(test_scores), sem(test_scores))
 
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None):
