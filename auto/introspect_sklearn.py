@@ -48,15 +48,19 @@ def get_classifiers(module):
       if cls: classifiers.append(cls)
   return classifiers
 
-def test_all_classifiers(classifiers, X, y):
-  best = (0, None)
+def test_all_classifiers(classifiers, X, y, scoring=None):
+  best = (-1e10, None)
   for classifier in classifiers:
     print 'testing classifier: ', classifier
     try:
-      scores = sklearn.cross_validation.cross_val_score(classifier(), X, y)
+      scores = sklearn.cross_validation.cross_val_score(
+          classifier(), X, y, scoring=scoring)
       score = numpy.mean(scores)
-      if (score > best[0]): best = (score, classifier)
-      print 'classifier:', classifier, 'score:', score
+      if (score > best[0]): 
+        print '\nbest classifier:', classifier, 'score:', score
+        best = (score, classifier)
+      else:
+        print 'classifier:', classifier, 'score:', score
     except:
       print 'error testing classifier:', classifier
   print 'Best classifier is: ', best[1], 'Score: ', best[0]
