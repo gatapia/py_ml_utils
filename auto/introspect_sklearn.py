@@ -48,10 +48,7 @@ def get_classifiers(module):
       if cls: classifiers.append(cls)
   return classifiers
 
-def test_all_classifiers(classifiers):
-  boston_data = datasets.load_boston()
-  X = boston_data['data']
-  y = boston_data['target']
+def test_all_classifiers(classifiers, X, y):
   best = (0, None)
   for classifier in classifiers:
     print 'testing classifier: ', classifier
@@ -137,6 +134,9 @@ def test_classifier_with_arg_customisation(meta):
 
 if __name__ == '__main__':
   # classifiers = get_classifiers(sklearn)
-  ## test_all_classifiers(classifiers)
+  boston_data = datasets.load_boston()
+  X = boston_data['data']
+  y = boston_data['target']
+  ## test_all_classifiers(classifiers, X, y)
   # metas = [parse_classifier_meta(clf) for clf in classifiers]
   ignore = [test_classifier_with_arg_customisation(m) for m in metas]
