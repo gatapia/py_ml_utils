@@ -137,7 +137,7 @@ def test_classifier_with_arg_customisation(meta):
 
 
 if __name__ == '__main__':
-  # classifiers = get_classifiers(sklearn)
+  classifiers = get_classifiers(sklearn)
   boston_data = datasets.load_boston()
   X = boston_data['data']
   y = boston_data['target']

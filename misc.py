@@ -4,9 +4,7 @@ import scipy as scipy
 import cPickle as pickle
 from collections import Counter
 import gzip, time, math, datetime, random
-
-from sklearn.cross_validation import cross_val_score, train_test_split, ShuffleSplit, StratifiedShuffleSplit
-from sklearn import preprocessing, grid_search, utils
+from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
 
@@ -51,13 +49,32 @@ def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scori
   t0 = time.time()
   reseed_(clf)
   if (n_samples > X.shape[0]): n_samples = X.shape[0]
-  cv = ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
-    if not(stratified) else StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
+  cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
+    if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
 
-  test_scores = cross_val_score(clf, X, y, cv=cv, scoring=scoring)
+  test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring)
   if (not(quiet)): 
     print '%s took: %.1f' % (mean_score(test_scores), time.time() - t0)
   return (np.mean(test_scores), sem(test_scores))
+
+def split(X, y, test_split=0.1):
+  X, y = utils.shuffle(X, y, random_state=sys_seed)  
+  num_split = math.floor(X.shape[0] * test_split) if type(test_split) is float else test_split
+  test_X, test_y = X[:num_split], y[:num_split]
+  X, y = X[num_split:], y[num_split:]
+  return X, y, test_X, test_y
+
+def score(clf, X, y, test_split=0.1):
+  X, y, test_X, test_y = split(X, y, test_split)
+  reseed_(clf)
+  clf.fit(X, y)
+  score_(test_y, clf.predict(test_X))
+
+def score_(y_true, y_pred):  
+  accuracy = metrics.accuracy_score(y_true, y_pred)
+  matrix = metrics.confusion_matrix(y_true, y_pred)
+  report = metrics.classification_report(y_true, y_pred)
+  print 'Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report
 
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None):
   reseed_(clf)
