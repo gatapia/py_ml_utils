@@ -67,27 +67,30 @@ def split(X, y, test_split=0.1):
 def proba_scores(y_true, y_preds):
   for i, y_pred in enumerate(y_preds):
     print 'classifier [%d]: %.4f' % (i+1, metrics.roc_auc_score(y_true, y_pred))
-    
-  print 'mean: %.4f' % (metrics.roc_auc_score(y_true, np.mean(y_preds, axis=0))
-  print 'max: %.4f' % (metrics.roc_auc_score(y_true, np.max(y_preds, axis=0))
-  print 'min: %.4f' % (metrics.roc_auc_score(y_true, np.min(y_preds, axis=0))
-  print 'median: %.4f' % (metrics.roc_auc_score(y_true, np.median(y_preds, axis=0))
 
-def score(clf, X, y, test_split=0.1):
+  print 'mean: %.4f' % (metrics.roc_auc_score(y_true, np.mean(y_preds, axis=0)))
+  print 'max: %.4f' % (metrics.roc_auc_score(y_true, np.max(y_preds, axis=0)))
+  print 'min: %.4f' % (metrics.roc_auc_score(y_true, np.min(y_preds, axis=0)))
+  print 'median: %.4f' % (metrics.roc_auc_score(y_true, np.median(y_preds, axis=0)))
+
+def score(clf, X, y, test_split=0.1, auc=False):
   X, y, test_X, test_y = split(X, y, test_split)
   reseed_(clf)
   clf.fit(X, y)
-  show_score(test_y, clf.predict(test_X))
+  predictions = clf.predict_proba(test_X).T[1] if auc else clf.predict(test_X)
+  return show_score(test_y, predictions)
 
 def show_score(y_true, y_pred):  
   if (utils.multiclass.type_of_target(y_true) == 'binary' and
       utils.multiclass.type_of_target(y_pred) == 'continuous'):
-    print 'AUC: ', metrics.roc_auc_score(y_true, y_pred)
-    return
+    auc = metrics.roc_auc_score(y_true, y_pred)
+    print 'auc: ', auc
+    return auc
   accuracy = metrics.accuracy_score(y_true, y_pred)
   matrix = metrics.confusion_matrix(y_true, y_pred)
   report = metrics.classification_report(y_true, y_pred)
   print 'Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report
+  return accuracy
 
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None):
   reseed_(clf)
