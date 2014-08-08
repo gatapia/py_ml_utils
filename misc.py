@@ -64,13 +64,26 @@ def split(X, y, test_split=0.1):
   X, y = X[num_split:], y[num_split:]
   return X, y, test_X, test_y
 
+def proba_scores(y_true, y_preds):
+  for i, y_pred in enumerate(y_preds):
+    print 'classifier [%d]: %.4f' % (i+1, metrics.roc_auc_score(y_true, y_pred))
+    
+  print 'mean: %.4f' % (metrics.roc_auc_score(y_true, np.mean(y_preds, axis=0))
+  print 'max: %.4f' % (metrics.roc_auc_score(y_true, np.max(y_preds, axis=0))
+  print 'min: %.4f' % (metrics.roc_auc_score(y_true, np.min(y_preds, axis=0))
+  print 'median: %.4f' % (metrics.roc_auc_score(y_true, np.median(y_preds, axis=0))
+
 def score(clf, X, y, test_split=0.1):
   X, y, test_X, test_y = split(X, y, test_split)
   reseed_(clf)
   clf.fit(X, y)
-  score_(test_y, clf.predict(test_X))
+  show_score(test_y, clf.predict(test_X))
 
-def score_(y_true, y_pred):  
+def show_score(y_true, y_pred):  
+  if (utils.multiclass.type_of_target(y_true) == 'binary' and
+      utils.multiclass.type_of_target(y_pred) == 'continuous'):
+    print 'AUC: ', metrics.roc_auc_score(y_true, y_pred)
+    return
   accuracy = metrics.accuracy_score(y_true, y_pred)
   matrix = metrics.confusion_matrix(y_true, y_pred)
   report = metrics.classification_report(y_true, y_pred)
