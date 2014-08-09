@@ -64,14 +64,14 @@ def split(X, y, test_split=0.1):
   X, y = X[num_split:], y[num_split:]
   return X, y, test_X, test_y
 
-def proba_scores(y_true, y_preds):
+def proba_scores(y_true, y_preds, scoring=metrics.roc_auc_score):
   for i, y_pred in enumerate(y_preds):
-    print 'classifier [%d]: %.4f' % (i+1, metrics.roc_auc_score(y_true, y_pred))
+    print 'classifier [%d]: %.4f' % (i+1, scoring(y_true, y_pred))
 
-  print 'mean: %.4f' % (metrics.roc_auc_score(y_true, np.mean(y_preds, axis=0)))
-  print 'max: %.4f' % (metrics.roc_auc_score(y_true, np.max(y_preds, axis=0)))
-  print 'min: %.4f' % (metrics.roc_auc_score(y_true, np.min(y_preds, axis=0)))
-  print 'median: %.4f' % (metrics.roc_auc_score(y_true, np.median(y_preds, axis=0)))
+  print 'mean: %.4f' % (scoring(y_true, np.mean(y_preds, axis=0)))
+  print 'max: %.4f' % (scoring(y_true, np.max(y_preds, axis=0)))
+  print 'min: %.4f' % (scoring(y_true, np.min(y_preds, axis=0)))
+  print 'median: %.4f' % (scoring(y_true, np.median(y_preds, axis=0)))
 
 def score(clf, X, y, test_split=0.1, auc=False):
   X, y, test_X, test_y = split(X, y, test_split)
@@ -127,9 +127,8 @@ def read_data(file):
     f.close()
     return data
 
-def to_index(df, columns, drop_original=True):
+def to_index(df, columns, inplace=False):
   for col in columns:
     labels = pd.Categorical.from_array(df[col]).labels
     df[col + '_indexes'] = pd.Series(labels)
-  if (drop_original): df = df.drop(columns, 1)
-  return df
+  return df.drop(columns, 1, inplace=inplace)

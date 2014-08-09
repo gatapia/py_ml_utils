@@ -15,7 +15,7 @@ def get_python_processes():
     except: return false
   return len([p for p in psutil.get_process_list() if is_python_process])
 
-def get_classifiers(module):
+def get_classifiers(module, done=[]):
   ignores = ['MemmapingPool', 'PicklingPool']
   classifiers = []
   X, y = sklearn.datasets.make_regression(20, 5)
@@ -26,7 +26,7 @@ def get_classifiers(module):
       if cls.__name__.startswith('_') or \
           cls.__name__.endswith('_') or \
           not cls.__name__.startswith('sklearn'): continue
-      classifiers += get_classifiers(cls)      
+      classifiers += get_classifiers(cls, done)      
 
     if inspect.isclass(cls):             
       if '_' in name or name[0].islower(): continue
@@ -36,7 +36,8 @@ def get_classifiers(module):
       
       pre_processes_length = get_python_processes()
       full_name = cls.__module__ + '.' + cls.__name__
-
+      if full_name in done: continue
+      done.append(full_name)      
       try: cls().fit(X, y).predict(X)
       except: cls = None
 
@@ -141,6 +142,6 @@ if __name__ == '__main__':
   boston_data = datasets.load_boston()
   X = boston_data['data']
   y = boston_data['target']
-  ## test_all_classifiers(classifiers, X, y)
+  test_all_classifiers(classifiers, X, y)
   # metas = [parse_classifier_meta(clf) for clf in classifiers]
-  ignore = [test_classifier_with_arg_customisation(m) for m in metas]
+  # ignore = [test_classifier_with_arg_customisation(m) for m in metas]
