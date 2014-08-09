@@ -26,6 +26,16 @@ def scale(X, min_max=None):
   scaler = pp.MinMaxScaler(min_max) if min_max else pp.StandardScaler()
   return scaler.fit_transform(X)
 
+def one_hot_encode(X, columns, drop_originals=True):
+  if type(columns[0]) is int: columns = map(lambda c: X.columns[c], columns)
+  X = to_index(X.copy(), columns, drop_originals=True)
+  new_cols = map(lambda c: c + '_indexes', columns)
+  column_indexes = map(list(X.columns.values).index, new_cols)
+  X_categoricals = X[column_indexes]
+  X_enc = preprocessing.OneHotEncoder(sparse=False).fit_transform(X_categoricals)
+  X_all = np.append(X.values, X_enc, 1)
+  return np.delete(X_all, column_indexes, 1) if drop_originals else X_all
+
 # Does a search through n_samples_arr to test what n_samples is acceptable
 #   for cross validation.  No use using very high n_samples if not required
 def do_n_sample_search(clf, X, y, n_samples_arr):
@@ -127,8 +137,11 @@ def read_data(file):
     f.close()
     return data
 
-def to_index(df, columns, inplace=False):
+def to_index(df, columns, drop_originals=False):
+  to_drop = []
   for col in columns:
+    if type(col) is int: col = df.columns[col]
     labels = pd.Categorical.from_array(df[col]).labels
     df[col + '_indexes'] = pd.Series(labels)
-  return df.drop(columns, 1, inplace=inplace)
+    to_drop.append(col)
+  return df.drop(to_drop, 1) if drop_originals else df

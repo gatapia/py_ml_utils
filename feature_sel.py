@@ -9,9 +9,9 @@ import operator
  #    to ensure they are all still required.  May be that the last feature
  #    added made another redundant.
 def feature_select(model, X_train, y_train, n_samples=3500, n_iter=3, 
-    tol=0.00001, column_names=[], scoring=None):
+    tol=0.00001, column_names=[], scoring=None, mandatory_columns=[]):
   score_hist = []
-  good_features = []
+  good_features = mandatory_columns
   good_scores = []
   last_score = 0
   n_features = X_train.shape[1]
