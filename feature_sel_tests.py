@@ -1,7 +1,6 @@
 import unittest, time
-import numpy as np
-from misc import * 
-from sklearn import linear_model
+from feature_sel import * 
+from sklearn import *
 
 class TestFeatureSelect(unittest.TestCase):
 
@@ -10,13 +9,12 @@ class TestFeatureSelect(unittest.TestCase):
       X = boston_data['data']
       y = boston_data['target']
       clf = linear_model.LinearRegression()
-      print 'original:', X.shape[1]
       t0 = time.time()
       feats = feature_select(clf, X, y)
-      print 'feats:', feats
       print 'took:', time.time() - t0
+      sel_features = map(lambda f: f['feature'], feats)
       # Takes 0.0429999828339 seconds
-      self.assertTrue([12, 5, 3, 7, 4, 1, 11] == feats[0])
+      self.assertTrue([12, 5, 3, 7, 4, 1, 11] == sel_features)
 
 if __name__ == '__main__':
     unittest.main()

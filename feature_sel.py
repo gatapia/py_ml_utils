@@ -1,6 +1,7 @@
 from misc import *
 import time
 import operator
+from sklearn.externals import joblib
 
  # TODO 1): We should take into account the SEM of a new feature.  There is no
  #    point selecting a new feature if it improves score by 0.001% if the SEM
@@ -8,48 +9,42 @@ import operator
  # TODO 2): After each iteration we should do a test of all selected features
  #    to ensure they are all still required.  May be that the last feature
  #    added made another redundant.
-def feature_select(model, X_train, y_train, n_samples=3500, n_iter=3, 
-    tol=0.00001, column_names=[], scoring=None, mandatory_columns=[]):
-  score_hist = []
-  good_features = mandatory_columns
-  good_scores = []
-  last_score = 0
-  n_features = X_train.shape[1]
-  column_names = column_names if len(column_names) == n_features else range(n_features)
-  print "Starting Greedy Feature Selection - Total Features: ", n_features
+def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.00001, scoring=None, mandatory_columns=[]):
+  if hasattr(clf, 'max_features') and clf.max_features: clf.max_features = None
 
-  while len(score_hist) < 2 or (score_hist[-1][0] - score_hist[-2][0] > tol):
-    scores = []  
-    this_best = last_score
-    t0 = time.clock()
-    for f in range(n_features):      
-      if f > 0 and f % 100 == 0: print "Testing Feature [%s] %d of %d - %d%%" % (column_names[f], f, n_features, f * 100 / n_features)
-      if f not in good_features:      
-        feats = list(good_features) + [f]
-        Xt = X_train[:, feats]
-        model.max_features = min(len(feats), 15)      
-        score, sem = do_cv(model, Xt, y_train, n_samples=n_samples, n_iter=n_iter, scoring=scoring, quiet=True)
-        scores.append((score, f))            
-        if (score > this_best): 
-          this_best = score
-          print "Feature: %i [%s] Mean: %f (+/-%.2f) Diff: %.5f" % (f, column_names[f], score, sem, score - last_score)
+  selected = map(lambda f: {'feature': f, 'score': 0, 'sem': 0}, mandatory_columns)
     
-    best = sorted(scores)[-1]  
-    print "Last: %f Best: %s Feature: %s" % (last_score, best[0], best[1])
-    last_score = best[0]
-    good_features.append(best[1])
-    good_scores.append(last_score)
-    score_hist.append(best)
-    print "Iteration %d Took: %.2fm - Current Features: %s" % \
-      (len(good_features), (time.clock() - t0)/60, good_features)
-  
-  # Remove last added feature only if it did not improve at all.
-  #   If there was an improvement, just less than the tolerance then lets
-  #   leave in.
-  if score_hist[-1][0] - score_hist[-2][0] <= 0:    
-    good_features.pop()
-    good_scores.pop()
+  print "starting feature selected, features: ", X.shape[1]
 
-  print "Selected features [%s] - scores [%s]" % \
-    (good_features, map(lambda f: "{0:.3f}".format(f), good_scores))
-  return (good_features, good_scores)
+  last_best = {'score': -1e6}
+  while True:
+    t0 = time.time()
+    # iter_results = joblib.Parallel(n_jobs=6)(joblib.delayed(find_next_best_)(args))      
+    iter_results = find_next_best_(selected, clf, X, y, n_samples, n_iter, scoring)
+    this_best = max(iter_results, key=lambda s: s['score'])
+    improvement = this_best['score'] - last_best['score']
+    last_best = this_best
+    if improvement <= 0: break
+    selected.append(this_best)
+    print "iteration %d took: %.2fs - features: %s" % (len(selected), (time.time() - t0)/60, selected)
+
+    if improvement <= tol: 
+      print "improvement of %.2f is less than tol: %.2f, exiting..." % (improvement, tol)
+      break
+
+  print "feature selection completed: ", selected
+  return selected
+    
+def find_next_best_(selected, clf, X, y, n_samples, n_iter, scoring):
+  results = []  
+  n_features = X.shape[1]
+  selected_features = map(lambda s: s['feature'], selected)
+  for f in range(n_features):          
+    if f in selected_features: continue
+
+    feats = list(selected_features) + [f]
+    Xt = X[:, feats]
+    score, sem = do_cv(clf, Xt, y, n_samples=n_samples, n_iter=n_iter, scoring=scoring, quiet=True)
+    results.append({'feature': f, 'score': score, 'sem': sem})                    
+  
+  return results
