@@ -18,6 +18,15 @@ def reseed_(clf):
   random.seed(sys_seed)
   np.random.seed(sys_seed) 
 
+def get_col_aggregate_(col, mode):
+  if type(mode) != str: return mode
+  if mode == 'mode': return col.mode().iget(0) 
+  if mode == 'mean': return col.mean()
+  if mode == 'median': return col.median()
+  if mode == 'min': return col.min()
+  if mode == 'max': return col.max()
+  raise Exception('Unsupported aggregate mode: ' + `mode`)
+
 def mean_score(scores):
   return ("{0:.3f} (+/-{1:.3f})").format(np.mean(scores), sem(scores))
 
@@ -25,6 +34,13 @@ def scale(X, min_max=None):
   pp = preprocessing
   scaler = pp.MinMaxScaler(min_max) if min_max else pp.StandardScaler()
   return scaler.fit_transform(X)
+
+def fillnas(X, categoricals=[], categorical_fill='mode', numerical_fill='mean', inplace=False):
+  if not (inplace): X = X.copy()
+  for c in X.columns: 
+    fill_mode = categorical_fill if c in categoricals else numerical_fill
+    X[c] = X[c].fillna(get_col_aggregate_(X[c], fill_mode))
+  return X
 
 def one_hot_encode(X, columns, drop_originals=True):
   if type(columns[0]) is int: columns = map(lambda c: X.columns[c], columns)
