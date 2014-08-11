@@ -9,12 +9,12 @@ from sklearn.externals import joblib
  # TODO 2): After each iteration we should do a test of all selected features
  #    to ensure they are all still required.  May be that the last feature
  #    added made another redundant.
-def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.00001, scoring=None, mandatory_columns=[], n_jobs=1):
+def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.0001, scoring=None, mandatory_columns=[], n_jobs=1):
   if hasattr(clf, 'max_features') and clf.max_features: clf.max_features = None
 
   selected = map(lambda f: {'feature': f, 'score': 0, 'sem': 0}, mandatory_columns)
     
-  print "starting feature selected, features: ", X.shape[1], "n_jobs:", n_jobs
+  print 'starting feature selected, features: ', X.shape[1], 'n_jobs:', n_jobs
 
   last_best = {'score': -1e6}
   while True:
@@ -25,13 +25,14 @@ def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.00001, scoring=Non
     last_best = this_best
     if improvement <= 0: break
     selected.append(this_best)
-    print "iteration %d took: %.2fs - features: %s" % (len(selected), (time.time() - t0)/60, selected)
+    print 'iteration %d took: %.2fm - features: %s' % (len(selected), (time.time() - t0)/60, selected)
 
     if improvement <= tol: 
-      print "improvement of %.2f is less than tol: %.2f, exiting..." % (improvement, tol)
+      print 'improvement of %.3f is less than tol: %.3f, exiting...' % (improvement, tol)
       break
 
-  print "feature selection completed: ", selected
+  print 'feature selection completed: ', selected
+  print '\n\nfeatures:', map(lambda s: s['feature'], selected), '\n\n'
   return selected
     
 def find_next_best_(selected, clf, X, y, n_samples, n_iter, scoring, n_jobs):

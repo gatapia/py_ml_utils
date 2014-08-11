@@ -13,12 +13,16 @@ random.seed(sys_seed)
 np.random.seed(sys_seed) 
 NA = 99999.0
 
-def reseed_(clf):
+def _reseed(clf):
   clf.random_state = sys_seed
   random.seed(sys_seed)
   np.random.seed(sys_seed) 
 
-def get_col_aggregate_(col, mode):
+def get_col_aggregate(col, mode):
+  '''
+  col: A pandas column
+  mode: One of <constant>|mode|mean|median|min|max
+  '''
   if type(mode) != str: return mode
   if mode == 'mode': return col.mode().iget(0) 
   if mode == 'mean': return col.mean()
@@ -39,7 +43,8 @@ def fillnas(X, categoricals=[], categorical_fill='mode', numerical_fill='mean', 
   if not (inplace): X = X.copy()
   for c in X.columns: 
     fill_mode = categorical_fill if c in categoricals else numerical_fill
-    X[c] = X[c].fillna(get_col_aggregate_(X[c], fill_mode))
+    if fill_mode != 'none':
+      X[c] = X[c].fillna(get_col_aggregate(X[c], fill_mode))
   return X
 
 def one_hot_encode(X, columns, drop_originals=True):
@@ -55,7 +60,7 @@ def one_hot_encode(X, columns, drop_originals=True):
 # Does a search through n_samples_arr to test what n_samples is acceptable
 #   for cross validation.  No use using very high n_samples if not required
 def do_n_sample_search(clf, X, y, n_samples_arr):
-  reseed_(clf)
+  _reseed(clf)
 
   scores = []
   sems = []
@@ -73,7 +78,7 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
 
 def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False):
   t0 = time.time()
-  reseed_(clf)
+  _reseed(clf)
   if (n_samples > X.shape[0]): n_samples = X.shape[0]
   cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
     if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
@@ -101,7 +106,7 @@ def proba_scores(y_true, y_preds, scoring=metrics.roc_auc_score):
 
 def score(clf, X, y, test_split=0.1, auc=False):
   X, y, test_X, test_y = split(X, y, test_split)
-  reseed_(clf)
+  _reseed(clf)
   clf.fit(X, y)
   predictions = clf.predict_proba(test_X).T[1] if auc else clf.predict(test_X)
   return show_score(test_y, predictions)
@@ -119,7 +124,7 @@ def show_score(y_true, y_pred):
   return accuracy
 
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None):
-  reseed_(clf)
+  _reseed(clf)
   gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring)
   X2, y2 = utils.shuffle(X, y, random_state=sys_seed)  
   gs.fit(X2[:n_samples], y2[:n_samples])
