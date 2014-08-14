@@ -76,16 +76,16 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
   return (scores, sems)
 
 
-def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False):
+def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None):
   t0 = time.time()
   _reseed(clf)
   if (n_samples > X.shape[0]): n_samples = X.shape[0]
   cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
     if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
 
-  test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring)
+  test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring, fit_params=fit_params)
   if (not(quiet)): 
-    print '%s took: %.1f' % (mean_score(test_scores), time.time() - t0)
+    print '%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60)
   return (np.mean(test_scores), sem(test_scores))
 
 def split(X, y, test_split=0.1):
@@ -111,7 +111,11 @@ def score(clf, X, y, test_split=0.1, auc=False):
   predictions = clf.predict_proba(test_X).T[1] if auc else clf.predict(test_X)
   return show_score(test_y, predictions)
 
+def _to_np_arr(arrays):
+  return map(lambda a: a.values() if hasattr(a, 'values') else a, arrays)
+
 def show_score(y_true, y_pred):  
+  y_true, y_pred = _to_np_arr((y_true, y_pred))
   if (utils.multiclass.type_of_target(y_true) == 'binary' and
       utils.multiclass.type_of_target(y_pred) == 'continuous'):
     auc = metrics.roc_auc_score(y_true, y_pred)
@@ -123,9 +127,9 @@ def show_score(y_true, y_pred):
   print 'Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report
   return accuracy
 
-def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None):
+def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_params=None):
   _reseed(clf)
-  gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring)
+  gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring, fit_params=fit_params)
   X2, y2 = utils.shuffle(X, y, random_state=sys_seed)  
   gs.fit(X2[:n_samples], y2[:n_samples])
   print(gs.best_params_, gs.best_score_)

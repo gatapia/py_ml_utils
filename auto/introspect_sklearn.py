@@ -49,22 +49,23 @@ def get_classifiers(module, done=[]):
       if cls: classifiers.append(cls)
   return classifiers
 
+all_scores = []
 def test_all_classifiers(classifiers, X, y, scoring=None):
-  best = (-1e10, None)
-  for classifier in classifiers:
-    print 'testing classifier: ', classifier
+  global all_scores
+  all_scores = []
+  for classifier in classifiers:    
     try:
       scores = sklearn.cross_validation.cross_val_score(
           classifier(), X, y, scoring=scoring)
-      score = numpy.mean(scores)
-      if (score > best[0]): 
-        print '\nbest classifier:', classifier, 'score:', score
-        best = (score, classifier)
-      else:
-        print 'classifier:', classifier, 'score:', score
+      score = numpy.mean(scores)      
+      all_scores.append({'name':classifier.__name__, 'score': score})      
+      print 'classifier:', classifier.__name__, 'score:', score
     except:
-      print 'error testing classifier:', classifier
-  print 'Best classifier is: ', best[1], 'Score: ', best[0]
+      print 'classifier:', classifier.__name__, 'error - not included in results'
+  all_scores = sorted(all_scores, key=lambda t: t['score'], reverse=True)  
+  print '\t\tsuccessfull classifiers\n', '\n'.join(
+    map(lambda d: '{:>35}{:10.4f}'.format(d['name'], d['score']), all_scores))
+  print all_scores
 
 def parse_classifier_meta(classifier):
   doc = classifier.__doc__
