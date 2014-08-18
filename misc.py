@@ -76,9 +76,9 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
   return (scores, sems)
 
 
-def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None):
+def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed=True):
   t0 = time.time()
-  _reseed(clf)
+  if reseed: _reseed(clf)
   if (n_samples > X.shape[0]): n_samples = X.shape[0]
   cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
     if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
@@ -112,7 +112,7 @@ def score(clf, X, y, test_split=0.1, auc=False):
   return show_score(test_y, predictions)
 
 def _to_np_arr(arrays):
-  return map(lambda a: a.values() if hasattr(a, 'values') else a, arrays)
+  return map(lambda a: a.values if hasattr(a, 'values') else a, arrays)
 
 def show_score(y_true, y_pred):  
   y_true, y_pred = _to_np_arr((y_true, y_pred))
@@ -121,6 +121,13 @@ def show_score(y_true, y_pred):
     auc = metrics.roc_auc_score(y_true, y_pred)
     print 'auc: ', auc
     return auc
+
+  if (utils.multiclass.type_of_target(y_true) == 'continuous' and
+      utils.multiclass.type_of_target(y_pred) == 'continuous'):
+    r2 = metrics.r2_score(y_true, y_pred)
+    print 'r2: ', r2
+    return r2
+
   accuracy = metrics.accuracy_score(y_true, y_pred)
   matrix = metrics.confusion_matrix(y_true, y_pred)
   report = metrics.classification_report(y_true, y_pred)
