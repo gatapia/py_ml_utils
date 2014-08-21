@@ -41,14 +41,14 @@ def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.0001,
     selected.append(this_best)
 
     feats = map(lambda s: column_names[s['feature']], selected) if column_names else selected
-    print 'iteration %d took: %.2fm - features: %s' % (len(selected), (time.time() - t_iter)/60, feats)
+    print 'iteration %d took: %.2fm - [%.2f] features: %s' % (len(selected), (time.time() - t_iter)/60, this_best['score'], feats)
 
     if improvement <= tol: 
       print 'improvement of %.3f is less than tol: %.3f, exiting...' % (improvement, tol)
       break
 
   feats = map(lambda s: column_names[s['feature']], selected) if column_names else selected
-  print 'feature selection took: %.2fm - features: %s' % ((time.time() - t_whole)/60, feats)
+  print 'feature selection took: %.2fm - [%.2f] features: %s' % ((time.time() - t_whole)/60, last_best['score'], feats)
   return selected
     
 def find_next_best_(selected, clf, X, y, n_samples, n_iter, scoring, n_jobs):
