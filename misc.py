@@ -169,6 +169,16 @@ def read_data(file):
     f.close()
     return data
 
+def to_csv_gz(data_dict, file):
+  in_name = file + '.uncompressed'
+  pd.DataFrame(data_dict).to_csv(in_name, index=False)  
+  f_in = open(in_name, 'rb')
+  f_out = gzip.open(file, 'wb')
+  f_out.writelines(f_in)
+  f_out.close()
+  f_in.close()
+  os.remove(in_name) 
+
 def to_index(df, columns, drop_originals=False):
   to_drop = []
   for col in columns:
