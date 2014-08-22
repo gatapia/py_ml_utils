@@ -10,7 +10,7 @@ from sklearn.externals import joblib
  #    to ensure they are all still required.  May be that the last feature
  #    added made another redundant.
 def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.0001, 
-    scoring=None, mandatory_columns=[], n_jobs=1, least_sem_of_top_x=0):
+    scoring=None, mandatory_columns=[], n_jobs=1, least_sem_of_top_x=0, higher_better=True):
   if hasattr(clf, 'max_features') and clf.max_features: clf.max_features = None
 
   column_names = X.columns.tolist() if hasattr(X, 'columns') else None
@@ -20,12 +20,12 @@ def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.0001,
   print 'starting feature selected, features: ', X.shape[1], 'n_jobs:', n_jobs
   t_whole = time.time()    
 
-  last_best = {'score': -1e6}
+  last_best = {'score': -1e6 if higher_better else 1e6}
   while True:
     t_iter = time.time()    
     iter_results = find_next_best_(selected, clf, X, y, n_samples, 
         n_iter, scoring, n_jobs)
-    iter_results = sorted(iter_results, reverse=True, key=lambda s: s['score'])
+    iter_results = sorted(iter_results, reverse=higher_better, key=lambda s: s['score'])
     this_best = iter_results[0]    
     
     if least_sem_of_top_x > 0:
@@ -35,20 +35,22 @@ def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.0001,
         best_sems = sorted(best_sems, key=lambda s: s['sem'] / s['score'])
         this_best = best_sems[0]
 
-    improvement = this_best['score'] - last_best['score']
+    improvement = this_best['score'] - last_best['score'] if higher_better \
+      else last_best['score'] - this_best['score']
+
     last_best = this_best
     if improvement <= 0: break
     selected.append(this_best)
 
     feats = map(lambda s: column_names[s['feature']], selected) if column_names else selected
-    print 'iteration %d took: %.2fm - [%.2f] features: %s' % (len(selected), (time.time() - t_iter)/60, this_best['score'], feats)
+    print 'iteration %d took: %.2fm - [%.4f] features: %s' % (len(selected), (time.time() - t_iter)/60, this_best['score'], feats)
 
     if improvement <= tol: 
       print 'improvement of %.3f is less than tol: %.3f, exiting...' % (improvement, tol)
       break
 
   feats = map(lambda s: column_names[s['feature']], selected) if column_names else selected
-  print 'feature selection took: %.2fm - [%.2f] features: %s' % ((time.time() - t_whole)/60, last_best['score'], feats)
+  print 'feature selection took: %.2fm - [%.4f] features: %s' % ((time.time() - t_whole)/60, last_best['score'], feats)
   return selected
     
 def find_next_best_(selected, clf, X, y, n_samples, n_iter, scoring, n_jobs):
