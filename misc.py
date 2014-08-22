@@ -3,7 +3,7 @@ import pandas as pd
 import scipy as scipy
 import cPickle as pickle
 from collections import Counter
-import gzip, time, math, datetime, random
+import gzip, time, math, datetime, random, os
 from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
