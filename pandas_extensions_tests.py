@@ -108,7 +108,7 @@ class TestPandasExtensions(unittest.TestCase):
   def test_engineer_concat_with_numerical_col_3_cols(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_2': [1, 2, 3], 'n_3': [4, 5, 6]})    
     df.engineer('n_3(:)c_1(:)n_2')
-    self.assertTrue(np.array_equal(df['n_3(:)c_1(:)n_2'].values, 
+    self.assertTrue(np.array_equal(df['c_n_3(:)c_1(:)n_2'].values, 
       np.array(['4a1', '5b2', '6c3'], 'object')))
 
   def test_engineer_multiplication(self):
@@ -192,7 +192,119 @@ class TestPandasExtensions(unittest.TestCase):
         ['c', 'f', 3, 6, 9, 'cf', 'c3', 18, math.log(3), 6*6]
         ], 'object')))
 
+  def test_scale(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
+      'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})
+    df.scale()
+    self.assertTrue(np.array_equal(df.values, 
+      np.array([
+        ['a', 'd', -1.224744871391589, -1.224744871391589, -1.224744871391589],
+        ['b', 'e', 0, 0, 0],
+        ['c', 'f', 1.224744871391589, 1.224744871391589, 1.224744871391589]
+        ], 'object')))
 
+  def test_scale_with_min_max(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
+      'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
+    df.scale((0., 2.))
+    self.assertTrue(np.array_equal(df.values, 
+      np.array([
+        ['a', 'd', 0, 0, 0],
+        ['b', 'e', 1, 1, 1],
+        ['c', 'f', 2, 2, 2]
+        ], 'object')))
+
+  def test_missing_vals_in_categoricals_mode(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})        
+    df.missing(categorical_fill='mode')
+    self.assertEqual('a', df['c_1'][4])
+
+  def test_missing_vals_in_categoricals_constant(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})        
+    df.missing(categorical_fill='f')
+    self.assertEqual('f', df['c_1'][4])
+
+  def test_missing_vals_in_numericals_mode(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})              
+    df.missing(numerical_fill='mode')
+    self.assertEqual(1, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_mean(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})              
+    df.missing(numerical_fill='mean')
+    self.assertEqual(1.75, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_max(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})              
+    df.missing(numerical_fill='max')
+    self.assertEqual(3, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_min(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})              
+    df.missing(numerical_fill='min')
+    self.assertEqual(1, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_median(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})              
+    df.missing(numerical_fill='median')
+    self.assertEqual(1.5, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_constant(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})              
+    df.missing(numerical_fill=-10)
+    self.assertEqual(-10, df['n_2'][4])
+
+  def test_outliers(self):
+    df = pd.DataFrame({'n_1':np.random.normal(size=200)})
+    min_1, max_1 = df.n_1.min(), df.n_1.max()
+    df.outliers(2)
+    min_2, max_2 = df.n_1.min(), df.n_1.max()
+    self.assertTrue(min_1 < min_2)
+    self.assertTrue(max_1 > max_2)
+
+  def test_categorical_outliers(self):
+    df = pd.DataFrame({'c_1': ['a', 'b', 'c','a', 'b', 'c','a', 'b', 'c','a', 'b', 'c','f']})
+    df.categorical_outliers(0.1)
+    np.testing.assert_array_equal(
+      ['a', 'b', 'c','a', 'b', 'c','a', 'b', 'c','a', 'b', 'c', 'others'],
+      df.c_1.values)
+
+  def test_append_right(self):
+    df1 = pd.DataFrame({'c_1':['a', 'b'], 
+      'n_1': [1, 2]})              
+    df2 = pd.DataFrame({'c_2':['c', 'd'], 
+      'n_2': [3, 4]})              
+    df1.append_right(df2)
+    self.assertTrue(np.array_equal(df1.values, 
+      np.array([
+        ['a', 1, 'c', 3],
+        ['b', 2, 'd', 4]
+        ], 'object')))
+
+  def test_append_bottom(self):
+    df1 = pd.DataFrame({'c_1':['a', 'b'], 
+      'n_1': [1, 2]})              
+    df2 = pd.DataFrame({'c_1':['c', 'd'], 
+      'n_1': [3, 4]})              
+    df1 = df1.append_bottom(df2)
+    self.assertTrue(np.array_equal(df1.values, 
+      np.array([
+        ['a', 1],
+        ['b', 2],
+        ['c', 3],
+        ['d', 4]
+        ], 'object')))
+
+  def test_describe_data(self):
+    pass
 
 if __name__ == '__main__':
     unittest.main()
