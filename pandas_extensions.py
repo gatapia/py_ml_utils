@@ -2,6 +2,19 @@ import pandas as pd
 from misc import *
 import itertools
 
+'''
+Series Extensions
+'''
+def _s_one_hot_encode(self):
+  return pd.get_dummies(self)
+
+def _s_bin(self, n_bins=100):
+  return pd.Series(pd.cut(self, n_bins))
+
+'''
+DataFrame Extensions
+'''
+
 def _df_categoricals(self):
   return filter(lambda c: c.startswith('c_'), self.columns)
 
@@ -98,3 +111,7 @@ pd.DataFrame.categoricals = _df_categoricals
 pd.DataFrame.numericals = _df_numericals
 pd.DataFrame.dates = _df_dates
 pd.DataFrame.binaries = _df_binaries
+
+# Series Extensions  
+pd.Series.one_hot_encode = _s_one_hot_encode
+pd.Series.bin = _s_bin

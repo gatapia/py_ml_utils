@@ -4,6 +4,20 @@ import numpy as np
 from pandas_extensions import *
 
 class TestPandasExtensions(unittest.TestCase):
+  def test_series_one_hot_encode(self):
+    s = pd.Series(['a', 'b', 'c'])
+    s2 = s.one_hot_encode()
+    self.assertTrue(np.array_equal(s2.values, np.array([
+      [1., 0., 0.], 
+      [0., 1., 0.], 
+      [0., 0., 1.]], 'object')))
+
+  def test_series_binning(self):
+    s = pd.Series([1., 2., 3.])    
+    s2 = s.bin(2)
+    self.assertTrue(np.array_equal(s2.values, np.array(
+      ['(0.998, 2]', '(0.998, 2]', '(2, 3]'], 'object')))
+
   def test_categoricals(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
     self.assertTrue(['c_1'] == df.categoricals())
@@ -154,7 +168,7 @@ class TestPandasExtensions(unittest.TestCase):
       'n_1': [], 'n_2': [], 'n_3': []})    
     self.assertTrue([('c_1', 'c_2'), ('c_1', 'c_3'), ('c_2', 'c_3')] ==
       df.combinations(2, categoricals=True))
-          
+
     combs = [('c_1', 'c_2'), ('c_1', 'c_3'), ('c_1', 'n_1'), 
       ('c_1', 'n_2'), ('c_1', 'n_3'), ('c_2', 'c_3'), ('c_2', 'n_1'),
       ('c_2', 'n_2'), ('c_2', 'n_3'), ('c_3', 'n_1'), ('c_3', 'n_2'), 
