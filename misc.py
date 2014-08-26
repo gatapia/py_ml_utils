@@ -3,7 +3,7 @@ import pandas as pd
 import scipy as scipy
 import cPickle as pickle
 from collections import Counter
-import gzip, time, math, datetime, random, os
+import gzip, time, math, datetime, random, os, gc
 from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
@@ -40,7 +40,7 @@ def scale(X, min_max=None):
   return scaler.fit_transform(X)
 
 def fillnas(X, categoricals=[], categorical_fill='mode', numerical_fill='mean', inplace=False):
-  if not (inplace): X = X.copy()
+  if not inplace: X = X.copy()
   for c in X.columns: 
     fill_mode = categorical_fill if c in categoricals else numerical_fill
     if fill_mode != 'none':
@@ -182,14 +182,19 @@ def gzip_file(file):
   f_in.close()
   os.remove(in_name) 
 
-def to_index(df_or_series, columns, drop_originals=False):
+def to_index(df_or_series, columns=[], drop_originals=False, inplace=False):
   if type(df_or_series) is pd.Series:
     labels = pd.Categorical.from_array(df_or_series).labels
     return pd.Series(labels)
 
-  to_drop = []
+  if not inplace: df_or_series = df_or_series.copy()
+
   for col in columns:
     if type(col) is int: col = df_or_series.columns[col]
+    if not col in df_or_series.columns: continue
+    
     df_or_series[col + '_indexes'] = to_index(df_or_series[col])
-    to_drop.append(col)
-  return df_or_series.drop(to_drop, 1) if drop_originals else df_or_series
+    if drop_originals: 
+      df_or_series.drop(col, 1, inplace=True)
+      gc.collect()
+  return df_or_series
