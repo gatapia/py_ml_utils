@@ -170,13 +170,13 @@ def read_data(file):
     return data
 
 def to_csv_gz(data_dict, file):
-  pd.DataFrame(data_dict).to_csv(in_name, index=False)  
-  gzip_file(file)
-
-def gzip_file(file):
   in_name = file + '.uncompressed'  
+  pd.DataFrame(data_dict).to_csv(in_name, index=False)  
+  gzip_file(in_name, file)
+
+def gzip_file(in_name, out_name):  
   f_in = open(in_name, 'rb')
-  f_out = gzip.open(file, 'wb')
+  f_out = gzip.open(out_name, 'wb')
   f_out.writelines(f_in)
   f_out.close()
   f_in.close()
@@ -184,7 +184,7 @@ def gzip_file(file):
 
 def to_index(df_or_series, columns=[], drop_originals=False, inplace=False):
   if type(df_or_series) is pd.Series:
-    labels = pd.Categorical.from_array(df_or_series).labels
+    labels = pd.Categorical.from_array(df_or_series).abels
     return pd.Series(labels)
 
   if not inplace: df_or_series = df_or_series.copy()
