@@ -170,8 +170,11 @@ def read_data(file):
     return data
 
 def to_csv_gz(data_dict, file):
-  in_name = file + '.uncompressed'
   pd.DataFrame(data_dict).to_csv(in_name, index=False)  
+  gzip_file(file)
+
+def gzip_file(file):
+  in_name = file + '.uncompressed'  
   f_in = open(in_name, 'rb')
   f_out = gzip.open(file, 'wb')
   f_out.writelines(f_in)
@@ -179,11 +182,14 @@ def to_csv_gz(data_dict, file):
   f_in.close()
   os.remove(in_name) 
 
-def to_index(df, columns, drop_originals=False):
+def to_index(df_or_series, columns, drop_originals=False):
+  if type(df_or_series) is pd.Series:
+    labels = pd.Categorical.from_array(df_or_series).labels
+    return pd.Series(labels)
+
   to_drop = []
   for col in columns:
-    if type(col) is int: col = df.columns[col]
-    labels = pd.Categorical.from_array(df[col]).labels
-    df[col + '_indexes'] = pd.Series(labels)
+    if type(col) is int: col = df_or_series.columns[col]
+    df_or_series[col + '_indexes'] = to_index(df_or_series[col])
     to_drop.append(col)
-  return df.drop(to_drop, 1) if drop_originals else df
+  return df_or_series.drop(to_drop, 1) if drop_originals else df_or_series
