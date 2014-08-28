@@ -51,10 +51,11 @@ def _df_dates(self):
 
 def _df_one_hot_encode(self):
   start('one_hot_encoding data frame with ' + `self.shape[1]` + ' columns')  
-  df = self.copy()
-  df = df.to_indexes(True)
+  df = self.copy()  
+  df = df.to_indexes(drop_origianls=True)  
   cols = list(df.columns)
   cats = map(lambda c: 'n_' + c + '_indexes', self.categoricals())  
+  for c in cats: df[c].replace(-1, 999, inplace=True)
   cat_idxs = map(lambda c: cols.index(c), cats)
   np_arr = OneHotEncoder(categorical_features=cat_idxs).fit_transform(df)
   stop('done one_hot_encoding data frame with ' + `np_arr.shape[1]` + ' columns')  
@@ -69,7 +70,7 @@ def _df_to_indexes(self, drop_origianls=False):
   return self
 
 def _df_bin(self, n_bins=100, drop_origianls=False):
-  start('binning data into ' + `n_bins` + ' bins')  
+  start('binning data into ' + `n_bins` + ' bins. note: binning rarely helps any classifier')  
   for n in self.numericals():
     self['c_binned_' + n] = pd.cut(self[n], n_bins)
     if drop_origianls: self.drop(n, 1, inplace=True)
@@ -230,6 +231,24 @@ def _df_shuffle(self, y):
   start('done, shuffling data frame')
   return (pd.DataFrame(columns=self.columns, data=new_X), pd.Series(new_y))
 
+def _df_cv(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
+  _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring)
+  return self
+
+def _df_cv_ohe(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
+  X = self.one_hot_encode()
+  _df_cv_impl_(X, clf, y, n_samples, n_iter, scoring)
+  return X
+
+def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None):  
+  if hasattr(y, 'values'): y = y.values
+  n_samples = min(n_samples, X.shape[0])
+  if utils.multiclass.type_of_target(y) == 'binary': scoring = 'roc_auc'
+  start('starting ' + `n_iter` + ' fold cross validation (' + 
+      `n_samples` + ' samples) w/ metric: ' + `scoring`)
+  cv = do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True)
+  stop('done cross validation:\n  [CV]: ' + ("{0:.3f} (+/-{1:.3f})").format(cv[0], cv[1]))  
+
 # Data Frame Extensions  
 pd.DataFrame.one_hot_encode = _df_one_hot_encode
 pd.DataFrame.to_indexes = _df_to_indexes
@@ -244,6 +263,8 @@ pd.DataFrame.categorical_outliers = _df_categorical_outliers
 pd.DataFrame.append_right = _df_append_right
 pd.DataFrame.append_bottom = _df_append_bottom
 pd.DataFrame.shuffle = _df_shuffle
+pd.DataFrame.cv = _df_cv
+pd.DataFrame.cv_ohe = _df_cv_ohe
 
 pd.DataFrame.categoricals = _df_categoricals
 pd.DataFrame.numericals = _df_numericals

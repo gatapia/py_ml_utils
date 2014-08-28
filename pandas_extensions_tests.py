@@ -2,6 +2,7 @@ import unittest
 import pandas as pd
 import numpy as np
 from pandas_extensions import *
+from sklearn import linear_model
 
 class TestPandasExtensions(unittest.TestCase):
   def test_series_one_hot_encode(self):
@@ -323,6 +324,27 @@ class TestPandasExtensions(unittest.TestCase):
     for i, v in enumerate(y2):
       self.assertEqual(v, df2.n_1[i])
 
+  def test_to_indexes(self):
+    df = pd.DataFrame({'c_1':['a', 'b'], 'c_2':['c', 'd'], 'n_1': [1, 2]})
+    df.to_indexes(True)
+    np.testing.assert_array_equal(df.values, [[1, 0, 0], [2, 1, 1]])
+
+  def test_to_indexes_with_NA(self):
+    df = pd.DataFrame({'c_1':['a', 'b', np.nan], 'c_2':['c', 'd', np.nan], 'n_1': [1, 2, 3]})
+    df.to_indexes(True)
+    np.testing.assert_array_equal(df.values, [[1, 0, 0], [2, 1, 1], [3, -1, -1]])
+
+  def test_cv(self):
+    df = pd.DataFrame({'n_1': [1, 2, 3, 4, 5, 6, 7]})
+    y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])        
+    df.cv(linear_model.LinearRegression(), y)
+
+  def test_cv_ohe(self):
+    df = pd.DataFrame({
+      'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'] * 10,  
+      'n_1': [1, 2, 3, 4, 5, 6, 7] * 10})
+    y = pd.Series([1, 0, 0, 1, 1, 0, 1] * 10)        
+    df.cv_ohe(linear_model.LogisticRegression(), y)
 
   def test_describe_data(self):
     pass
