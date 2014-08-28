@@ -22,32 +22,32 @@ class TestPandasExtensions(unittest.TestCase):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
     self.assertTrue(['c_1'] == df.categoricals())
 
+  def test_appending_sparseness_2(self):
+    df = pd.DataFrame({'n_1': [1., 2., 3.], 'n_2': [1., 2., 3.]}).to_sparse(fill_value=0)
+    df['n_3'] = pd.Series([0, 0, 1]).to_sparse(fill_value=0)
+
+    self.assertTrue(np.array_equal(df.values, np.array([
+      [1., 1., 0.], 
+      [2., 2., 0.], 
+      [3., 3., 1.]], 'object')))
+
   def test_one_hot_encode(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
-    df = df.one_hot_encode()
-    self.assertTrue((3, 5) == df.shape)
-    self.assertTrue(np.array_equal(df.values, np.array([
-      ['a', 1., 1., 0., 0.], 
-      ['b', 2., 0., 1., 0.], 
-      ['c', 3., 0., 0., 1.]], 'object')))
-
-  def test_one_hot_encode_with_remove(self):
-    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
-    df = df.one_hot_encode(True)
+    df = df.one_hot_encode().toarray()    
     self.assertTrue((3, 4) == df.shape)
-    self.assertTrue(np.array_equal(df.values, np.array([
-      [1., 1., 0., 0.], 
-      [2., 0., 1., 0.], 
-      [3., 0., 0., 1.]], 'object')))
+    np.testing.assert_array_equal(df, [
+      [1., 0., 0., 1.], 
+      [0., 1., 0., 2.], 
+      [0., 0., 1., 3.]])
 
   def test_one_hot_encode_with_multiple_columns(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.], 'c_3': ['d', 'e', 'f']})
-    df = df.one_hot_encode(True)
+    df = df.one_hot_encode().toarray()
     self.assertTrue((3, 7) == df.shape)
-    self.assertTrue(np.array_equal(df.values, np.array([
-      [1., 1., 0., 0., 1., 0., 0.], 
-      [2., 0., 1., 0., 0., 1., 0.], 
-      [3., 0., 0., 1., 0., 0., 1.]], 'object')))
+    np.testing.assert_array_equal(df, [
+      [1., 0., 0., 1., 0., 0., 1.], 
+      [0., 1., 0., 0., 1., 0., 2.], 
+      [0., 0., 1., 0., 0., 1., 3.]])
 
   def test_binning(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})    
@@ -271,18 +271,21 @@ class TestPandasExtensions(unittest.TestCase):
     self.assertTrue(max_1 > max_2)
 
   def test_categorical_outliers(self):
-    df = pd.DataFrame({'c_1': ['a', 'b', 'c','a', 'b', 'c','a', 'b', 'c','a', 'b', 'c','f']})
+    cols = ['a', 'b', 'c', 'd'] * 100000
+    cols = cols + ['f', 'g'] * 10000
+    df = pd.DataFrame({'c_1': cols})
     df.categorical_outliers(0.1)
     np.testing.assert_array_equal(
-      ['a', 'b', 'c','a', 'b', 'c','a', 'b', 'c','a', 'b', 'c', 'others'],
-      df.c_1.values)
+      ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
+      df.c_1.values[:8])
+    self.assertEqual('others', df.c_1.values[-1])
 
   def test_append_right(self):
     df1 = pd.DataFrame({'c_1':['a', 'b'], 
       'n_1': [1, 2]})              
     df2 = pd.DataFrame({'c_2':['c', 'd'], 
       'n_2': [3, 4]})              
-    df1.append_right(df2)
+    df1 = df1.append_right(df2)
     self.assertTrue(np.array_equal(df1.values, 
       np.array([
         ['a', 1, 'c', 3],
@@ -303,8 +306,26 @@ class TestPandasExtensions(unittest.TestCase):
         ['d', 4]
         ], 'object')))
 
+  def test_shuffle(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'n_1': [1, 2, 3, 4, 5, 6, 7]})
+    y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])
+    df2, y2 = df.shuffle(y)
+
+    # Originals did not change
+    np.testing.assert_array_equal(df.values, np.array([['a', 1L], ['b', 2L], ['c', 3L], ['d', 4L], ['e', 5L], ['f', 6L], ['g', 7L]], dtype='object'))
+    np.testing.assert_array_equal(y.values, [1, 2, 3, 4, 5, 6, 7])
+    # Changed
+    self.assertFalse(np.array_equal(df2.values, np.array([['a', 1L], ['b', 2L], ['c', 3L], ['d', 4L], ['e', 5L], ['f', 6L], ['g', 7L]], dtype='object')))
+    self.assertFalse(np.array_equal(y2.values, np.array([1, 2, 3, 4, 5, 6, 7])))
+
+    self.assertEqual((7, 2), df2.shape)
+    self.assertEqual(7, len(y2))
+    for i, v in enumerate(y2):
+      self.assertEqual(v, df2.n_1[i])
+
+
   def test_describe_data(self):
     pass
 
 if __name__ == '__main__':
-    unittest.main()
+  unittest.main()
