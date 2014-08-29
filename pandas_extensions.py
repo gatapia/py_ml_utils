@@ -1,7 +1,17 @@
+'''
+Naming Conventions for Features:
+c_ = categorical
+i_ = categoricals as indexes
+n_ = numerical
+b_ = binary
+d_ = date
+'''
+
 import pandas as pd
 import numpy as np
 from misc import *
 from sklearn.preprocessing import OneHotEncoder
+from scipy import sparse
 import itertools, logging, time, datetime
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
@@ -40,6 +50,9 @@ DataFrame Extensions
 def _df_categoricals(self):
   return filter(lambda c: c.startswith('c_'), self.columns)
 
+def _df_indexes(self):
+  return filter(lambda c: c.startswith('i_'), self.columns)
+
 def _df_numericals(self):
   return filter(lambda c: c.startswith('n_'), self.columns)
 
@@ -49,22 +62,38 @@ def _df_binaries(self):
 def _df_dates(self):
   return filter(lambda c: c.startswith('d_'), self.columns)
 
-def _df_one_hot_encode(self):
-  start('one_hot_encoding data frame with ' + `self.shape[1]` + ' columns')  
-  df = self.copy()  
-  df = df.to_indexes(drop_origianls=True)  
-  cols = list(df.columns)
-  cats = map(lambda c: 'n_' + c + '_indexes', self.categoricals())  
-  for c in cats: df[c].replace(-1, 999, inplace=True)
-  cat_idxs = map(lambda c: cols.index(c), cats)
-  np_arr = OneHotEncoder(categorical_features=cat_idxs).fit_transform(df)
-  stop('done one_hot_encoding data frame with ' + `np_arr.shape[1]` + ' columns')  
-  return np_arr
+def _df_one_hot_encode(self, dtype=np.float):
+  start('one_hot_encoding data frame with ' + `self.shape[1]` + \
+    ' columns. note: this resturns a sparse array and empties' + \
+    ' the initial array.')  
+  if self.categoricals(): self.to_indexes(drop_origianls=True)    
+
+  indexes = self.indexes()
+  others = filter(lambda c: not c in indexes, self.columns)
+
+  categorical_df = self[indexes]    
+  others_df = sparse.coo_matrix(self[others].values)
+
+  # Destroy original as it now just takes up memory
+  self.drop(self.columns, 1, inplace=True) 
+  gc.collect()
+
+  ohe_sparse = None
+  for i, c in enumerate(indexes):
+    col_ohe = OneHotEncoder(categorical_features=[0], dtype=dtype).\
+      fit_transform(categorical_df[[c]])
+    if ohe_sparse == None: ohe_sparse = col_ohe
+    else: ohe_sparse = sparse.hstack((ohe_sparse, col_ohe))
+    categorical_df.drop(c, axis=1, inplace=True)
+    gc.collect()
+
+  return ohe_sparse if not others else sparse.hstack((ohe_sparse, others_df))
 
 def _df_to_indexes(self, drop_origianls=False):
   start('indexing categoricals in data frame')  
   for c in self.categoricals():
-    self['n_' + c + '_indexes'] = pd.Series(pd.Categorical.from_array(self[c]).labels)
+    cat = pd.Categorical.from_array(self[c])
+    self['i_' + c] = pd.Series(cat.codes)
     if drop_origianls: self.drop(c, 1, inplace=True)
   stop('done indexing categoricals in data frame')  
   return self
@@ -110,10 +139,11 @@ def _df_remove(self, columns=[], categoricals=False, numericals=False,
   self.drop(cols, 1, inplace=True)
   return self
 
-def _df_engineer(self, name, quiet=False):
+def _df_engineer(self, name, columns=None, quiet=False):
   if not quiet: debug('engineering feature: ' + name)
   if '(:)' == name:       
-    for c1, c2 in self.combinations(categoricals=True):  
+    combs = itertools.combinations(columns, 2) if columns else self.combinations(categoricals=True)
+    for c1, c2 in combs:  
       self.engineer(c1 + '(:)' + c2, quiet=True)
   elif '(:)' in name: 
     def to_obj(col):
@@ -128,7 +158,8 @@ def _df_engineer(self, name, quiet=False):
     if len(columns) == 3: 
       self[new_name] = to_obj(columns[0]) + to_obj(columns[1]) + to_obj(columns[2])
   elif '(*)' == name: 
-    for n1, n2 in self.combinations(numericals=True):  
+    combs = itertools.combinations(columns, 2) if columns else self.combinations(numericals=True)
+    for n1, n2 in combs:  
       self.engineer(n1 + '(*)' + n2, quiet=True)
   elif '(*)' in name: 
     columns = name.split('(*)')
@@ -139,11 +170,12 @@ def _df_engineer(self, name, quiet=False):
     if len(columns) == 3: 
       self[name] = self[columns[0]] * self[columns[1]] * self[columns[2]]
   elif '(^2)' == name:
-    for n in self.numericals():
-      self[n + '(^2)'] = self[n] * self[n]
+    cols = columns if columns else self.numericals()
+    for n in cols: self[n + '(^2)'] = self[n] * self[n]
   elif '(lg)' == name:
-    for n in self.numericals():
-      self[n + '(lg)'] = np.log(self[n])
+    cols = columns if columns else self.numericals()
+    for n in cols: self[n + '(lg)'] = np.log(self[n])
+
     self.replace([np.inf, -np.inf], 0, inplace=True)
     self.fillna(0., inplace=True)
   elif '(^2)' in name:
@@ -155,13 +187,18 @@ def _df_engineer(self, name, quiet=False):
   else: raise Exception(name + ' is not supported')
   return self
   
-def _df_scale(self, min_max=None, drop_origianls=False):  
+def _df_scale(self, min_max=None):  
   start('scaling data frame')
-  pp = preprocessing
-  scaler = pp.MinMaxScaler(min_max) if min_max else pp.StandardScaler()
-  cols = self.numericals()
-  new_cols = map(lambda n: n + '_scaled' if drop_origianls else n, cols)
-  self[new_cols] = pd.DataFrame(scaler.fit_transform(self[cols].values), index=self.index)
+  for c in self.numericals():
+    if min_max:
+      self[c] -= self[c].min()  
+      self[c] /= self[c].max()
+      self[c] *= (min_max[1] - min_max[0])
+      self[c] += min_max[0]
+    else:
+      self[c] -= self[c].mean()
+      self[c] /= self[c].std()
+    gc.collect()
   stop('scaling data frame')
   return self
 
@@ -170,6 +207,7 @@ def _df_missing(self, categorical_fill='none', numerical_fill='none'):
   for c in self.columns: 
     fill_mode = 'none'
     if c in self.categoricals(): fill_mode = categorical_fill
+    elif c in self.indexes(): fill_mode = categorical_fill
     elif c in self.numericals(): fill_mode = numerical_fill    
     if fill_mode == 'none': continue
     self[c] = self[c].fillna(_get_col_aggregate(self[c], fill_mode))
@@ -199,26 +237,44 @@ def _df_outliers(self, stds=3):
   stop('done restraining outliers')
   return self
 
-def _df_categorical_outliers(self, min_size=0.01):    
+def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):    
   threshold = float(len(self)) * min_size if type(min_size) is float else min_size
   start('binning categorical outliers, threshold: ' + `threshold`)
 
   for c in self.categoricals(): 
+    fill = _get_col_aggregate(self[c], fill_mode)
     vc = self[c].value_counts()
-    for v, cnt in zip(vc.index.values, vc.values):      
-      if cnt < threshold: 
-        self[c][self[c] == v] = 'others'
+    under = vc[vc <= threshold]    
+    if under.shape[0] > 0:
+      debug('\tcolumn: ' + c + ' binning: ' + `under.sum()` + 
+        ' rows under threshold')
+      for v in under.index: 
+        self[c][self[c] == v] = fill
   stop('done binning categorical outliers')
   return self
 
 def _df_append_right(self, df_or_s):  
-  if ((type(df_or_s) is pd.sparse.frame.SparseDataFrame or 
+  start('appending to the right.  note, this is a destructuve operation')
+  if (type(df_or_s) is sparse.coo.coo_matrix):
+    self_sparse = None
+    for c in self.columns:
+      debug('\tappending column: ' + c)
+      c_coo = sparse.coo_matrix(self[[c]])
+      self.drop([c], 1, inplace=True)
+      gc.collect()
+      if self_sparse == None: self_sparse = c_coo
+      else: self_sparse = sparse.hstack((self_sparse, c_coo)) 
+    self_sparse = sparse.hstack((self_sparse, df_or_s))
+    stop('done appending to the right')
+    return self_sparse
+  elif ((type(df_or_s) is pd.sparse.frame.SparseDataFrame or 
       type(df_or_s) is pd.sparse.series.SparseSeries) and 
       not type(self) is pd.sparse.frame.SparseDataFrame):
     debug('converting data frame to a sparse frame')
     self = self.to_sparse(fill_value=0)
   if type(df_or_s) is pd.Series: self[df_or_s.name] = df_or_s.values
   else: self = pd.concat((self, df_or_s), 1)
+  stop('done appending to the right')
   return self
 
 def _df_append_bottom(self, df):  
@@ -267,6 +323,7 @@ pd.DataFrame.cv = _df_cv
 pd.DataFrame.cv_ohe = _df_cv_ohe
 
 pd.DataFrame.categoricals = _df_categoricals
+pd.DataFrame.indexes = _df_indexes
 pd.DataFrame.numericals = _df_numericals
 pd.DataFrame.dates = _df_dates
 pd.DataFrame.binaries = _df_binaries

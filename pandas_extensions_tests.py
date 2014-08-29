@@ -2,9 +2,9 @@ import unittest
 import pandas as pd
 import numpy as np
 from pandas_extensions import *
-from sklearn import linear_model
+from sklearn import linear_model, preprocessing
 
-class TestPandasExtensions(unittest.TestCase):
+class T(unittest.TestCase):
   def test_series_one_hot_encode(self):
     s = pd.Series(['a', 'b', 'c'])
     s2 = s.one_hot_encode()
@@ -35,20 +35,39 @@ class TestPandasExtensions(unittest.TestCase):
   def test_one_hot_encode(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
     df = df.one_hot_encode().toarray()    
-    self.assertTrue((3, 4) == df.shape)
+    self.assertEquals((3, 4), df.shape)
     np.testing.assert_array_equal(df, [
       [1., 0., 0., 1.], 
       [0., 1., 0., 2.], 
       [0., 0., 1., 3.]])
 
-  def test_one_hot_encode_with_multiple_columns(self):
-    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.], 'c_3': ['d', 'e', 'f']})
-    df = df.one_hot_encode().toarray()
-    self.assertTrue((3, 7) == df.shape)
+  def test_one_hot_encode_2_cols(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2': ['d', 'e', 'f']})
+    df.to_indexes(True)
+    df = df.one_hot_encode().toarray()    
+    self.assertEquals((3, 6), df.shape)
     np.testing.assert_array_equal(df, [
-      [1., 0., 0., 1., 0., 0., 1.], 
-      [0., 1., 0., 0., 1., 0., 2.], 
-      [0., 0., 1., 0., 0., 1., 3.]])
+      [1., 0., 0., 1., 0, 0], 
+      [0., 1., 0., 0., 1, 0], 
+      [0., 0., 1., 0., 0, 1]])
+
+  def test_one_hot_encode_with_multiple_columns(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 
+      'c_2': [2, 2, 2],
+      'n_1': [1., 2., 3.], 
+      'c_3': ['d', 'e', 'f']})
+    df = df.one_hot_encode().toarray()
+    self.assertEqual((3, 8), df.shape)
+    np.testing.assert_array_equal(df, [
+      [1., 0., 0., 1, 1., 0., 0., 1.], 
+      [0., 1., 0., 1, 0., 1., 0., 2.], 
+      [0., 0., 1., 1, 0., 0., 1., 3.]])
+
+    '''
+    np.testing.assert_array_equal(df._one_hot_encoded_columns, 
+      ['b_c_1[a]', 'b_c_1[b]', 'b_c_1[c]', 'b_c_2[2]', 
+        'b_c_3[d]', 'b_c_3[e]', 'b_c_3[f]', 'n_1'])
+    '''
 
   def test_binning(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})    
@@ -197,23 +216,44 @@ class TestPandasExtensions(unittest.TestCase):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})
     df.scale()
-    self.assertTrue(np.array_equal(df.values, 
+    np.testing.assert_array_equal(df.values, 
       np.array([
-        ['a', 'd', -1.224744871391589, -1.224744871391589, -1.224744871391589],
+        ['a', 'd', -1, -1, -1],
         ['b', 'e', 0, 0, 0],
-        ['c', 'f', 1.224744871391589, 1.224744871391589, 1.224744871391589]
-        ], 'object')))
+        ['c', 'f', 1, 1, 1]
+        ], 'object'))
+
+    df = pd.DataFrame({'n_2': [1., 2., 3., 4., 5.], 'n_3': [4., 5., 6., 7., 8.]})
+    df.scale()
+    np.testing.assert_allclose(df.values, 
+      [
+        [-1.26491106, -1.26491106],
+        [-0.63245553, -0.63245553],
+        [0, 0],
+        [0.63245553, 0.63245553],
+        [1.26491106, 1.26491106]
+        ], 1e-6)
 
   def test_scale_with_min_max(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
     df.scale((0., 2.))
-    self.assertTrue(np.array_equal(df.values, 
+    np.testing.assert_array_equal(df.values, 
       np.array([
         ['a', 'd', 0, 0, 0],
         ['b', 'e', 1, 1, 1],
         ['c', 'f', 2, 2, 2]
-        ], 'object')))
+        ], 'object'))
+
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
+      'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
+    df.scale((10., 20.))
+    np.testing.assert_array_equal(df.values, 
+      np.array([
+        ['a', 'd', 10, 10, 10],
+        ['b', 'e', 15, 15, 15],
+        ['c', 'f', 20, 20, 20]
+        ], 'object'))
 
   def test_missing_vals_in_categoricals_mode(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
@@ -271,15 +311,25 @@ class TestPandasExtensions(unittest.TestCase):
     self.assertTrue(min_1 < min_2)
     self.assertTrue(max_1 > max_2)
 
-  def test_categorical_outliers(self):
+  def test_categorical_outliers_with_new_value(self):
     cols = ['a', 'b', 'c', 'd'] * 100000
     cols = cols + ['f', 'g'] * 10000
     df = pd.DataFrame({'c_1': cols})
-    df.categorical_outliers(0.1)
+    df.categorical_outliers(0.1, 'others')
     np.testing.assert_array_equal(
       ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
       df.c_1.values[:8])
     self.assertEqual('others', df.c_1.values[-1])
+
+  def test_categorical_outliers_with_mode(self):
+    cols = ['a', 'b', 'c', 'd'] * 100000
+    cols = cols + ['d', 'f', 'g'] * 10000
+    df = pd.DataFrame({'c_1': cols})
+    df.categorical_outliers(0.1, 'mode')
+    np.testing.assert_array_equal(
+      ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
+      df.c_1.values[:8])
+    self.assertEqual('d', df.c_1.values[-1])
 
   def test_append_right(self):
     df1 = pd.DataFrame({'c_1':['a', 'b'], 
@@ -292,6 +342,15 @@ class TestPandasExtensions(unittest.TestCase):
         ['a', 1, 'c', 3],
         ['b', 2, 'd', 4]
         ], 'object')))
+
+  def test_append_right_with_sparse(self):
+    df1 = pd.DataFrame({'c':[1, 2, 3]})
+    arr1 = sparse.coo_matrix([[4], [5], [6]])
+    arr2 = df1.append_right(arr1)
+    self.assertTrue(type(arr2) is sparse.coo.coo_matrix)
+    arr2 = arr2.toarray()
+    np.testing.assert_array_equal([[1, 4], [2, 5], [3, 6]], arr2)
+
 
   def test_append_bottom(self):
     df1 = pd.DataFrame({'c_1':['a', 'b'], 
@@ -333,7 +392,7 @@ class TestPandasExtensions(unittest.TestCase):
     df = pd.DataFrame({'c_1':['a', 'b', np.nan], 'c_2':['c', 'd', np.nan], 'n_1': [1, 2, 3]})
     df.to_indexes(True)
     np.testing.assert_array_equal(df.values, [[1, 0, 0], [2, 1, 1], [3, -1, -1]])
-
+  
   def test_cv(self):
     df = pd.DataFrame({'n_1': [1, 2, 3, 4, 5, 6, 7]})
     y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])        

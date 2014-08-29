@@ -184,7 +184,7 @@ def gzip_file(in_name, out_name):
 
 def to_index(df_or_series, columns=[], drop_originals=False, inplace=False):
   if type(df_or_series) is pd.Series:
-    labels = pd.Categorical.from_array(df_or_series).abels
+    labels = pd.Categorical.from_array(df_or_series).codes
     return pd.Series(labels)
 
   if not inplace: df_or_series = df_or_series.copy()
