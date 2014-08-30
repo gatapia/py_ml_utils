@@ -5,6 +5,12 @@ i_ = categoricals as indexes
 n_ = numerical
 b_ = binary
 d_ = date
+
+TODO:
+- Time series computations 
+  see: http://pandas.pydata.org/pandas-docs/stable/computation.html
+- Assume all methods destructive
+- Try pandas vs numpy sparse arrays
 '''
 
 import pandas as pd
@@ -14,7 +20,8 @@ from sklearn.preprocessing import OneHotEncoder
 from scipy import sparse
 import itertools, logging, time, datetime
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.DEBUG, 
+    format='%(asctime)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 t0 = time.time()
 
@@ -37,7 +44,8 @@ Series Extensions
 def _s_one_hot_encode(self):
   start('one_hot_encoding column')  
   df = pd.get_dummies(self)
-  stop('done one_hot_encoding column converted to ' + `df.shape[1]` + ' columns')  
+  stop('done one_hot_encoding column converted to ' + 
+      `df.shape[1]` + ' columns')  
   return df
 
 def _s_bin(self, n_bins=100):
@@ -47,20 +55,11 @@ def _s_bin(self, n_bins=100):
 DataFrame Extensions
 '''
 
-def _df_categoricals(self):
-  return filter(lambda c: c.startswith('c_'), self.columns)
-
-def _df_indexes(self):
-  return filter(lambda c: c.startswith('i_'), self.columns)
-
-def _df_numericals(self):
-  return filter(lambda c: c.startswith('n_'), self.columns)
-
-def _df_binaries(self):
-  return filter(lambda c: c.startswith('b_'), self.columns)
-
-def _df_dates(self):
-  return filter(lambda c: c.startswith('d_'), self.columns)
+def _df_categoricals(self): return filter(lambda c: c.startswith('c_'), self.columns)
+def _df_indexes(self): return filter(lambda c: c.startswith('i_'), self.columns)
+def _df_numericals(self): return filter(lambda c: c.startswith('n_'), self.columns)
+def _df_binaries(self): return filter(lambda c: c.startswith('b_'), self.columns)
+def _df_dates(self): return filter(lambda c: c.startswith('d_'), self.columns)
 
 def _df_one_hot_encode(self, dtype=np.float):
   start('one_hot_encoding data frame with ' + `self.shape[1]` + \
@@ -99,23 +98,22 @@ def _df_to_indexes(self, drop_origianls=False):
   return self
 
 def _df_bin(self, n_bins=100, drop_origianls=False):
-  start('binning data into ' + `n_bins` + ' bins. note: binning rarely helps any classifier')  
+  start('binning data into ' + `n_bins` + 
+      ' bins. note: binning rarely helps any classifier')  
   for n in self.numericals():
     self['c_binned_' + n] = pd.cut(self[n], n_bins)
     if drop_origianls: self.drop(n, 1, inplace=True)
   stop('done binning data into ' + `n_bins` + ' bins')  
   return self
 
-def _df_combinations(self, group_size=2, categoricals=False, numericals=False, 
-    dates=False, binaries=False):
-  def cmb(columns): return list(itertools.combinations(columns, group_size))
-  
-  cols = []  
+def _df_combinations(self, group_size=2, columns=[], categoricals=False, 
+    numericals=False, dates=False, binaries=False):
+  cols = list(columns)
   if categoricals: cols = cols + self.categoricals()
   if numericals: cols = cols + self.numericals()
   if dates: cols = cols + self.dates()
   if binaries: cols = cols + self.binaries()
-  return cmb(cols)
+  return list(itertools.combinations(cols, group_size))
 
 def _df_remove(self, columns=[], categoricals=False, numericals=False, 
     dates=False, binaries=False, missing_threshold=0.0):  
@@ -141,10 +139,10 @@ def _df_remove(self, columns=[], categoricals=False, numericals=False,
 
 def _df_engineer(self, name, columns=None, quiet=False):
   if not quiet: debug('engineering feature: ' + name)
-  if '(:)' == name:       
-    combs = itertools.combinations(columns, 2) if columns else self.combinations(categoricals=True)
-    for c1, c2 in combs:  
-      self.engineer(c1 + '(:)' + c2, quiet=True)
+  if name == '(:)' or name == '(*)':
+    combs = itertools.combinations(columns, 2) if columns \
+      else self.combinations(categoricals='(:)' == name, numericals='(*)' == name)
+    for c1, c2 in combs: self.engineer(c1 + name + c2, quiet=True)
   elif '(:)' in name: 
     def to_obj(col):
       if not col in self: raise Exception('could not find "' + col + '" in data frame')
@@ -157,10 +155,6 @@ def _df_engineer(self, name, columns=None, quiet=False):
       self[new_name] = to_obj(columns[0]) + to_obj(columns[1])
     if len(columns) == 3: 
       self[new_name] = to_obj(columns[0]) + to_obj(columns[1]) + to_obj(columns[2])
-  elif '(*)' == name: 
-    combs = itertools.combinations(columns, 2) if columns else self.combinations(numericals=True)
-    for n1, n2 in combs:  
-      self.engineer(n1 + '(*)' + n2, quiet=True)
   elif '(*)' in name: 
     columns = name.split('(*)')
     if len(columns) < 2 or len(columns) > 3: 
@@ -184,6 +178,17 @@ def _df_engineer(self, name, columns=None, quiet=False):
   elif '(lg)' in name:
     n = name.split('(')[0]
     self[name] = np.log(self[n]).replace([np.inf, -np.inf], 0).fillna(0.)
+  elif name.startswith('(rolling_'):
+    cols = columns if columns else self.numericals()
+    for c in cols: self.engineer(c + name, quiet=True)
+  elif '(rolling_' in name:
+    toks1 = name.split('(')
+    toks2 = toks1[1].split('[')
+    n = toks1[0]
+    op = toks2[0]
+    win = int(toks2[1].split(']')[0])
+    print 'calling: pd.' + op + '(df.' + n + ', ' + `win` + ')'
+    self[name] = getattr(pd, op)(self[n], win)
   else: raise Exception(name + ' is not supported')
   return self
   
