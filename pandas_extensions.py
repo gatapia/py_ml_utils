@@ -156,14 +156,15 @@ def _df_engineer(self, name, columns=None, quiet=False):
   
   def get_new_col_name(c):
     prefix = 'c_' if c.func == 'concat' else 'n_'    
-    return prefix + func_to_string(c)
-
-  name = name.replace(' ' , '')  
-  if name in self.columns: return # already created column
-
+    suffix = func_to_string(c)
+    return suffix if suffix.startswith(prefix) else prefix + suffix
+  
   c = explain(name)[0]
   func = c.func
   args = c.args
+
+  new_name = get_new_col_name(c)  
+  if new_name in self.columns: return # already created column  
 
   # Evaluate any embedded expressions in the 'name' expression
   for i, a in enumerate(args): 
@@ -171,13 +172,12 @@ def _df_engineer(self, name, columns=None, quiet=False):
       args[i] = get_new_col_name(a)
       self.engineer(func_to_string(a))
 
-  print 'name:', name, 'func:', func, 'args:', args
-
   if not quiet: debug('engineering feature: ' + name)
   if len(args) == 0 and (name == 'mult' or name == 'concat'):
     combs = itertools.combinations(columns, 2) if columns \
       else self.combinations(categoricals=name=='concat', numericals='mult')    
     for c1, c2 in combs: self.engineer(func + '(' + c1 + ',' + c2 + ')', quiet=True)
+    return self
   elif func == 'concat': 
     def to_obj(col):
       if not col in self: raise Exception('could not find "' + col + '" in data frame')
@@ -185,31 +185,42 @@ def _df_engineer(self, name, columns=None, quiet=False):
     
     if len(args) < 2 or len(args) > 3: raise Exception(name + ' only supports 2 or 3 columns')
     if len(args) == 2: 
-      self['c_' + name] = to_obj(args[0]) + to_obj(args[1])
+      self[new_name] = to_obj(args[0]) + to_obj(args[1])
     if len(args) == 3: 
-      self['c_' + name] = to_obj(args[0]) + to_obj(args[1]) + to_obj(args[2])
+      self[new_name] = to_obj(args[0]) + to_obj(args[1]) + to_obj(args[2])
   elif func  == 'mult':     
     if len(args) < 2 or len(args) > 3: raise Exception(name + ' only supports 2 or 3 columns')
     if len(args) == 2: 
-      self['n_' + name] = self[args[0]] * self[args[1]]
+      self[new_name] = self[args[0]] * self[args[1]]
     if len(args) == 3: 
-      self['n_' + name] = self[args[0]] * self[args[1]] * self[args[2]]
+      self[new_name] = self[args[0]] * self[args[1]] * self[args[2]]
   elif len(args) == 1 and func == 'pow':
     cols = columns if columns else self.numericals()
     for n in cols: self.engineer('pow(' + n + ', ' + args[0] + ')', quiet=True)
+    return self
   elif len(args) == 0 and func == 'lg':
     cols = columns if columns else self.numericals()
     for n in cols: self.engineer('lg(' + n + ')', quiet=True)    
+    return self
   elif func == 'pow': 
-    self['n_' + name] = np.power(self[args[0]], int(args[1]))
-  elif func == 'lg': self['n_' + name] = np.log(self[args[0]])
+    self[new_name] = np.power(self[args[0]], int(args[1]))
+  elif func == 'lg': self[new_name] = np.log(self[args[0]])
   elif func.startswith('rolling_'):
     if len(args) == 1:
       cols = columns if columns else self.numericals()
       for n in cols: self.engineer(func + '(' + n + ', ' + args[0] + ')', quiet=True)
+      return self
     else:      
-      self['n_' + name] = getattr(pd, func)(self[args[0]], int(args[1]))
+      self[new_name] = getattr(pd, func)(self[args[0]], int(args[1]))
   else: raise Exception(name + ' is not supported')
+
+  # Absolutely no idea why this is required but if removed 
+  #   pandas_extensions_engineer_tests.py T.test_long_method_chains
+  #   fails.  Its like this locks the results in before the next
+  #   method is called and the next method appears to change the
+  #   scale of the array? Who knows...
+  self[new_name]
+
   return self
   
 def _df_scale(self, min_max=None):  

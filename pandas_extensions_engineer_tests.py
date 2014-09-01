@@ -217,9 +217,19 @@ class T(unittest.TestCase):
         ], 'object')))
 
   def test_long_method_chains(self):
-    df = pd.DataFrame({'n_1': [1, 2, 3], 'n_2': [4, 5, 6]})    
-    df.engineer('mult(lg(mult(n_1, n_2)), pow(pow(n_1, 3)))')
-    print df.values
+    df1 = pd.DataFrame({'n_1': [1, 2, 3], 'n_2': [4, 5, 6]})    
+    df2 = pd.DataFrame({'n_1': [1, 2, 3], 'n_2': [4, 5, 6]})    
+    df1.engineer('mult(lg(mult(n_1, n_2)), lg(pow(n_1, 3)))')
+    df2.engineer('mult(n_1,n_2);pow(n_1,3)')
+    df2.engineer('lg(pow(n_1,3));lg(mult(n_1, n_2))')
+    df2.engineer('mult(lg(mult(n_1,n_2)),lg(pow(n_1, 3)))')
+
+    np.testing.assert_array_equal(df1.columns.values.sort(), df2.columns.values.sort());
+    np.testing.assert_array_equal(df1['n_mult(n_1,n_2)'].values, df2['n_mult(n_1,n_2)'].values);
+    np.testing.assert_array_equal(df1['n_pow(n_1,3)'], df2['n_pow(n_1,3)']);
+    np.testing.assert_array_equal(df1['n_lg(pow(n_1,3))'], df2['n_lg(pow(n_1,3))']);
+    np.testing.assert_array_equal(df1['n_lg(mult(n_1,n_2))'], df2['n_lg(mult(n_1,n_2))']);
+    np.testing.assert_array_equal(df1['n_mult(lg(mult(n_1,n_2)),lg(pow(n_1,3)))'], df2['n_mult(lg(mult(n_1,n_2)),lg(pow(n_1,3)))']);
 
 if __name__ == '__main__':
   unittest.main()
