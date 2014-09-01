@@ -16,6 +16,7 @@ TODO:
 import pandas as pd
 import numpy as np
 from misc import *
+from ast_parser import *
 from sklearn.preprocessing import OneHotEncoder
 from scipy import sparse
 import itertools, logging, time, datetime
@@ -92,7 +93,7 @@ def _df_to_indexes(self, drop_origianls=False):
   start('indexing categoricals in data frame')  
   for c in self.categoricals():
     cat = pd.Categorical.from_array(self[c])
-    self['i_' + c] = pd.Series(cat.codes)
+    self['i_' + c] = pd.Series(cat.codes if hasattr(cat, 'codes') else cat.labels)
     if drop_origianls: self.drop(c, 1, inplace=True)
   stop('done indexing categoricals in data frame')  
   return self
@@ -137,62 +138,77 @@ def _df_remove(self, columns=[], categoricals=False, numericals=False,
   self.drop(cols, 1, inplace=True)
   return self
 
-def _df_engineer(self, name, columns=None, quiet=False):
-  if type(name) is str and ',' in name: name = name.split(',')
+def _df_engineer(self, name, columns=None, quiet=False):  
+  '''
+  name(Array|string): Can list-like of names.  ';' split list of names 
+  also supported
+  '''
+  if type(name) is str and ';' in name: name = name.split(';')
   if type(name) is list or type(name) is tuple: 
     for n in name: self.engineer(n)
     return
 
+  def func_to_string(c):
+    func = c.func
+    args = c.args
+    return func + '(' + ','.join(map(lambda a: 
+      func_to_string(a) if hasattr(a, 'func') else a, args)) + ')'
+  
+  def get_new_col_name(c):
+    prefix = 'c_' if c.func == 'concat' else 'n_'    
+    return prefix + func_to_string(c)
+
+  name = name.replace(' ' , '')  
+  if name in self.columns: return # already created column
+
+  c = explain(name)[0]
+  func = c.func
+  args = c.args
+
+  # Evaluate any embedded expressions in the 'name' expression
+  for i, a in enumerate(args): 
+    if hasattr(a, 'func'): 
+      args[i] = get_new_col_name(a)
+      self.engineer(func_to_string(a))
+
+  print 'name:', name, 'func:', func, 'args:', args
+
   if not quiet: debug('engineering feature: ' + name)
-  if name == '(:)' or name == '(*)':
+  if len(args) == 0 and (name == 'mult' or name == 'concat'):
     combs = itertools.combinations(columns, 2) if columns \
-      else self.combinations(categoricals='(:)' == name, numericals='(*)' == name)
-    for c1, c2 in combs: self.engineer(c1 + name + c2, quiet=True)
-  elif '(:)' in name: 
+      else self.combinations(categoricals=name=='concat', numericals='mult')    
+    for c1, c2 in combs: self.engineer(func + '(' + c1 + ',' + c2 + ')', quiet=True)
+  elif func == 'concat': 
     def to_obj(col):
       if not col in self: raise Exception('could not find "' + col + '" in data frame')
       return self[col] if self[col].dtype == 'object' else self[col].astype('str')
-    new_name = name if name.startswith('c_') else 'c_' + name
-    columns = name.split('(:)')
-    if len(columns) < 2 or len(columns) > 3: 
-      raise Exception(name + ' only supports 2 or 3 columns')
-    if len(columns) == 2: 
-      self[new_name] = to_obj(columns[0]) + to_obj(columns[1])
-    if len(columns) == 3: 
-      self[new_name] = to_obj(columns[0]) + to_obj(columns[1]) + to_obj(columns[2])
-  elif '(*)' in name: 
-    columns = name.split('(*)')
-    if len(columns) < 2 or len(columns) > 3: 
-      raise Exception(name + ' only supports 2 or 3 columns')
-    if len(columns) == 2: 
-      self[name] = self[columns[0]] * self[columns[1]]
-    if len(columns) == 3: 
-      self[name] = self[columns[0]] * self[columns[1]] * self[columns[2]]
-  elif '(^2)' == name:
+    
+    if len(args) < 2 or len(args) > 3: raise Exception(name + ' only supports 2 or 3 columns')
+    if len(args) == 2: 
+      self['c_' + name] = to_obj(args[0]) + to_obj(args[1])
+    if len(args) == 3: 
+      self['c_' + name] = to_obj(args[0]) + to_obj(args[1]) + to_obj(args[2])
+  elif func  == 'mult':     
+    if len(args) < 2 or len(args) > 3: raise Exception(name + ' only supports 2 or 3 columns')
+    if len(args) == 2: 
+      self['n_' + name] = self[args[0]] * self[args[1]]
+    if len(args) == 3: 
+      self['n_' + name] = self[args[0]] * self[args[1]] * self[args[2]]
+  elif len(args) == 1 and func == 'pow':
     cols = columns if columns else self.numericals()
-    for n in cols: self[n + '(^2)'] = self[n] * self[n]
-  elif '(lg)' == name:
+    for n in cols: self.engineer('pow(' + n + ', ' + args[0] + ')', quiet=True)
+  elif len(args) == 0 and func == 'lg':
     cols = columns if columns else self.numericals()
-    for n in cols: self[n + '(lg)'] = np.log(self[n])
-
-    self.replace([np.inf, -np.inf], 0, inplace=True)
-    self.fillna(0., inplace=True)
-  elif '(^2)' in name:
-    n = name.split('(')[0]
-    self[name] = self[n] * self[n]
-  elif '(lg)' in name:
-    n = name.split('(')[0]
-    self[name] = np.log(self[n]).replace([np.inf, -np.inf], 0).fillna(0.)
-  elif name.startswith('(rolling_'):
-    cols = columns if columns else self.numericals()
-    for c in cols: self.engineer(c + name, quiet=True)
-  elif '(rolling_' in name:
-    toks1 = name.split('(')
-    toks2 = toks1[1].split('[')
-    n = toks1[0]
-    op = toks2[0]
-    win = int(toks2[1].split(']')[0])
-    self[name] = getattr(pd, op)(self[n], win)
+    for n in cols: self.engineer('lg(' + n + ')', quiet=True)    
+  elif func == 'pow': 
+    self['n_' + name] = np.power(self[args[0]], int(args[1]))
+  elif func == 'lg': self['n_' + name] = np.log(self[args[0]])
+  elif func.startswith('rolling_'):
+    if len(args) == 1:
+      cols = columns if columns else self.numericals()
+      for n in cols: self.engineer(func + '(' + n + ', ' + args[0] + ')', quiet=True)
+    else:      
+      self['n_' + name] = getattr(pd, func)(self[args[0]], int(args[1]))
   else: raise Exception(name + ' is not supported')
   return self
   
