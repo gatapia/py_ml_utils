@@ -225,6 +225,57 @@ class T(unittest.TestCase):
     df.engineer(col)
     np.testing.assert_allclose([np.nan, np.nan, 2.333, 2.333, 49, 46.333, 268], df[col], rtol=1e-3)
 
+  # Multiple Columns
+
+  def test_engineer_rolling_sum_on_multi_cols(self):
+    df = pd.DataFrame({'n_1': [10, 12, 13, 15, 2, 12, 34], 'n_2': [1, 2, 3, 5, 2, 2, 4]})
+    col = '(rolling_sum[3])'
+    df.engineer(col)
+    np.testing.assert_array_equal([np.nan, np.nan, 35, 40, 30, 29, 48], df['n_1' + col])
+    np.testing.assert_array_equal([np.nan, np.nan, 6, 10, 10, 9, 8], df['n_2' + col])
+
+  def test_engineer_rolling_mean_on_multi_cols(self):
+    df = pd.DataFrame({'n_1': [10, 12, 13, 15, 2, 12, 34], 'n_2': [1, 2, 3, 5, 2, 2, 4]})
+    col = '(rolling_mean[3])'
+    df.engineer(col)
+    np.testing.assert_allclose([np.nan, np.nan, 11.66, 13.33, 10, 9.66, 16], df['n_1' + col ], rtol=1e-3)
+    np.testing.assert_allclose([np.nan, np.nan, 2, 3.333, 3.333, 3, 2.666], df['n_2' + col], rtol=1e-3)
+
+  def test_engineer_rolling_median_on_multi_cols(self):
+    df = pd.DataFrame({'n_1': [10, 12, 13, 15, 2, 12, 34], 'n_2': [1, 2, 3, 5, 2, 2, 4]})
+    col = '(rolling_median[3])'
+    df.engineer(col)
+    np.testing.assert_array_equal([np.nan, np.nan, 12, 13, 13, 12, 12], df['n_1' + col])
+    np.testing.assert_array_equal([np.nan, np.nan, 2, 3, 3, 2, 2], df['n_2' + col])
+
+  def test_engineer_rolling_min_on_multi_cols(self):
+    df = pd.DataFrame({'n_1': [10, 12, 13, 15, 2, 12, 34], 'n_2': [1, 2, 3, 5, 2, 2, 4]})
+    col = '(rolling_min[3])'
+    df.engineer(col)
+    np.testing.assert_array_equal([np.nan, np.nan, 10, 12, 2, 2, 2], df['n_1' + col])
+    np.testing.assert_array_equal([np.nan, np.nan, 1, 2, 2, 2, 2], df['n_2' + col])
+
+  def test_engineer_rolling_max_on_multi_cols(self):
+    df = pd.DataFrame({'n_1': [10, 12, 13, 15, 2, 12, 34], 'n_2': [1, 2, 3, 5, 2, 2, 4]})
+    col = '(rolling_max[3])'
+    df.engineer(col)
+    np.testing.assert_array_equal([np.nan, np.nan, 13, 15, 15, 15, 34], df['n_1' + col])
+    np.testing.assert_array_equal([np.nan, np.nan, 3, 5, 5, 5, 4], df['n_2' + col])
+
+  def test_engineer_rolling_std_on_multi_cols(self):
+    df = pd.DataFrame({'n_1': [10, 12, 13, 15, 2, 12, 34], 'n_2': [1, 2, 3, 5, 2, 2, 4]})
+    col = '(rolling_std[3])'
+    df.engineer(col)
+    np.testing.assert_allclose([np.nan, np.nan, 1.528, 1.528, 7, 6.807, 16.371], df['n_1' + col ], rtol=1e-3)
+    np.testing.assert_allclose([np.nan, np.nan, 1, 1.528, 1.528, 1.732, 1.1547], df['n_2' + col], rtol=1e-3)
+
+  def test_engineer_rolling_var_on_multi_cols(self):
+    df = pd.DataFrame({'n_1': [10, 12, 13, 15, 2, 12, 34], 'n_2': [1, 2, 3, 5, 2, 2, 4]})
+    col = '(rolling_var[3])'
+    df.engineer(col)
+    np.testing.assert_allclose([np.nan, np.nan, 2.333, 2.333, 49, 46.333, 268], df['n_1' + col ], rtol=1e-3)
+    np.testing.assert_allclose([np.nan, np.nan, 1, 2.333, 2.333, 3, 1.333], df['n_2' + col], rtol=1e-3)
+
   def test_combinations(self):
     df = pd.DataFrame({'c_1':[], 'c_2':[], 'c_3':[], 
       'n_1': [], 'n_2': [], 'n_3': []})    
@@ -246,6 +297,30 @@ class T(unittest.TestCase):
       engineer('n_2(*)n_3').\
       engineer('n_2(lg)').\
       engineer('n_3(^2)')
+
+    self.assertTrue(np.array_equal(df.values, 
+      np.array([
+        ['a', 'd', 1, 4, 7, 'ad', 'a1', 4, math.log(1), 4*4],
+        ['b', 'e', 2, 5, 8, 'be', 'b2', 10, math.log(2), 5*5],
+        ['c', 'f', 3, 6, 9, 'cf', 'c3', 18, math.log(3), 6*6]
+        ], 'object')))
+
+  def test_chaining_single_call_comma_sep(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
+      'n_2': [1, 2, 3], 'n_3': [4, 5, 6], 'n_4': [7, 8, 9]})    
+    df.engineer('c_1(:)c_2,c_1(:)n_2,n_2(*)n_3,n_2(lg),n_3(^2)')
+
+    self.assertTrue(np.array_equal(df.values, 
+      np.array([
+        ['a', 'd', 1, 4, 7, 'ad', 'a1', 4, math.log(1), 4*4],
+        ['b', 'e', 2, 5, 8, 'be', 'b2', 10, math.log(2), 5*5],
+        ['c', 'f', 3, 6, 9, 'cf', 'c3', 18, math.log(3), 6*6]
+        ], 'object')))
+
+  def test_chaining_single_call_comma_sep(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
+      'n_2': [1, 2, 3], 'n_3': [4, 5, 6], 'n_4': [7, 8, 9]})    
+    df.engineer('c_1(:)c_2,c_1(:)n_2,n_2(*)n_3,n_2(lg),n_3(^2)'.split(','))
 
     self.assertTrue(np.array_equal(df.values, 
       np.array([
@@ -358,20 +433,20 @@ class T(unittest.TestCase):
     cols = cols + ['f', 'g'] * 10000
     df = pd.DataFrame({'c_1': cols})
     df.categorical_outliers(0.1, 'others')
-    np.testing.assert_array_equal(
-      ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
-      df.c_1.values[:8])
-    self.assertEqual('others', df.c_1.values[-1])
+
+    exp = ['a', 'b', 'c', 'd'] * 100000 
+    exp = exp + ['others', 'others'] * 10000
+    np.testing.assert_array_equal(exp, df.c_1.values.tolist())
 
   def test_categorical_outliers_with_mode(self):
     cols = ['a', 'b', 'c', 'd'] * 100000
     cols = cols + ['d', 'f', 'g'] * 10000
     df = pd.DataFrame({'c_1': cols})
     df.categorical_outliers(0.1, 'mode')
-    np.testing.assert_array_equal(
-      ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
-      df.c_1.values[:8])
-    self.assertEqual('d', df.c_1.values[-1])
+    
+    exp = ['a', 'b', 'c', 'd'] * 100000
+    exp = exp + ['d', 'd', 'd'] * 10000
+    np.testing.assert_array_equal(exp, df.c_1.values.tolist())
 
   def test_append_right(self):
     df1 = pd.DataFrame({'c_1':['a', 'b'], 

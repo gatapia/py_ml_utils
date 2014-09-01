@@ -138,6 +138,11 @@ def _df_remove(self, columns=[], categoricals=False, numericals=False,
   return self
 
 def _df_engineer(self, name, columns=None, quiet=False):
+  if type(name) is str and ',' in name: name = name.split(',')
+  if type(name) is list or type(name) is tuple: 
+    for n in name: self.engineer(n)
+    return
+
   if not quiet: debug('engineering feature: ' + name)
   if name == '(:)' or name == '(*)':
     combs = itertools.combinations(columns, 2) if columns \
@@ -187,7 +192,6 @@ def _df_engineer(self, name, columns=None, quiet=False):
     n = toks1[0]
     op = toks2[0]
     win = int(toks2[1].split(']')[0])
-    print 'calling: pd.' + op + '(df.' + n + ', ' + `win` + ')'
     self[name] = getattr(pd, op)(self[n], win)
   else: raise Exception(name + ' is not supported')
   return self
@@ -246,16 +250,16 @@ def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):
   threshold = float(len(self)) * min_size if type(min_size) is float else min_size
   start('binning categorical outliers, threshold: ' + `threshold`)
 
-  for c in self.categoricals(): 
-    fill = _get_col_aggregate(self[c], fill_mode)
-    vc = self[c].value_counts()
+  tot_changed = 0
+  for c in self.categoricals():     
+    col = self[c]
+    fill = _get_col_aggregate(col, fill_mode)
+    vc = col.value_counts()
     under = vc[vc <= threshold]    
     if under.shape[0] > 0:
-      debug('\tcolumn: ' + c + ' binning: ' + `under.sum()` + 
-        ' rows under threshold')
-      for v in under.index: 
-        self[c][self[c] == v] = fill
-  stop('done binning categorical outliers')
+      tot_changed += under.sum()
+      col[col.isin(under.index)] = fill
+  stop('done binning categorical outliers, ' + `tot_changed` + ' cells changed')
   return self
 
 def _df_append_right(self, df_or_s):  
@@ -294,12 +298,9 @@ def _df_shuffle(self, y):
 
 def _df_cv(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
   _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring)
-  return self
 
 def _df_cv_ohe(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
-  X = self.one_hot_encode()
-  _df_cv_impl_(X, clf, y, n_samples, n_iter, scoring)
-  return X
+  _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring)
 
 def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None):  
   if hasattr(y, 'values'): y = y.values
@@ -343,3 +344,4 @@ pd.DataFrame.toidxs = _df_to_indexes
 pd.DataFrame.rm = _df_remove
 pd.DataFrame.eng = _df_engineer
 pd.DataFrame.nas = _df_missing
+pd.DataFrame.catout = _df_categorical_outliers

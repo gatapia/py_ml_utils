@@ -66,5 +66,7 @@ def find_next_best_(selected, clf, X, y, n_samples, n_iter, scoring, n_jobs):
 def get_feat_score_(selected_features, f, clf, X, y, n_samples, n_iter, scoring):  
   feats = list(selected_features) + [f]
   Xt = X[:, feats]
-  score, sem = do_cv(clf, Xt, y, n_samples=n_samples, n_iter=n_iter, scoring=scoring, quiet=True, reseed=False)
+  sys_seed = len(feats)
+  score, sem = do_cv(clf, Xt, y, n_samples=n_samples, 
+    n_iter=n_iter, scoring=scoring, quiet=True)
   return {'feature': f, 'score': score, 'sem': sem}
