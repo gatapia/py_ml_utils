@@ -240,24 +240,30 @@ def _df_scale(self, min_max=None):
 
 def _df_missing(self, categorical_fill='none', numerical_fill='none'):  
   start('replacing missing data categorical[' + `categorical_fill` + '] numerical[' + `numerical_fill` + ']')
+  
+  # Do numerical constants on whole DF for performance
   if type(numerical_fill) != str:
     self[self.numericals()] = self[self.numericals()].fillna(numerical_fill)
     numerical_fill='none'
 
+  # Do categorical constants on whole DF for performance
   if categorical_fill != 'none' and categorical_fill != 'mode':
     self[self.categoricals()] = self[self.categoricals()].fillna(categorical_fill)
     categorical_fill='none'
 
+  # Get list of columns still left to fill
   categoricals_to_fill = []
   numericals_to_fill = []
   if categorical_fill != 'none': categoricals_to_fill += self.categoricals() + self.indexes()
   if numerical_fill != 'none': numericals_to_fill += self.numericals()
 
-  for c in categoricals_to_fill: 
-    self[c] = self[c].fillna(_get_col_aggregate(self[c], categorical_fill))
-
-  for c in numericals_to_fill: 
-    self[c] = self[c].fillna(_get_col_aggregate(self[c], numerical_fill))
+  # Prepare a dictionary of column -> fill values
+  to_fill = {}
+  for c in categoricals_to_fill: to_fill[c] = _get_col_aggregate(self[c], categorical_fill)
+  for c in numericals_to_fill: to_fill[c] = _get_col_aggregate(self[c], numerical_fill)
+  
+  # Do fill in one step for performance
+  if to_fill: self.fillna(value=to_fill, inplace=True)
 
   stop('done replacing missing data')
   return self
