@@ -168,11 +168,25 @@ class T(unittest.TestCase):
     df.missing(categorical_fill='mode')
     self.assertEqual('a', df['c_1'][4])
 
+  def test_missing_vals_in_categoricals_mode_multiple_columns(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'c_2':['a', 'b', 'c', 'b', np.nan]})        
+    df.missing(categorical_fill='mode')
+    self.assertEqual('a', df['c_1'][4])
+    self.assertEqual('b', df['c_2'][4])
+
   def test_missing_vals_in_categoricals_constant(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
       'n_2': [1, 2, 3, 1, np.nan]})        
     df.missing(categorical_fill='f')
     self.assertEqual('f', df['c_1'][4])
+
+  def test_missing_vals_in_categoricals_constant_multiple_columns(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
+      'c_2':['a', 'b', 'c', 'a', np.nan]})        
+    df.missing(categorical_fill='f')
+    self.assertEqual('f', df['c_1'][4])
+    self.assertEqual('f', df['c_2'][4])
 
   def test_missing_vals_in_numericals_mode(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
@@ -208,6 +222,56 @@ class T(unittest.TestCase):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'a', np.nan], 
       'n_2': [1, 2, 3, 1, np.nan]})              
     df.missing(numerical_fill=-10)
+    self.assertEqual(-10, df['n_2'][4])
+
+  def test_outliers(self):
+    df = pd.DataFrame({'n_1':np.random.normal(size=200)})
+    min_1, max_1 = df.n_1.min(), df.n_1.max()
+    df.outliers(2)
+    min_2, max_2 = df.n_1.min(), df.n_1.max()
+    self.assertTrue(min_1 < min_2)
+    self.assertTrue(max_1 > max_2)
+
+  def test_missing_vals_in_numericals_mode_multiple_columns(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})              
+    df.missing(numerical_fill='mode')
+    self.assertEqual(2, df['n_1'][4])
+    self.assertEqual(1, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_mean_multiple_columns(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})                          
+    df.missing(numerical_fill='mean')
+    self.assertEqual(2.75, df['n_1'][4])
+    self.assertEqual(1.75, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_max_multiple_columns(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})                         
+    df.missing(numerical_fill='max')
+    self.assertEqual(4, df['n_1'][4])
+    self.assertEqual(3, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_min_multiple_columns(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})                        
+    df.missing(numerical_fill='min')
+    self.assertEqual(2, df['n_1'][4])
+    self.assertEqual(1, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_median_multiple_columns(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})                         
+    df.missing(numerical_fill='median')
+    self.assertEqual(2.5, df['n_1'][4])
+    self.assertEqual(1.5, df['n_2'][4])
+
+  def test_missing_vals_in_numericals_constant_multiple_columns(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 
+      'n_2': [1, 2, 3, 1, np.nan]})                         
+    df.missing(numerical_fill=-10)
+    self.assertEqual(-10, df['n_1'][4])
     self.assertEqual(-10, df['n_2'][4])
 
   def test_outliers(self):

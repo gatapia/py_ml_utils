@@ -146,7 +146,7 @@ def _df_engineer(self, name, columns=None, quiet=False):
   if type(name) is str and ';' in name: name = name.split(';')
   if type(name) is list or type(name) is tuple: 
     for n in name: self.engineer(n)
-    return
+    return self
 
   def func_to_string(c):
     func = c.func
@@ -160,11 +160,11 @@ def _df_engineer(self, name, columns=None, quiet=False):
     return suffix if suffix.startswith(prefix) else prefix + suffix
   
   c = explain(name)[0]
-  func = c.func
-  args = c.args
+  func = c.func if not type(c) is str else None
+  args = c.args if not type(c) is str else None
 
-  new_name = get_new_col_name(c)  
-  if new_name in self.columns: return # already created column  
+  new_name = get_new_col_name(c) if not type(c) is str else c
+  if new_name in self.columns: return self # already created column  
 
   # Evaluate any embedded expressions in the 'name' expression
   for i, a in enumerate(args): 
@@ -240,13 +240,25 @@ def _df_scale(self, min_max=None):
 
 def _df_missing(self, categorical_fill='none', numerical_fill='none'):  
   start('replacing missing data categorical[' + `categorical_fill` + '] numerical[' + `numerical_fill` + ']')
-  for c in self.columns: 
-    fill_mode = 'none'
-    if c in self.categoricals(): fill_mode = categorical_fill
-    elif c in self.indexes(): fill_mode = categorical_fill
-    elif c in self.numericals(): fill_mode = numerical_fill    
-    if fill_mode == 'none': continue
-    self[c] = self[c].fillna(_get_col_aggregate(self[c], fill_mode))
+  if type(numerical_fill) != str:
+    self[self.numericals()] = self[self.numericals()].fillna(numerical_fill)
+    numerical_fill='none'
+
+  if categorical_fill != 'none' and categorical_fill != 'mode':
+    self[self.categoricals()] = self[self.categoricals()].fillna(categorical_fill)
+    categorical_fill='none'
+
+  categoricals_to_fill = []
+  numericals_to_fill = []
+  if categorical_fill != 'none': categoricals_to_fill += self.categoricals() + self.indexes()
+  if numerical_fill != 'none': numericals_to_fill += self.numericals()
+
+  for c in categoricals_to_fill: 
+    self[c] = self[c].fillna(_get_col_aggregate(self[c], categorical_fill))
+
+  for c in numericals_to_fill: 
+    self[c] = self[c].fillna(_get_col_aggregate(self[c], numerical_fill))
+
   stop('done replacing missing data')
   return self
 
