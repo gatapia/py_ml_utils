@@ -26,14 +26,18 @@ logging.basicConfig(level=logging.DEBUG,
 log = logging.getLogger(__name__)
 t0 = time.time()
 
-def debug(msg): log.info(msg)
+def debug(msg): 
+  if not cfg['debug']: return
+  log.info(msg)
 
 def start(msg): 
+  if not cfg['debug']: return
   global t0
   t0 = time.time()
   log.info(msg)
 
 def stop(msg): 
+  if not cfg['debug']: return
   global t0
   log.info(msg + (', took (h:m:s): %s' % 
     datetime.timedelta(seconds=time.time() - t0)))
@@ -50,7 +54,7 @@ def _s_one_hot_encode(self):
   return df
 
 def _s_bin(self, n_bins=100):
-  return pd.Series(pd.cut(self, n_bins))
+  return pd.Series(pd.cut(self, n_bins), index=self.index)
 
 '''
 DataFrame Extensions
@@ -69,6 +73,7 @@ def _df_one_hot_encode(self, dtype=np.float):
   if self.categoricals(): self.to_indexes(drop_origianls=True)    
 
   indexes = self.indexes()
+  if not indexes: return self
   others = filter(lambda c: not c in indexes, self.columns)
 
   categorical_df = self[indexes]    
@@ -93,7 +98,7 @@ def _df_to_indexes(self, drop_origianls=False):
   start('indexing categoricals in data frame')  
   for c in self.categoricals():
     cat = pd.Categorical.from_array(self[c])
-    self['i_' + c] = pd.Series(cat.codes if hasattr(cat, 'codes') else cat.labels)
+    self['i_' + c] = pd.Series(cat.codes, index=self[c].index)
     if drop_origianls: self.drop(c, 1, inplace=True)
   stop('done indexing categoricals in data frame')  
   return self
@@ -291,20 +296,22 @@ def _df_outliers(self, stds=3):
   stop('done restraining outliers')
   return self
 
-def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):    
-  threshold = float(len(self)) * min_size if type(min_size) is float else min_size
-  start('binning categorical outliers, threshold: ' + `threshold`)
+def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):     
+  threshold = float(len(self)) * min_size if type(min_size) is float else min_size 
+  col = self.copy()
+  fill = _get_col_aggregate(col, fill_mode)
+  vc = col.value_counts()
+  under = vc[vc <= threshold]    
+  if under.shape[0] > 0: col[col.isin(under.index)] = fill
+  return col
 
-  tot_changed = 0
+def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):      
+  start('binning categorical outliers, min_size: ' + `min_size`)
+
   for c in self.categoricals():     
-    col = self[c]
-    fill = _get_col_aggregate(col, fill_mode)
-    vc = col.value_counts()
-    under = vc[vc <= threshold]    
-    if under.shape[0] > 0:
-      tot_changed += under.sum()
-      col[col.isin(under.index)] = fill
-  stop('done binning categorical outliers, ' + `tot_changed` + ' cells changed')
+    self[c] = self[c].categorical_outliers(min_size, fill_mode)
+
+  stop('done binning categorical outliers')
   return self
 
 def _df_append_right(self, df_or_s):  
@@ -339,13 +346,13 @@ def _df_shuffle(self, y):
   start('shuffling data frame')
   new_X, new_y = utils.shuffle(self, y, random_state=sys_seed)
   start('done, shuffling data frame')
-  return (pd.DataFrame(columns=self.columns, data=new_X), pd.Series(new_y))
+  return (pd.DataFrame(columns=self.columns, data=new_X, index=self.index), pd.Series(new_y, index=y.index))
 
 def _df_cv(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
-  _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring)
+  return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring)
 
 def _df_cv_ohe(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
-  _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring)
+  return _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring)
 
 def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None):  
   if hasattr(y, 'values'): y = y.values
@@ -355,6 +362,7 @@ def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None):
       `n_samples` + ' samples) w/ metric: ' + `scoring`)
   cv = do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True)
   stop('done cross validation:\n  [CV]: ' + ("{0:.3f} (+/-{1:.3f})").format(cv[0], cv[1]))  
+  return cv
 
 # Data Frame Extensions  
 pd.DataFrame.one_hot_encode = _df_one_hot_encode
@@ -382,8 +390,11 @@ pd.DataFrame.binaries = _df_binaries
 # Series Extensions  
 pd.Series.one_hot_encode = _s_one_hot_encode
 pd.Series.bin = _s_bin
+pd.Series.categorical_outliers = _s_categorical_outliers
 
 # Aliases
+pd.Series.catout = _s_categorical_outliers
+
 pd.DataFrame.ohe = _df_one_hot_encode
 pd.DataFrame.toidxs = _df_to_indexes
 pd.DataFrame.rm = _df_remove

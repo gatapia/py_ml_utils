@@ -8,15 +8,20 @@ from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
 
+cfg = {
+  'sys_seed':0,
+  'debug':True
+}
+
 sys_seed = 0
-random.seed(sys_seed)
-np.random.seed(sys_seed) 
+random.seed(cfg['sys_seed'])
+np.random.seed(cfg['sys_seed']) 
 NA = 99999.0
 
 def _reseed(clf):
-  clf.random_state = sys_seed
-  random.seed(sys_seed)
-  np.random.seed(sys_seed) 
+  clf.random_state = cfg['sys_seed']
+  random.seed(cfg['sys_seed'])
+  np.random.seed(cfg['sys_seed']) 
 
 def get_col_aggregate(col, mode):
   '''
@@ -66,13 +71,13 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
   sems = []
   for n_samples in n_samples_arr:
     cv = do_cv(clf, X, y, n_samples, quiet=True)
-    print "n_samples:", n_samples, "cv:", cv
+    if cfg['debug']: print "n_samples:", n_samples, "cv:", cv
     scores.append(cv[0])
     sems.append(cv[1])
   max_score_idx = scores.index(max(scores))
   min_sem_idx = sems.index(min(sems))
-  print "best score n_samples:", n_samples_arr[max_score_idx], "score:", scores[max_score_idx]
-  print "best sem n_samples:", n_samples_arr[min_sem_idx], "sem:", sems[min_sem_idx]
+  if cfg['debug']: print "best score n_samples:", n_samples_arr[max_score_idx], "score:", scores[max_score_idx]
+  if cfg['debug']: print "best sem n_samples:", n_samples_arr[min_sem_idx], "sem:", sems[min_sem_idx]
   return (scores, sems)
 
 
@@ -84,7 +89,7 @@ def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scori
     if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
 
   test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring, fit_params=fit_params)
-  if (not(quiet)): 
+  if cfg['debug'] and not(quiet): 
     print '%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60)
   return (np.mean(test_scores), sem(test_scores))
 
@@ -119,19 +124,19 @@ def show_score(y_true, y_pred):
   if (utils.multiclass.type_of_target(y_true) == 'binary' and
       utils.multiclass.type_of_target(y_pred) == 'continuous'):
     auc = metrics.roc_auc_score(y_true, y_pred)
-    print 'auc: ', auc
+    if cfg['debug']: print 'auc: ', auc
     return auc
 
   if (utils.multiclass.type_of_target(y_true) == 'continuous' and
       utils.multiclass.type_of_target(y_pred) == 'continuous'):
     r2 = metrics.r2_score(y_true, y_pred)
-    print 'r2: ', r2
+    if cfg['debug']: print 'r2: ', r2
     return r2
 
   accuracy = metrics.accuracy_score(y_true, y_pred)
   matrix = metrics.confusion_matrix(y_true, y_pred)
   report = metrics.classification_report(y_true, y_pred)
-  print 'Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report
+  if cfg['debug']: print 'Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report
   return accuracy
 
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_params=None):
@@ -139,7 +144,7 @@ def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_
   gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring, fit_params=fit_params)
   X2, y2 = utils.shuffle(X, y, random_state=sys_seed)  
   gs.fit(X2[:n_samples], y2[:n_samples])
-  print(gs.best_params_, gs.best_score_)
+  if cfg['debug']: print(gs.best_params_, gs.best_score_)
   return gs
 
 def save_data(file, data):
