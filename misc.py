@@ -13,7 +13,6 @@ cfg = {
   'debug':True
 }
 
-sys_seed = 0
 random.seed(cfg['sys_seed'])
 np.random.seed(cfg['sys_seed']) 
 NA = 99999.0
@@ -85,8 +84,8 @@ def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scori
   t0 = time.time()
   if reseed: _reseed(clf)
   if (n_samples > X.shape[0]): n_samples = X.shape[0]
-  cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
-    if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
+  cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed']) \
+    if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
 
   test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring, fit_params=fit_params)
   if cfg['debug'] and not(quiet): 
@@ -94,7 +93,7 @@ def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scori
   return (np.mean(test_scores), sem(test_scores))
 
 def split(X, y, test_split=0.1):
-  X, y = utils.shuffle(X, y, random_state=sys_seed)  
+  X, y = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
   num_split = math.floor(X.shape[0] * test_split) if type(test_split) is float else test_split
   test_X, test_y = X[:num_split], y[:num_split]
   X, y = X[num_split:], y[num_split:]
@@ -142,7 +141,7 @@ def show_score(y_true, y_pred):
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_params=None):
   _reseed(clf)
   gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring, fit_params=fit_params)
-  X2, y2 = utils.shuffle(X, y, random_state=sys_seed)  
+  X2, y2 = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
   gs.fit(X2[:n_samples], y2[:n_samples])
   if cfg['debug']: print(gs.best_params_, gs.best_score_)
   return gs

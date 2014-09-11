@@ -10,13 +10,16 @@ from sklearn.externals import joblib
  #    to ensure they are all still required.  May be that the last feature
  #    added made another redundant.
 def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.0001, 
-    scoring=None, mandatory_columns=[], n_jobs=1, least_sem_of_top_x=0, higher_better=True):
+    scoring=None, mandatory_columns=[], n_jobs=1, 
+    least_sem_of_top_x=0, higher_better=True, validate_Xy=None):
   if hasattr(clf, 'max_features') and clf.max_features: clf.max_features = None
 
   column_names = X.columns.tolist() if hasattr(X, 'columns') else None
   X = X.values if hasattr(X, 'values') else X
+  if validate_Xy and hasattr(validate_Xy[0], 'values'): 
+    validate_Xy = (validate_Xy[0].values, validate_Xy[1])
   selected = map(lambda f: {'feature': f, 'score': 0, 'sem': 0}, mandatory_columns)
-    
+  ohe_cache = {}
   print 'starting feature selected, features: ', X.shape[1], 'n_jobs:', n_jobs
   t_whole = time.time()    
 
@@ -34,6 +37,27 @@ def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.0001,
       if best_sems:
         best_sems = sorted(best_sems, key=lambda s: s['sem'] / s['score'])
         this_best = best_sems[0]
+
+    if validate_Xy:
+      check_top = 10
+      for i, r in enumerate(iter_results[:check_top]):
+        selected_features = map(lambda s: s['feature'], selected)
+        s = get_feat_score_(selected_features, r['feature'], clf, 
+          validate_Xy[0], validate_Xy[1], n_samples, n_iter, scoring)
+        s_improvement = s['score'] - last_best['score'] if higher_better \
+            else last_best['score'] - s['score']
+        
+        if s_improvement > 0: 
+          if i > 0: 
+            print 'changed selection as it did not perform' +\
+              ' in the validation set. Old Best: ' + `this_best` + \
+              ' New best:' + `r`
+          this_best = r          
+          break
+        if i == check_top - 1: 
+          print 'Could not find any feature that performed well ' +\
+              'on validation set, stopping selecton.'
+          this_best = last_best
 
     improvement = this_best['score'] - last_best['score'] if higher_better \
       else last_best['score'] - this_best['score']
@@ -63,10 +87,10 @@ def find_next_best_(selected, clf, X, y, n_samples, n_iter, scoring, n_jobs):
   else:
     return map(lambda f: get_feat_score_(selected_features, f, clf, X, y, n_samples, n_iter, scoring), to_test)
 
-def get_feat_score_(selected_features, f, clf, X, y, n_samples, n_iter, scoring):  
+def get_feat_score_(selected_features, f, clf, X, y, n_samples, n_iter, scoring, ohe_cache=None):  
   feats = list(selected_features) + [f]
   Xt = X[:, feats]
-  sys_seed = len(feats)
+  cfg['sys_seed'] = len(feats)
   score, sem = do_cv(clf, Xt, y, n_samples=n_samples, 
     n_iter=n_iter, scoring=scoring, quiet=True)
   return {'feature': f, 'score': score, 'sem': sem}

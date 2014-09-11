@@ -66,12 +66,14 @@ def _df_numericals(self): return filter(lambda c: c.startswith('n_'), self.colum
 def _df_binaries(self): return filter(lambda c: c.startswith('b_'), self.columns)
 def _df_dates(self): return filter(lambda c: c.startswith('d_'), self.columns)
 
-def _df_one_hot_encode(self, dtype=np.float):
-  start('one_hot_encoding data frame with ' + `self.shape[1]` + \
-    ' columns. note: this resturns a sparse array and empties' + \
-    ' the initial array.')  
+def _df_one_hot_encode(self, dtype=np.float):  
   if self.categoricals(): self.to_indexes(drop_origianls=True)    
 
+  start('one_hot_encoding data frame with ' + `self.shape[1]` + \
+    ' columns. \n\tNOTE: this resturns a sparse array and empties' + \
+    ' the initial array.')  
+
+  debug('separating categoricals from others')
   indexes = self.indexes()
   if not indexes: return self
   others = filter(lambda c: not c in indexes, self.columns)
@@ -85,14 +87,17 @@ def _df_one_hot_encode(self, dtype=np.float):
 
   ohe_sparse = None
   for i, c in enumerate(indexes):
+    debug('converting column: ' + `c`)
     col_ohe = OneHotEncoder(categorical_features=[0], dtype=dtype).\
       fit_transform(categorical_df[[c]])
     if ohe_sparse == None: ohe_sparse = col_ohe
     else: ohe_sparse = sparse.hstack((ohe_sparse, col_ohe))
     categorical_df.drop(c, axis=1, inplace=True)
     gc.collect()
-
-  return ohe_sparse if not others else sparse.hstack((ohe_sparse, others_df))
+  
+  matrix = ohe_sparse if not others else sparse.hstack((ohe_sparse, others_df))
+  stop('done one_hot_encoding')
+  return matrix
 
 def _df_to_indexes(self, drop_origianls=False):
   start('indexing categoricals in data frame')  
@@ -178,9 +183,9 @@ def _df_engineer(self, name, columns=None, quiet=False):
       self.engineer(func_to_string(a))
 
   if not quiet: debug('engineering feature: ' + name)
-  if len(args) == 0 and (name == 'mult' or name == 'concat'):
-    combs = itertools.combinations(columns, 2) if columns \
-      else self.combinations(categoricals=name=='concat', numericals='mult')    
+  if len(args) == 0 and (func == 'mult' or func == 'concat'):    
+    combs = list(itertools.combinations(columns, 2)) if columns \
+      else self.combinations(categoricals=func=='concat', numericals=func=='mult')    
     for c1, c2 in combs: self.engineer(func + '(' + c1 + ',' + c2 + ')', quiet=True)
     return self
   elif func == 'concat': 
@@ -209,7 +214,8 @@ def _df_engineer(self, name, columns=None, quiet=False):
     return self
   elif func == 'pow': 
     self[new_name] = np.power(self[args[0]], int(args[1]))
-  elif func == 'lg': self[new_name] = np.log(self[args[0]])
+  elif func == 'lg': 
+    self[new_name] = np.log(self[args[0]])
   elif func.startswith('rolling_'):
     if len(args) == 1:
       cols = columns if columns else self.numericals()
@@ -249,6 +255,7 @@ def _df_missing(self, categorical_fill='none', numerical_fill='none'):
   # Do numerical constants on whole DF for performance
   if type(numerical_fill) != str:
     self[self.numericals()] = self[self.numericals()].fillna(numerical_fill)
+    self.replace([np.inf, -np.inf], numerical_fill, inplace=True)
     numerical_fill='none'
 
   # Do categorical constants on whole DF for performance
@@ -265,7 +272,9 @@ def _df_missing(self, categorical_fill='none', numerical_fill='none'):
   # Prepare a dictionary of column -> fill values
   to_fill = {}
   for c in categoricals_to_fill: to_fill[c] = _get_col_aggregate(self[c], categorical_fill)
-  for c in numericals_to_fill: to_fill[c] = _get_col_aggregate(self[c], numerical_fill)
+  for c in numericals_to_fill: 
+    to_fill[c] = _get_col_aggregate(self[c], numerical_fill)
+    self[c].replace([np.inf, -np.inf], to_fill[c], inplace=True)
   
   # Do fill in one step for performance
   if to_fill: self.fillna(value=to_fill, inplace=True)
@@ -348,6 +357,29 @@ def _df_shuffle(self, y):
   start('done, shuffling data frame')
   return (pd.DataFrame(columns=self.columns, data=new_X, index=self.index), pd.Series(new_y, index=y.index))
 
+def _df_sample_and_even_split(self, y, train_size=1000000):
+  X_train, X_test, y_train, y_test = cross_validation.train_test_split(self, y, 
+    train_size=train_size, test_size=train_size, random_state=cfg['sys_seed'])
+  
+  df_X_train = pd.DataFrame(columns=self.columns, data=X_train)
+  s_y_train = pd.Series(y_train)
+  df_X_test = pd.DataFrame(columns=self.columns, data=X_test)
+  s_y_test = pd.Series(y_test)
+
+  if y.dtype != s_y_train.dtype: s_y_train = s_y_train.astype(y.dtype)
+  if y.dtype != s_y_test.dtype: s_y_test = s_y_test.astype(y.dtype)
+  for c in self.columns:
+    for X in [df_X_train, df_X_test]:
+      if self[c].dtype != X[c].dtype: X[c] = X[c].astype(self[c].dtype)
+
+
+  return (
+    df_X_train, 
+    s_y_train,
+    df_X_test,
+    s_y_test
+  )
+
 def _df_cv(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
   return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring)
 
@@ -378,6 +410,7 @@ pd.DataFrame.categorical_outliers = _df_categorical_outliers
 pd.DataFrame.append_right = _df_append_right
 pd.DataFrame.append_bottom = _df_append_bottom
 pd.DataFrame.shuffle = _df_shuffle
+pd.DataFrame.sample_and_even_split = _df_sample_and_even_split
 pd.DataFrame.cv = _df_cv
 pd.DataFrame.cv_ohe = _df_cv_ohe
 
