@@ -6,12 +6,12 @@ from sklearn import linear_model, preprocessing
 
 class T(unittest.TestCase):
   def test_series_one_hot_encode(self):
-    s = pd.Series(['a', 'b', 'c'])
-    s2 = s.one_hot_encode()
-    self.assertTrue(np.array_equal(s2.values, np.array([
+    s = pd.Series([1, 2, 3])
+    s2 = s.one_hot_encode().todense()
+    np.testing.assert_array_equal(s2, np.array([
       [1., 0., 0.], 
       [0., 1., 0.], 
-      [0., 0., 1.]], 'object')))
+      [0., 0., 1.]], 'object'))
 
   def test_series_binning(self):
     s = pd.Series([1., 2., 3.])    
