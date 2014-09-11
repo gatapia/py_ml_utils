@@ -376,6 +376,34 @@ class T(unittest.TestCase):
     y = pd.Series([1, 0, 0, 1, 1, 0, 1] * 10)        
     df.cv_ohe(linear_model.LogisticRegression(), y)
 
+  def test_pca(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, 2],
+        'n_12': [2, 3, 4, 2, 3], 'n_22': [1, 2, 3, 1, 2]})        
+    df = df.pca(2)
+    np.testing.assert_allclose(df.values, 
+      [
+        [-1.6,  6.033501e-17],
+        [0.4, -2.071991e-16],
+        [2.4, -1.136632e-16],
+        [-1.6, -3.344294e-16],
+        [0.4, -2.071991e-16]
+        ], 1e-6)
+
+  def test_pca_with_whitening(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, 2],
+        'n_12': [2, 3, 4, 2, 3], 'n_22': [1, 2, 3, 1, 2]})        
+    df = df.pca(2, True)
+    np.testing.assert_allclose(df.values, 
+      [
+        [-1.06904497,  0.29145945],
+        [ 0.26726124, -1.00091381],
+        [ 1.60356745, -0.54907124],
+        [-1.06904497, -1.61552322],
+        [ 0.26726124, -1.00091381]
+        ], 1e-6)
+
+
+
   def test_describe_data(self):
     pass
 
