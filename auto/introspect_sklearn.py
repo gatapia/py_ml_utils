@@ -16,7 +16,7 @@ def get_python_processes():
   return len([p for p in psutil.get_process_list() if is_python_process])
 
 def get_classifiers(module, done=[]):
-  ignores = ['MemmapingPool', 'PicklingPool']
+  ignores = ['MemmapingPool', 'PicklingPool', 'externals', 'datasets']
   classifiers = []
   X, y = sklearn.datasets.make_regression(20, 5)
   for name, cls in inspect.getmembers(module):                
@@ -25,7 +25,10 @@ def get_classifiers(module, done=[]):
     if inspect.ismodule(cls):       
       if cls.__name__.startswith('_') or \
           cls.__name__.endswith('_') or \
-          not cls.__name__.startswith('sklearn'): continue
+          not cls.__name__.startswith('sklearn') or\
+          cls.__name__ in done or \
+          any([t in ignores for t in cls.__name__.split('.')]): continue
+      done.append(cls.__name__)
       classifiers += get_classifiers(cls, done)      
 
     if inspect.isclass(cls):             
@@ -53,7 +56,11 @@ all_scores = []
 def test_all_classifiers(X, y, classifiers=None, scoring=None):
   global all_scores
   all_scores = []
-  if not classifiers: classifiers = get_classifiers(sklearn)
+  if classifiers is None: 
+    print 'calling get_classifiers'
+    classifiers = get_classifiers(sklearn)
+    print 'got ' + `len(classifiers)` + ' classifiers'
+
   for classifier in classifiers:    
     try:
       scores = sklearn.cross_validation.cross_val_score(
@@ -140,10 +147,9 @@ def test_classifier_with_arg_customisation(meta):
 
 
 if __name__ == '__main__':
-  classifiers = get_classifiers(sklearn)
   boston_data = datasets.load_boston()
   X = boston_data['data']
   y = boston_data['target']
-  test_all_classifiers(classifiers, X, y)
+  test_all_classifiers(X, y)
   # metas = [parse_classifier_meta(clf) for clf in classifiers]
   # ignore = [test_classifier_with_arg_customisation(m) for m in metas]
