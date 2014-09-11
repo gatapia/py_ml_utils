@@ -92,5 +92,5 @@ def get_feat_score_(selected_features, f, clf, X, y, n_samples, n_iter, scoring,
   Xt = X[:, feats]
   cfg['sys_seed'] = len(feats)
   score, sem = do_cv(clf, Xt, y, n_samples=n_samples, 
-    n_iter=n_iter, scoring=scoring, quiet=True)
+    n_iter=n_iter, scoring=scoring or cfg['scoring'], quiet=True)
   return {'feature': f, 'score': score, 'sem': sem}

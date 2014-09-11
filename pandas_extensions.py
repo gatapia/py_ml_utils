@@ -352,33 +352,48 @@ def _df_append_bottom(self, df):
   debug('warning: DataFrame.append_bottom always returns a new DataFrame')
   return pd.concat((self, df), 0)
 
-def _df_shuffle(self, y):  
+def _create_df_from_templage(template, data, index=None):
+  df = pd.DataFrame(columns=template.columns, data=data, index=index)
+  for c in template.columns:
+    if template[c].dtype != df[c].dtype: 
+      df[c] = df[c].astype(template[c].dtype)
+  return df
+
+def _create_s_from_templage(template, data):
+  s = pd.Series(data)
+  if template.dtype != s.dtype: s = s.astype(template.dtype)
+  return s
+
+def _df_shuffle(self, y=None):  
   start('shuffling data frame')
-  new_X, new_y = utils.shuffle(self, y, random_state=sys_seed)
+  df = self.copy()
+  if y is not None: 
+    df['__tmpy'] = y
+
+  index = list(df.index)
+  random.shuffle(index)
+  df = df.ix[index]
+  df.reset_index(inplace=True, drop=True)
+
+  result = df
+  if y is not None:     
+    y = df['__tmpy']
+    df.remove(['__tmpy'])
+    result = (df, y)
+
   start('done, shuffling data frame')
-  return (pd.DataFrame(columns=self.columns, data=new_X, index=self.index), pd.Series(new_y, index=y.index))
+  return result
+          
 
 def _df_sample_and_even_split(self, y, train_size=1000000):
   X_train, X_test, y_train, y_test = cross_validation.train_test_split(self, y, 
     train_size=train_size, test_size=train_size, random_state=cfg['sys_seed'])
-  
-  df_X_train = pd.DataFrame(columns=self.columns, data=X_train)
-  s_y_train = pd.Series(y_train)
-  df_X_test = pd.DataFrame(columns=self.columns, data=X_test)
-  s_y_test = pd.Series(y_test)
-
-  if y.dtype != s_y_train.dtype: s_y_train = s_y_train.astype(y.dtype)
-  if y.dtype != s_y_test.dtype: s_y_test = s_y_test.astype(y.dtype)
-  for c in self.columns:
-    for X in [df_X_train, df_X_test]:
-      if self[c].dtype != X[c].dtype: X[c] = X[c].astype(self[c].dtype)
-
 
   return (
-    df_X_train, 
-    s_y_train,
-    df_X_test,
-    s_y_test
+    _create_df_from_templage(self, X_train), 
+    _create_s_from_templage(y, y_train),
+    _create_df_from_templage(self, X_test),
+    _create_s_from_templage(y, y_test)
   )
 
 def _df_cv(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
@@ -390,9 +405,10 @@ def _df_cv_ohe(self, clf, y, n_samples=25000, n_iter=3, scoring=None):
 def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None):  
   if hasattr(y, 'values'): y = y.values
   n_samples = min(n_samples, X.shape[0])
-  if utils.multiclass.type_of_target(y) == 'binary': scoring = 'roc_auc'
+  if utils.multiclass.type_of_target(y) == 'binary' and not (scoring or cfg['scoring']): 
+    scoring = 'roc_auc'
   start('starting ' + `n_iter` + ' fold cross validation (' + 
-      `n_samples` + ' samples) w/ metric: ' + `scoring`)
+      `n_samples` + ' samples) w/ metric: ' + `scoring or cfg['scoring']`)
   cv = do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True)
   stop('done cross validation:\n  [CV]: ' + ("{0:.3f} (+/-{1:.3f})").format(cv[0], cv[1]))  
   return cv

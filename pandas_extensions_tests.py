@@ -345,6 +345,7 @@ class T(unittest.TestCase):
     # Originals did not change
     np.testing.assert_array_equal(df.values, np.array([['a', 1L], ['b', 2L], ['c', 3L], ['d', 4L], ['e', 5L], ['f', 6L], ['g', 7L]], dtype='object'))
     np.testing.assert_array_equal(y.values, [1, 2, 3, 4, 5, 6, 7])
+
     # Changed
     self.assertFalse(np.array_equal(df2.values, np.array([['a', 1L], ['b', 2L], ['c', 3L], ['d', 4L], ['e', 5L], ['f', 6L], ['g', 7L]], dtype='object')))
     self.assertFalse(np.array_equal(y2.values, np.array([1, 2, 3, 4, 5, 6, 7])))

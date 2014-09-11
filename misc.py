@@ -10,7 +10,8 @@ from scipy.stats.mstats import mode
 
 cfg = {
   'sys_seed':0,
-  'debug':True
+  'debug':True,
+  'scoring': None
 }
 
 random.seed(cfg['sys_seed'])
@@ -87,7 +88,7 @@ def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scori
   cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed']) \
     if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
 
-  test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring, fit_params=fit_params)
+  test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring or cfg['scoring'], fit_params=fit_params)
   if cfg['debug'] and not(quiet): 
     print '%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60)
   return (np.mean(test_scores), sem(test_scores))
@@ -140,7 +141,7 @@ def show_score(y_true, y_pred):
 
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_params=None):
   _reseed(clf)
-  gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring, fit_params=fit_params)
+  gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
   X2, y2 = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
   gs.fit(X2[:n_samples], y2[:n_samples])
   if cfg['debug']: print(gs.best_params_, gs.best_score_)

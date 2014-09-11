@@ -50,9 +50,10 @@ def get_classifiers(module, done=[]):
   return classifiers
 
 all_scores = []
-def test_all_classifiers(classifiers, X, y, scoring=None):
+def test_all_classifiers(X, y, classifiers=None, scoring=None):
   global all_scores
   all_scores = []
+  if not classifiers: classifiers = get_classifiers(sklearn)
   for classifier in classifiers:    
     try:
       scores = sklearn.cross_validation.cross_val_score(
