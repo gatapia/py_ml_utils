@@ -18,6 +18,7 @@ import numpy as np
 from misc import *
 from ast_parser import *
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.decomposition import PCA
 from scipy import sparse
 import itertools, logging, time, datetime
 
@@ -356,6 +357,11 @@ def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None):
   cv = do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True)
   stop('done cross validation:\n  [CV]: ' + ("{0:.3f} (+/-{1:.3f})").format(cv[0], cv[1]))  
 
+def _df_pca(self, n_components, whiten=False):  
+  new_X = PCA(n_components, whiten=whiten).fit_transform(self)
+  columns = map(lambda i: 'n_pca_' + `i`, range(n_components))
+  return pd.DataFrame(columns=columns, data=new_X)
+
 # Data Frame Extensions  
 pd.DataFrame.one_hot_encode = _df_one_hot_encode
 pd.DataFrame.to_indexes = _df_to_indexes
@@ -372,6 +378,7 @@ pd.DataFrame.append_bottom = _df_append_bottom
 pd.DataFrame.shuffle = _df_shuffle
 pd.DataFrame.cv = _df_cv
 pd.DataFrame.cv_ohe = _df_cv_ohe
+pd.DataFrame.pca = _df_pca
 
 pd.DataFrame.categoricals = _df_categoricals
 pd.DataFrame.indexes = _df_indexes
