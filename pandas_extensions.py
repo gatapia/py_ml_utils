@@ -50,10 +50,13 @@ Series Extensions
 '''
 def _s_one_hot_encode(self):
   start('one_hot_encoding column')  
-  df = pd.get_dummies(self)
+
+  arr = self.values
+  col_ohe = OneHotEncoder().fit_transform(arr.reshape((len(arr), 1)))
+
   stop('done one_hot_encoding column converted to ' + 
-      `df.shape[1]` + ' columns')  
-  return df
+      `col_ohe.shape[1]` + ' columns')  
+  return col_ohe
 
 def _s_bin(self, n_bins=100):
   return pd.Series(pd.cut(self, n_bins), index=self.index)
@@ -464,6 +467,7 @@ pd.Series.categorical_outliers = _s_categorical_outliers
 
 # Aliases
 pd.Series.catout = _s_categorical_outliers
+pd.Series.ohe = _s_one_hot_encode
 
 pd.DataFrame.ohe = _df_one_hot_encode
 pd.DataFrame.toidxs = _df_to_indexes
