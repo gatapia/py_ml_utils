@@ -330,13 +330,13 @@ class T(unittest.TestCase):
     df2 = pd.DataFrame({'c_1':['c', 'd'], 
       'n_1': [3, 4]})              
     df1 = df1.append_bottom(df2)
-    self.assertTrue(np.array_equal(df1.values, 
+    np.testing.assert_array_equal(df1.values, 
       np.array([
         ['a', 1],
         ['b', 2],
         ['c', 3],
         ['d', 4]
-        ], 'object')))
+        ], 'object'))
 
   def test_shuffle(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'n_1': [1, 2, 3, 4, 5, 6, 7]})
@@ -403,15 +403,6 @@ class T(unittest.TestCase):
         [-1.06904497, -1.61552322],
         [ 0.26726124, -1.00091381]
         ], 1e-6)
-
-  def test_noise_reduction_gaussian(self):
-    dic = {}
-    for i in range(51): dic['n_' + `i`] = [1 if i == 26 else 0] * 10
-    df = pd.DataFrame(dic)        
-    df2 = df.noise_filter('gaussian', sigma=2, truncate=3.5)
-    print df2.values
-
-
 
   def test_describe_data(self):
     pass

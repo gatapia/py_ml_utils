@@ -348,13 +348,15 @@ def _df_append_right(self, df_or_s):
     debug('converting data frame to a sparse frame')
     self = self.to_sparse(fill_value=0)
   if type(df_or_s) is pd.Series: self[df_or_s.name] = df_or_s.values
-  else: self = pd.concat((self, df_or_s), 1)
+  else: 
+    self = pd.concat((self, df_or_s), 1, ignore_index=True)
   stop('done appending to the right')
   return self
 
 def _df_append_bottom(self, df):  
   debug('warning: DataFrame.append_bottom always returns a new DataFrame')
-  return pd.concat((self, df), 0)
+  df = pd.concat((self, df), 0)
+  return df.reset_index(drop=True)
 
 def _create_df_from_templage(template, data, index=None):
   df = pd.DataFrame(columns=template.columns, data=data, index=index)
