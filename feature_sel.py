@@ -3,22 +3,28 @@ import time
 import operator
 from sklearn.externals import joblib
 
- # TODO 1): We should take into account the SEM of a new feature.  There is no
- #    point selecting a new feature if it improves score by 0.001% if the SEM
- #    is +/-0.01 (i.e. 10x greater than the improvement).
- # TODO 2): After each iteration we should do a test of all selected features
- #    to ensure they are all still required.  May be that the last feature
- #    added made another redundant.
-def feature_select(clf, X, y, n_samples=3500, n_iter=3, tol=0.0001, 
+class FeatSel():
+  def __init__(self, X, y, n_samples=3500, n_iter=3, tol=0.0001, 
     scoring=None, mandatory_columns=[], n_jobs=1, 
     least_sem_of_top_x=0, higher_better=True, validate_Xy=None):
-  if hasattr(clf, 'max_features') and clf.max_features: clf.max_features = None
+    self.column_names = X.columns.tolist() if hasattr(X, 'columns') else range(0, X.shape[1])
+    self.X = X.values if hasattr(X, 'values') else X
+    self.y = y
+    self.n_samples = n_samples
+    self.n_iter = n_iter
+    self.tol = tol
+    self.scoring = scoring or cfg['scoring']
+    self.mandatory_columns = mandatory_columns
+    self.n_jobs = n_jobs
+    self.least_sem_of_top_x = least_sem_of_top_x
+    self.higher_better = higher_better
+    self.validate_Xy = validate_Xy
+    if validate_Xy is not None and hasattr(validate_Xy[0], 'values'): 
+      self.validate_Xy = (validate_Xy[0].values, validate_Xy[1])
 
-  column_names = X.columns.tolist() if hasattr(X, 'columns') else None
-  X = X.values if hasattr(X, 'values') else X
-  if validate_Xy and hasattr(validate_Xy[0], 'values'): 
-    validate_Xy = (validate_Xy[0].values, validate_Xy[1])
-  selected = map(lambda f: {'feature': f, 'score': 0, 'sem': 0}, mandatory_columns)
+def run(clf):
+  if hasattr(clf, 'max_features') and clf.max_features: clf.max_features = None
+  selected = map(lambda f: {'feature': f, 'score': 0, 'sem': 0}, self.mandatory_columns)
   ohe_cache = {}
   print 'starting feature selected, features: ', X.shape[1], 'n_jobs:', n_jobs
   t_whole = time.time()    

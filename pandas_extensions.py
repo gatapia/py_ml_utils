@@ -21,6 +21,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.decomposition import PCA
 from scipy import sparse
 import itertools, logging, time, datetime
+from scipy.ndimage.filters import *
 
 logging.basicConfig(level=logging.DEBUG, 
     format='%(asctime)s %(levelname)s %(message)s')
@@ -383,7 +384,19 @@ def _df_shuffle(self, y=None):
 
   start('done, shuffling data frame')
   return result
-          
+
+def _df_noise_filter(self, type, *args, **kargs):  
+  start('filtering data frame')
+  
+  filter = gaussian_filter1d if type == 'gaussian' \
+    else maximum_filter1d if type == 'maximum' \
+    else minimum_filter1d if type == 'minimum' \
+    else uniform_filter1d if type == 'uniform' \
+    else None
+  if filter is None: raise Exception('filter: ' + type + ' is not supported')
+
+  filtered = filter(self.values, *args, **kargs)
+  return  _create_df_from_templage(self, filtered, self.index)
 
 def _df_sample_and_even_split(self, y, train_size=1000000):
   X_train, X_test, y_train, y_test = cross_validation.train_test_split(self, y, 
@@ -436,6 +449,7 @@ pd.DataFrame.sample_and_even_split = _df_sample_and_even_split
 pd.DataFrame.cv = _df_cv
 pd.DataFrame.cv_ohe = _df_cv_ohe
 pd.DataFrame.pca = _df_pca
+pd.DataFrame.noise_filter = _df_noise_filter
 
 pd.DataFrame.categoricals = _df_categoricals
 pd.DataFrame.indexes = _df_indexes

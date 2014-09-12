@@ -16,6 +16,7 @@ def get_python_processes():
   return len([p for p in psutil.get_process_list() if is_python_process])
 
 def get_classifiers(module, done=[]):
+  if module is None: module = sklearn
   ignores = ['MemmapingPool', 'PicklingPool', 'externals', 'datasets']
   classifiers = []
   X, y = sklearn.datasets.make_regression(20, 5)

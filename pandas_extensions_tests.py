@@ -5,6 +5,7 @@ from pandas_extensions import *
 from sklearn import linear_model, preprocessing
 
 class T(unittest.TestCase):
+  
   def test_series_one_hot_encode(self):
     s = pd.Series(['a', 'b', 'c'])
     s2 = s.one_hot_encode()
@@ -402,6 +403,13 @@ class T(unittest.TestCase):
         [-1.06904497, -1.61552322],
         [ 0.26726124, -1.00091381]
         ], 1e-6)
+
+  def test_noise_reduction_gaussian(self):
+    dic = {}
+    for i in range(51): dic['n_' + `i`] = [1 if i == 26 else 0] * 10
+    df = pd.DataFrame(dic)        
+    df2 = df.noise_filter('gaussian', sigma=2, truncate=3.5)
+    print df2.values
 
 
 
