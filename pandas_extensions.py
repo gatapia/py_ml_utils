@@ -114,10 +114,9 @@ def _df_to_indexes(self, drop_origianls=False):
   return self
 
 def _df_bin(self, n_bins=100, drop_origianls=False):
-  start('binning data into ' + `n_bins` + 
-      ' bins. note: binning rarely helps any classifier')  
+  start('binning data into ' + `n_bins` + ' bins')  
   for n in self.numericals():
-    self['c_binned_' + n] = pd.cut(self[n], n_bins)
+    self['c_binned_' + n] = pd.Series(pd.cut(self[n], n_bins), index=self[n].index)
     if drop_origianls: self.drop(n, 1, inplace=True)
   stop('done binning data into ' + `n_bins` + ' bins')  
   return self
@@ -349,7 +348,7 @@ def _df_append_right(self, df_or_s):
     self = self.to_sparse(fill_value=0)
   if type(df_or_s) is pd.Series: self[df_or_s.name] = df_or_s.values
   else: 
-    self = pd.concat((self, df_or_s), 1, ignore_index=True)
+    self = pd.concat((self, df_or_s), 1)
   stop('done appending to the right')
   return self
 
@@ -436,6 +435,9 @@ def _df_pca(self, n_components, whiten=False):
   columns = map(lambda i: 'n_pca_' + `i`, range(n_components))
   return pd.DataFrame(columns=columns, data=new_X)
 
+def _df_predict(self, clf, y, X_test):  
+  return clf.fit(self, y).predict(X_test)
+
 # Data Frame Extensions  
 pd.DataFrame.one_hot_encode = _df_one_hot_encode
 pd.DataFrame.to_indexes = _df_to_indexes
@@ -455,6 +457,7 @@ pd.DataFrame.cv = _df_cv
 pd.DataFrame.cv_ohe = _df_cv_ohe
 pd.DataFrame.pca = _df_pca
 pd.DataFrame.noise_filter = _df_noise_filter
+pd.DataFrame.predict = _df_predict
 
 pd.DataFrame.categoricals = _df_categoricals
 pd.DataFrame.indexes = _df_indexes
