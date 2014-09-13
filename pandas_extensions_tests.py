@@ -342,19 +342,14 @@ class T(unittest.TestCase):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'n_1': [1, 2, 3, 4, 5, 6, 7]})
     y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])
     df2, y2 = df.shuffle(y)
-
+    
     # Originals did not change
     np.testing.assert_array_equal(df.values, np.array([['a', 1L], ['b', 2L], ['c', 3L], ['d', 4L], ['e', 5L], ['f', 6L], ['g', 7L]], dtype='object'))
     np.testing.assert_array_equal(y.values, [1, 2, 3, 4, 5, 6, 7])
 
     # Changed
-    self.assertFalse(np.array_equal(df2.values, np.array([['a', 1L], ['b', 2L], ['c', 3L], ['d', 4L], ['e', 5L], ['f', 6L], ['g', 7L]], dtype='object')))
-    self.assertFalse(np.array_equal(y2.values, np.array([1, 2, 3, 4, 5, 6, 7])))
-
-    self.assertEqual((7, 2), df2.shape)
-    self.assertEqual(7, len(y2))
-    for i, v in enumerate(y2):
-      self.assertEqual(v, df2.n_1[i])
+    np.testing.assert_array_equal(df2.values, np.array([['g', 7L], ['a', 1L], ['d', 4L], ['b', 2L], ['c', 3L], ['e', 5L], ['f', 6L]], dtype='object'))
+    np.testing.assert_array_equal(y2.values, [7, 1, 4, 2, 3, 5, 6])
 
   def test_to_indexes(self):
     df = pd.DataFrame({'c_1':['a', 'b'], 'c_2':['c', 'd'], 'n_1': [1, 2]})
