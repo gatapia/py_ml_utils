@@ -402,9 +402,11 @@ def _df_noise_filter(self, type, *args, **kargs):
   filtered = filter(self.values, *args, **kargs)
   return  _create_df_from_templage(self, filtered, self.index)
 
-def _df_sample_and_even_split(self, y, train_size=1000000):
+def _df_split(self, y, train_size=1000000, test_size=None):
+  if test_size is None: test_size = train_size
+
   X_train, X_test, y_train, y_test = cross_validation.train_test_split(self, y, 
-    train_size=train_size, test_size=train_size, random_state=cfg['sys_seed'])
+    train_size=train_size, test_size=test_size, random_state=cfg['sys_seed'])
 
   return (
     _create_df_from_templage(self, X_train), 
@@ -438,45 +440,56 @@ def _df_pca(self, n_components, whiten=False):
 def _df_predict(self, clf, y, X_test):  
   return clf.fit(self, y).predict(X_test)
 
-# Data Frame Extensions  
-pd.DataFrame.one_hot_encode = _df_one_hot_encode
-pd.DataFrame.to_indexes = _df_to_indexes
-pd.DataFrame.bin = _df_bin
-pd.DataFrame.remove = _df_remove
-pd.DataFrame.engineer = _df_engineer
-pd.DataFrame.combinations = _df_combinations
-pd.DataFrame.missing = _df_missing
-pd.DataFrame.scale = _df_scale
-pd.DataFrame.outliers = _df_outliers
-pd.DataFrame.categorical_outliers = _df_categorical_outliers
-pd.DataFrame.append_right = _df_append_right
-pd.DataFrame.append_bottom = _df_append_bottom
-pd.DataFrame.shuffle = _df_shuffle
-pd.DataFrame.sample_and_even_split = _df_sample_and_even_split
-pd.DataFrame.cv = _df_cv
-pd.DataFrame.cv_ohe = _df_cv_ohe
-pd.DataFrame.pca = _df_pca
-pd.DataFrame.noise_filter = _df_noise_filter
-pd.DataFrame.predict = _df_predict
+# Extensions
+def extend_df(name, function):
+  df = pd.DataFrame({})
+  if hasattr(df, name): raise Exception ('DataFrame already has a ' + name + ' method')
+  setattr(pd.DataFrame, name, function)
 
-pd.DataFrame.categoricals = _df_categoricals
-pd.DataFrame.indexes = _df_indexes
-pd.DataFrame.numericals = _df_numericals
-pd.DataFrame.dates = _df_dates
-pd.DataFrame.binaries = _df_binaries
+def extend_s(name, function):
+  s = pd.Series([])
+  if hasattr(s, name): raise Exception ('Series already has a ' + name + ' method')
+  setattr(pd.Series, name, function)
+
+# Data Frame Extensions  
+extend_df('one_hot_encode', _df_one_hot_encode)
+extend_df('to_indexes', _df_to_indexes)
+extend_df('bin', _df_bin)
+extend_df('remove', _df_remove)
+extend_df('engineer', _df_engineer)
+extend_df('combinations', _df_combinations)
+extend_df('missing', _df_missing)
+extend_df('scale', _df_scale)
+extend_df('outliers', _df_outliers)
+extend_df('categorical_outliers', _df_categorical_outliers)
+extend_df('append_right', _df_append_right)
+extend_df('append_bottom', _df_append_bottom)
+extend_df('shuffle', _df_shuffle)
+extend_df('split', _df_split)
+extend_df('cv', _df_cv)
+extend_df('cv_ohe', _df_cv_ohe)
+extend_df('pca', _df_pca)
+extend_df('noise_filter', _df_noise_filter)
+extend_df('predict', _df_predict)
+
+extend_df('categoricals', _df_categoricals)
+extend_df('indexes', _df_indexes)
+extend_df('numericals', _df_numericals)
+extend_df('dates', _df_dates)
+extend_df('binaries', _df_binaries)
 
 # Series Extensions  
-pd.Series.one_hot_encode = _s_one_hot_encode
-pd.Series.bin = _s_bin
-pd.Series.categorical_outliers = _s_categorical_outliers
+extend_s('one_hot_encode', _s_one_hot_encode)
+extend_s('bin', _s_bin)
+extend_s('categorical_outliers', _s_categorical_outliers)
 
 # Aliases
-pd.Series.catout = _s_categorical_outliers
-pd.Series.ohe = _s_one_hot_encode
+extend_s('catout', _s_categorical_outliers)
+extend_s('ohe', _s_one_hot_encode)
 
-pd.DataFrame.ohe = _df_one_hot_encode
-pd.DataFrame.toidxs = _df_to_indexes
-pd.DataFrame.rm = _df_remove
-pd.DataFrame.eng = _df_engineer
-pd.DataFrame.nas = _df_missing
-pd.DataFrame.catout = _df_categorical_outliers
+extend_df('ohe', _df_one_hot_encode)
+extend_df('toidxs', _df_to_indexes)
+extend_df('rm', _df_remove)
+extend_df('eng', _df_engineer)
+extend_df('nas', _df_missing)
+extend_df('catout', _df_categorical_outliers)

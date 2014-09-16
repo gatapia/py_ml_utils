@@ -175,9 +175,10 @@ def read_data(file):
     return data
 
 def to_csv_gz(data_dict, file):
-  in_name = file + '.uncompressed'  
+  compress = file.endswith('.gz')
+  in_name = file + '.uncompressed' if compress else file
   pd.DataFrame(data_dict).to_csv(in_name, index=False)  
-  gzip_file(in_name, file)
+  if compress: gzip_file(in_name, file)
 
 def gzip_file(in_name, out_name):  
   f_in = open(in_name, 'rb')
