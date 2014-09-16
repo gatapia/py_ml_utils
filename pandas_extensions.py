@@ -440,6 +440,14 @@ def _df_pca(self, n_components, whiten=False):
 def _df_predict(self, clf, y, X_test):  
   return clf.fit(self, y).predict(X_test)
 
+def _df_truncate_std_dev(self, y, sigma):    
+  X = self.copy()
+  X['__tmpy'] = y.copy()
+  X = X[np.abs(X['__tmpy'] - X['__tmpy'].mean()) <= 
+    (float(sigma) * X['__tmpy'].std())]
+  y = X['__tmpy']
+  return (X.drop(['__tmpy'], 1), y)
+
 # Extensions
 def extend_df(name, function):
   df = pd.DataFrame({})
@@ -477,6 +485,7 @@ extend_df('indexes', _df_indexes)
 extend_df('numericals', _df_numericals)
 extend_df('dates', _df_dates)
 extend_df('binaries', _df_binaries)
+extend_df('truncate_std_dev', _df_truncate_std_dev)
 
 # Series Extensions  
 extend_s('one_hot_encode', _s_one_hot_encode)
