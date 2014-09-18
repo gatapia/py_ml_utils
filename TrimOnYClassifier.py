@@ -1,7 +1,5 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
 
-__all__ = ['TrimOnYClassifier']
-
 class TrimOnYClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, base_classifier, min_y, max_y):    
     '''

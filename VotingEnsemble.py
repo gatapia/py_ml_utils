@@ -13,8 +13,12 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
     self.use_proba = use_proba
 
   def cv(self, X, y, scorer, n_samples=None, n_folds=5):
-    if not(isinstance(X, list)):  X = repeat(X, len(self.models))
-    if not(isinstance(y, list)): y = repeat(y, len(self.models))
+    if not(isinstance(X, list)): 
+      X = list(itertools.repeat(X, len(self.models)))
+    
+    if not(isinstance(y, list)): 
+      y = list(itertools.repeat(y, len(self.models)))
+      
     if n_samples is None: n_samples = X[0].shape[0]
 
     cv = cross_validation.KFold(n_samples, n_folds=n_folds, indices=False)
@@ -41,9 +45,9 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
     """X can either be a dataset or a list of datasets"""
     if not(isinstance(X, list)): 
       print 'X is a single dataset'
-      X = repeat(X, len(self.models))
+      X = list(itertools.repeat(X, len(self.models)))
     if not(isinstance(y, list)): 
-      y = repeat(y, len(self.models))
+      y = list(itertools.repeat(y, len(self.models)))
     for i, m in enumerate(self.models): m.fit(X[i], y[i])
     return self
 
@@ -51,7 +55,7 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
     """X can either be a dataset or a list of datasets"""
     if not(isinstance(X, list)): 
       print 'X is a single dataset'
-      X = itertools.repeat(X, len(self.models))
+      X = list(itertools.repeat(X, len(self.models)))
 
     all_preds = []
     if self.voter == 'mean' or self.voter == 'median' or \
@@ -69,6 +73,6 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       elif (self.voter == 'mean'): predictions[i] = np.mean(i_preds)
       elif (self.voter == 'max'): predictions[i] = np.max(i_preds)
       elif (self.voter == 'min'): predictions[i] = np.min(i_preds)
-      elif (self.voter == 'median'): predictions[i] = stats.median(i_preds)[0]
+      elif (self.voter == 'median'): predictions[i] = np.median(i_preds)
       else: raise Error(self.voter + ' is not implemented')
     return predictions
