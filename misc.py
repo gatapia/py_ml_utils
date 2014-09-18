@@ -8,6 +8,8 @@ from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
 
+__all__ = ['cfg', 'get_col_aggregate', 'mean_score', 'do_cv', 'to_csv_gz', 'do_gs']
+
 cfg = {
   'sys_seed':0,
   'debug':True,
@@ -84,7 +86,9 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
 def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed=True):
   t0 = time.time()
   if reseed: _reseed(clf)
-  if (n_samples > X.shape[0]): n_samples = X.shape[0]
+  try:
+    if (n_samples > X.shape[0]): n_samples = X.shape[0]
+  except: pass
   cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed']) \
     if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
 

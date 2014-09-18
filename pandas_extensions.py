@@ -19,8 +19,9 @@ from misc import *
 from ast_parser import *
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.decomposition import PCA
+from sklearn import utils, cross_validation
 from scipy import sparse
-import itertools, logging, time, datetime
+import itertools, logging, time, datetime, random
 from scipy.ndimage.filters import *
 
 logging.basicConfig(level=logging.DEBUG, 
@@ -60,6 +61,11 @@ def _s_one_hot_encode(self):
 
 def _s_bin(self, n_bins=100):
   return pd.Series(pd.cut(self, n_bins), index=self.index)
+
+def _s_sigma_limits(self, sigma):
+  delta = float(sigma) * self.std()
+  m = self.mean()
+  return (m - delta, m + delta)
 
 '''
 DataFrame Extensions
@@ -440,23 +446,26 @@ def _df_pca(self, n_components, whiten=False):
 def _df_predict(self, clf, y, X_test):  
   return clf.fit(self, y).predict(X_test)
 
-def _df_truncate_std_dev(self, y, sigma):    
-  X = self.copy()
+def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):    
+  X = self.copy()  
   X['__tmpy'] = y.copy()
-  X = X[np.abs(X['__tmpy'] - X['__tmpy'].mean()) <= 
-    (float(sigma) * X['__tmpy'].std())]
+  if max_y is None:
+    X = X[np.abs(X['__tmpy'] - X['__tmpy'].mean()) <= 
+      (float(sigma) * X['__tmpy'].std())]
+  else:
+    X = X[(X['__tmpy'] >= sigma_or_min_y) & (X['__tmpy'] <= max_y)]
   y = X['__tmpy']
   return (X.drop(['__tmpy'], 1), y)
 
 # Extensions
 def extend_df(name, function):
   df = pd.DataFrame({})
-  if hasattr(df, name): raise Exception ('DataFrame already has a ' + name + ' method')
+  if not 'pd_extensions' in cfg and hasattr(df, name): raise Exception ('DataFrame already has a ' + name + ' method')
   setattr(pd.DataFrame, name, function)
 
 def extend_s(name, function):
   s = pd.Series([])
-  if hasattr(s, name): raise Exception ('Series already has a ' + name + ' method')
+  if not 'pd_extensions' in cfg and hasattr(s, name): raise Exception ('Series already has a ' + name + ' method')
   setattr(pd.Series, name, function)
 
 # Data Frame Extensions  
@@ -485,12 +494,13 @@ extend_df('indexes', _df_indexes)
 extend_df('numericals', _df_numericals)
 extend_df('dates', _df_dates)
 extend_df('binaries', _df_binaries)
-extend_df('truncate_std_dev', _df_truncate_std_dev)
+extend_df('trim_on_y', _df_trim_on_y)
 
 # Series Extensions  
 extend_s('one_hot_encode', _s_one_hot_encode)
 extend_s('bin', _s_bin)
 extend_s('categorical_outliers', _s_categorical_outliers)
+extend_s('sigma_limits', _s_sigma_limits)
 
 # Aliases
 extend_s('catout', _s_categorical_outliers)
@@ -502,3 +512,5 @@ extend_df('rm', _df_remove)
 extend_df('eng', _df_engineer)
 extend_df('nas', _df_missing)
 extend_df('catout', _df_categorical_outliers)
+
+if not 'pd_extensions' in cfg: cfg['pd_extensions'] = True
