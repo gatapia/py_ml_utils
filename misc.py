@@ -23,6 +23,13 @@ def _reseed(clf):
   random.seed(cfg['sys_seed'])
   np.random.seed(cfg['sys_seed']) 
 
+
+def model_name(clf):
+  name = type(clf).__name__
+  if hasattr(clf, 'base_classifier'): 
+    name += '[' + model_name(clf.base_classifier) + ']'
+  return name
+
 def get_col_aggregate(col, mode):
   '''
   col: A pandas column

@@ -377,9 +377,10 @@ def _create_s_from_templage(template, data):
 
 def _df_shuffle(self, y=None):  
   start('shuffling data frame')
-  df = self.copy()
+  df = self.copy()  
   if y is not None: 
-    df['__tmpy'] = y
+    df = df[:y.shape[0]]
+    df['__tmpy'] = y    
 
   index = list(df.index)
   random.shuffle(index)
@@ -388,7 +389,7 @@ def _df_shuffle(self, y=None):
 
   result = df
   if y is not None:     
-    y = df['__tmpy']
+    y = pd.Series(df['__tmpy'], index=df.index)
     df.remove(['__tmpy'])
     result = (df, y)
 

@@ -18,7 +18,7 @@ class TrimOnYClassifier(BaseEstimator, ClassifierMixin):
     else:
       X, y = pd.DataFrame(X).trim_on_y(y, self.min_y, self.max_y)
 
-    self.base_classifier.fit(X, y)
+    self.base_classifier = self.base_classifier.fit(X, y)
     return self
 
   def predict(self, X): return self.base_classifier.predict(X)

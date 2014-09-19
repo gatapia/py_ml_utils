@@ -11,7 +11,7 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
   def __init__(self, models, voter='majority', use_proba=False):    
     self.models = models
     self.voter = voter
-    self.use_proba = use_proba
+    self.use_proba = use_proba    
 
   def cv(self, X, y, scorer, n_samples=None, n_folds=5):
     if not(isinstance(X, list)): 
@@ -21,6 +21,9 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       y = list(itertools.repeat(y, len(self.models)))
       
     if n_samples is None: n_samples = X[0].shape[0]
+    for i in range(len(X)):
+      X[i], y[i] = X[i].shuffle(y[i])
+      X[i], y[i] = X[i][:n_samples], y[i][:n_samples]
 
     cv = cross_validation.KFold(n_samples, n_folds=n_folds, indices=False)
     scores = []
@@ -30,12 +33,15 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       X_tests = []
       
       for i, clf in enumerate(self.models):        
-        Xs.append(X[i].iloc[train])
-        ys.append(y[i].iloc[train])
-        X_tests.append(X[i].iloc[test])
+        X_train = X[i][train]
+        X_test = X[i][test]
+        y_train = y[i][train]
+        Xs.append(X_train)
+        ys.append(y_train)
+        X_tests.append(X_test)
 
       predictions = self.fit(Xs, ys).predict(X_tests)
-      scores.append(scorer(y[0].iloc[test], predictions))
+      scores.append(scorer(y[i][test], predictions))
 
     cv = (np.mean(scores), sem(scores))
     if cfg['debug']: print 'cv %.5f (+/-%.5f)' % cv
@@ -49,7 +55,8 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       X = list(itertools.repeat(X, len(self.models)))
     if not(isinstance(y, list)): 
       y = list(itertools.repeat(y, len(self.models)))
-    for i, m in enumerate(self.models): m.fit(X[i], y[i])
+    for i, m in enumerate(self.models): 
+      m.fit(X[i], y[i])
     return self
 
   def predict(self, X):
@@ -61,8 +68,11 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
     all_preds = []
     if self.voter == 'mean' or self.voter == 'median' or \
         self.voter == 'max' or self.voter == 'min':      
-      all_preds = [m.predict_proba(X[i]).T[1] if self.use_proba 
-        else m.predict(X[i]) for i, m in enumerate(self.models)]
+        for i, m in enumerate(self.models):
+          if self.use_proba:
+            all_preds.append(m.predict_proba(X[i]).T[1])
+          else: 
+            all_preds.append(m.predict(X[i]))
     else:
       all_preds = [m.predict(X[i]) for i, m in enumerate(self.models)]
 
