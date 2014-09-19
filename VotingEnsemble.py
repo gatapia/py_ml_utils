@@ -22,7 +22,6 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       
     if n_samples is None: n_samples = X[0].shape[0]
     for i in range(len(X)):
-      X[i], y[i] = X[i].shuffle(y[i])
       X[i], y[i] = X[i][:n_samples], y[i][:n_samples]
 
     cv = cross_validation.KFold(n_samples, n_folds=n_folds, indices=False)
