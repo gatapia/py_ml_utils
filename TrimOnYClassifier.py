@@ -1,4 +1,5 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
+import pandas as pd
 
 class TrimOnYClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, base_classifier, min_y, max_y):    
