@@ -5,6 +5,7 @@ from scipy import stats
 import numpy as np
 import itertools
 from scipy.stats import sem 
+from misc import *
 
 class VotingEnsemble(BaseEstimator, ClassifierMixin):
   def __init__(self, models, voter='majority', use_proba=False):    
