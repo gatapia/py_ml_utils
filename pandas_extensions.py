@@ -244,9 +244,10 @@ def _df_engineer(self, name, columns=None, quiet=False):
 
   return self
   
-def _df_scale(self, min_max=None):  
+def _df_scale(self, columns=[], min_max=None):  
   start('scaling data frame')
-  for c in self.numericals():
+  cols = columns if columns else self.numericals()
+  for c in cols:
     if min_max:
       self[c] -= self[c].min()  
       self[c] /= self[c].max()
