@@ -431,7 +431,8 @@ def _df_cv_ohe(self, clf, y, n_samples=25000, n_iter=3, scoring=None):
 
 def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None):  
   if hasattr(y, 'values'): y = y.values
-  n_samples = min(n_samples, X.shape[0])
+  n_samples = min(n_samples, len(y), X.shape[0])
+  if len(y) < X.shape[0]: X = X[:len(y)]
   if utils.multiclass.type_of_target(y) == 'binary' and not (scoring or cfg['scoring']): 
     scoring = 'roc_auc'
   start('starting ' + `n_iter` + ' fold cross validation (' + 
