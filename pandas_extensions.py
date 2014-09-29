@@ -410,9 +410,9 @@ def _df_noise_filter(self, type, *args, **kargs):
   filtered = filter(self.values, *args, **kargs)
   return  _create_df_from_templage(self, filtered, self.index)
 
-def _df_split(self, y, train_size=1000000, test_size=None):
-  if test_size is None: test_size = train_size
-
+def _df_split(self, y, train_ratio=0.5):
+  train_size = int(self.shape[0] * 0.5)
+  test_size = int(self.shape[0] * (1-0.5))
   X_train, X_test, y_train, y_test = cross_validation.train_test_split(self, y, 
     train_size=train_size, test_size=test_size, random_state=cfg['sys_seed'])
 
