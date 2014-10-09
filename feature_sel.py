@@ -85,7 +85,7 @@ class FeatSel():
       
   def find_next_best_(self, selected, clf):
     selected_features = map(lambda s: s['feature'], selected)
-    to_test = filter(lambda f: f not in selected_features, range(X.shape[1]))
+    to_test = filter(lambda f: f not in selected_features, range(self.X.shape[1]))
     if self.n_jobs > 1:
       return joblib.Parallel(n_jobs=self.n_jobs, max_nbytes=1e6, mmap_mode='r')(
         joblib.delayed(self.get_feat_score_)\
