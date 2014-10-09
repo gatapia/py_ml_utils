@@ -114,7 +114,7 @@ def _df_to_indexes(self, drop_origianls=False):
   start('indexing categoricals in data frame')  
   for c in self.categoricals():
     cat = pd.Categorical.from_array(self[c])
-    self['i_' + c] = pd.Series(cat.codes, index=self[c].index)
+    self['i_' + c] = pd.Series(cat.codes if hasattr(cat, 'codes') else cat.labels, index=self[c].index)
     if drop_origianls: self.drop(c, 1, inplace=True)
   stop('done indexing categoricals in data frame')  
   return self
@@ -137,8 +137,8 @@ def _df_combinations(self, group_size=2, columns=[], categoricals=False,
   return list(itertools.combinations(cols, group_size))
 
 def _df_remove(self, columns=[], categoricals=False, numericals=False, 
-    dates=False, binaries=False, missing_threshold=0.0):  
-  cols = list(columns)
+    dates=False, binaries=False, missing_threshold=0.0):    
+  cols = [columns] if type(columns) is str else list(columns)
   if categoricals: cols = cols + self.categoricals()
   if numericals: cols = cols + self.numericals()
   if dates: cols = cols + self.dates()
