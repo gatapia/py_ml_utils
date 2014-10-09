@@ -399,6 +399,24 @@ class T(unittest.TestCase):
         [ 0.26726124, -1.00091381]
         ], 1e-6)
 
+  def test_remove_nas(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, np.nan]})        
+    df.rmnas()
+    np.testing.assert_array_equal(df.values, [[2, 1], [3, 2], [4, 3], [2, 1]])
+
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 'n_2': [1, 2, np.nan, 1, 2]})        
+    df.rmnas()
+    np.testing.assert_array_equal(df.values, [[2, 1], [3, 2], [2, 1]])
+
+  def test_remove_nas_w_columns(self):
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, np.nan]})        
+    df.rmnas(['n_1'])
+    np.testing.assert_array_equal(df.values, [[2, 1], [3, 2], [4, 3], [2, 1], [3, np.nan]])
+
+    df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 'n_2': [1, 2, np.nan, 1, 2]})        
+    df.rmnas(['n_1'])
+    np.testing.assert_array_equal(df.values, [[2, 1], [3, 2], [4, np.nan], [2, 1]])
+
   def test_describe_data(self):
     pass
 
