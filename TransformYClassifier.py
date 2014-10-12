@@ -15,10 +15,13 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
       if ymin < 0:
         self.shift_val = ymin * -1.01
       return np.log(y + self.shift_val)
+    elif self.transformation == 'arcsinh':
+      return np.arcsinh(y)
     else: raise Exception('Not Supported: ' + self.transformation)    
   
   def _do_anti_transform(self, y):
     if self.transformation == 'log': return np.power(math.e, y) - self.shift_val
+    elif self.transformation == 'arcsinh': return np.sinh(y)
     else: raise Exception('Not Supported: ' + self.transformation)
 
 
