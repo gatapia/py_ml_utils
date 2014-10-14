@@ -93,11 +93,10 @@ class FeatSel():
     else:
       return map(lambda f: self.get_feat_score_(selected_features, f, clf, self.X, self.y), to_test)
 
-  def get_feat_score_(self, selected_features, f, clf, X, y):  
-    feats = list(selected_features) + [f]
-    feat_names = map(lambda f: self.column_names[f], feats)
-    Xt = X
+  def get_feat_score_(self, selected_features, f, clf, X, y):
+    feats = list(selected_features) + [f]        
     if not self.replace_columns is None:
+      feat_names = map(lambda f: self.column_names[f], feats)
       replacement_cols = self.replace_columns.keys()
       feats_without_replacements = filter(lambda f, i: f not in self.replacement_cols, zip(feat_names, feats))  
       feats_without_replacements = map(lambda t: t[1], feats_without_replacements)
@@ -106,6 +105,8 @@ class FeatSel():
       Xt = X[:, feats_without_replacements]
       for tr in to_replace:
         Xt = np.hstack((Xt, self.replace_columns[tr]))
+    else:
+      Xt = X[:, feats]
     
     cfg['sys_seed'] = len(feats)
     score, sem = do_cv(clf, Xt, y, n_samples=self.n_samples, 
