@@ -1,5 +1,5 @@
 
-import inspect, warnings, sklearn, psutil, numpy, re
+import inspect, warnings, sklearn, psutil, numpy, re, time
 import numpy as np
 
 from sklearn import cluster, covariance, \
@@ -54,23 +54,30 @@ def get_classifiers(module, done=[]):
   return classifiers
 
 all_scores = []
+cached_classifiers = None
+
 def test_all_classifiers(X, y, classifiers=None, scoring=None):
-  global all_scores
+  global all_scores, cached_classifiers
   all_scores = []
   if classifiers is None: 
-    print 'calling get_classifiers'
-    classifiers = get_classifiers(sklearn)
+    print 'calling get_classifiers'    
+    if cached_classifiers is None:
+      classifiers = get_classifiers(sklearn)
+      cached_classifiers = classifiers
+    else:
+      classifiers = cached_classifiers
     print 'got ' + `len(classifiers)` + ' classifiers'
 
   for classifier in classifiers:    
     try:
+      t0 = time.time()
       scores = sklearn.cross_validation.cross_val_score(
           classifier(), X, y, scoring=scoring)
       score = numpy.mean(scores)      
       all_scores.append({'name':classifier.__name__, 'score': score})      
-      print 'classifier:', classifier.__name__, 'score:', score
+      print 'classifier:', classifier.__name__, 'score:', score, 'took: %.1fm' % ((time.time() - t0) / 60.)
     except:
-      print 'classifier:', classifier.__name__, 'error - not included in results'
+      print 'classifier:', classifier.__name__, 'error - not included in results - took: %.1fm' % ((time.time() - t0) / 60.)
   all_scores = sorted(all_scores, key=lambda t: t['score'], reverse=True)  
   print '\t\tsuccessfull classifiers\n', '\n'.join(
     map(lambda d: '{:>35}{:10.4f}'.format(d['name'], d['score']), all_scores))
