@@ -17,7 +17,8 @@ def get_python_processes():
 
 def get_classifiers(module, done=[]):
   if module is None: module = sklearn
-  ignores = ['MemmapingPool', 'PicklingPool', 'externals', 'datasets']
+  ignores = ['MemmapingPool', 'PicklingPool', 'externals', 
+    'datasets', 'EllipticEnvelope', 'OneClassSVM']
   classifiers = []
   X, y = sklearn.datasets.make_regression(20, 5)
   for name, cls in inspect.getmembers(module):                
