@@ -57,7 +57,7 @@ def get_classifiers(module, done=[]):
 all_scores = []
 cached_classifiers = None
 
-def test_all_classifiers(X, y, classifiers=None, scoring=None):
+def test_all_classifiers(X, y, classifiers=None, scoring=None, ignore=[]):
   global all_scores, cached_classifiers
   all_scores = []
   if classifiers is None: 
@@ -70,18 +70,20 @@ def test_all_classifiers(X, y, classifiers=None, scoring=None):
     print 'got ' + `len(classifiers)` + ' classifiers'
 
   for classifier in classifiers:    
+    if classifier.__name__ in ignore: continue
     try:
       t0 = time.time()
       scores = sklearn.cross_validation.cross_val_score(
-          classifier(), X, y, scoring=scoring)
+          classifier(), X.copy(), y, scoring=scoring)
       score = numpy.mean(scores)      
-      all_scores.append({'name':classifier.__name__, 'score': score})      
-      print 'classifier:', classifier.__name__, 'score:', score, 'took: %.1fm' % ((time.time() - t0) / 60.)
+      took = (time.time() - t0) / 60.
+      all_scores.append({'name':classifier.__name__, 'score': score, 'took': took})      
+      print 'classifier:', classifier.__name__, 'score:', score, 'took: %.1fm' % took
     except:
       print 'classifier:', classifier.__name__, 'error - not included in results - took: %.1fm' % ((time.time() - t0) / 60.)
   all_scores = sorted(all_scores, key=lambda t: t['score'], reverse=True)  
   print '\t\tsuccessfull classifiers\n', '\n'.join(
-    map(lambda d: '{:>35}{:10.4f}'.format(d['name'], d['score']), all_scores))
+    map(lambda d: '{:>35}{:10.4f}{:102f}'.format(d['name'], d['score'], d['took']), all_scores))
   print all_scores
 
 def parse_classifier_meta(classifier):
