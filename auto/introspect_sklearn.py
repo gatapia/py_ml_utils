@@ -73,17 +73,15 @@ def test_all_classifiers(X, y, classifiers=None, scoring=None, ignore=[]):
     if classifier.__name__ in ignore: continue
     try:
       t0 = time.time()
-      scores = sklearn.cross_validation.cross_val_score(
-          classifier(), X.copy(), y, scoring=scoring)
-      score = numpy.mean(scores)      
+      score, sem = X.copy().cv(classifier(), y, len(y), 5, scoring=scoring)
       took = (time.time() - t0) / 60.
-      all_scores.append({'name':classifier.__name__, 'score': score, 'took': took})      
-      print 'classifier:', classifier.__name__, 'score:', score, 'took: %.1fm' % took
+      all_scores.append({'name':classifier.__name__, 'score': score, 'sem': sem, 'took': took})      
+      print 'classifier:', classifier.__name__, 'score:', score, 'sem:', sem, 'took: %.1fm' % took
     except:
       print 'classifier:', classifier.__name__, 'error - not included in results - took: %.1fm' % ((time.time() - t0) / 60.)
   all_scores = sorted(all_scores, key=lambda t: t['score'], reverse=True)  
   print '\t\tsuccessfull classifiers\n', '\n'.join(
-    map(lambda d: '{:>35}{:10.4f}{:102f}'.format(d['name'], d['score'], d['took']), all_scores))
+    map(lambda d: '{:>35}{:10.4f}(+-.4f){:10.2f}m'.format(d['name'], d['score'], d['sem'], d['took']), all_scores))
   print all_scores
 
 def parse_classifier_meta(classifier):
