@@ -1,6 +1,7 @@
 
 import inspect, warnings, sklearn, psutil, numpy, re, time
 import numpy as np
+from misc import *
 
 from sklearn import cluster, covariance, \
   decomposition, ensemble, feature_extraction, feature_selection, \
@@ -73,7 +74,7 @@ def test_all_classifiers(X, y, classifiers=None, scoring=None, ignore=[]):
     if classifier.__name__ in ignore: continue
     try:
       t0 = time.time()
-      score, sem = X.copy().cv(classifier(), y, len(y), 5, scoring=scoring)
+      score, sem = do_cv(classifier(), X.copy(), y, len(y), n_iter=3, scoring=scoring, quiet=True)
       took = (time.time() - t0) / 60.
       all_scores.append({'name':classifier.__name__, 'score': score, 'sem': sem, 'took': took})      
       print 'classifier:', classifier.__name__, 'score:', score, 'sem:', sem, 'took: %.1fm' % took
@@ -81,7 +82,7 @@ def test_all_classifiers(X, y, classifiers=None, scoring=None, ignore=[]):
       print 'classifier:', classifier.__name__, 'error - not included in results - took: %.1fm' % ((time.time() - t0) / 60.)
   all_scores = sorted(all_scores, key=lambda t: t['score'], reverse=True)  
   print '\t\tsuccessfull classifiers\n', '\n'.join(
-    map(lambda d: '{:>35}{:10.4f}(+-.4f){:10.2f}m'.format(d['name'], d['score'], d['sem'], d['took']), all_scores))
+    map(lambda d: '{:>35}{:10.4f}(+-%.4f){:10.2f}m'.format(d['name'], d['score'], d['sem'], d['took']), all_scores))
   print all_scores
 
 def parse_classifier_meta(classifier):
@@ -155,6 +156,7 @@ def test_classifier_with_arg_customisation(meta):
 
 
 
+'''
 if __name__ == '__main__':
   boston_data = datasets.load_boston()
   X = boston_data['data']
@@ -162,3 +164,4 @@ if __name__ == '__main__':
   test_all_classifiers(X, y)
   # metas = [parse_classifier_meta(clf) for clf in classifiers]
   # ignore = [test_classifier_with_arg_customisation(m) for m in metas]
+'''
