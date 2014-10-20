@@ -388,6 +388,7 @@ def _df_shuffle(self, y=None):
     df['__tmpy'] = y    
 
   index = list(df.index)
+  random.seed(cfg['sys_seed'])
   random.shuffle(index)
   df = df.ix[index]
   df.reset_index(inplace=True, drop=True)
@@ -450,7 +451,8 @@ def _df_pca(self, n_components, whiten=False):
   columns = map(lambda i: 'n_pca_' + `i`, range(n_components))
   return pd.DataFrame(columns=columns, data=new_X)
 
-def _df_predict(self, clf, y, X_test=None):  
+def _df_predict(self, clf, y, X_test=None):    
+  reseed(clf)
   X_train = self
   if X_test is None and self.shape[0] > len(y):
     X_test = self[len(y):]

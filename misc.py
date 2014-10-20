@@ -18,7 +18,7 @@ random.seed(cfg['sys_seed'])
 np.random.seed(cfg['sys_seed']) 
 NA = 99999.0
 
-def _reseed(clf):
+def reseed(clf):
   clf.random_state = cfg['sys_seed']
   random.seed(cfg['sys_seed'])
   np.random.seed(cfg['sys_seed']) 
@@ -72,7 +72,7 @@ def one_hot_encode(X, columns, drop_originals=True):
 # Does a search through n_samples_arr to test what n_samples is acceptable
 #   for cross validation.  No use using very high n_samples if not required
 def do_n_sample_search(clf, X, y, n_samples_arr):
-  _reseed(clf)
+  reseed(clf)
 
   scores = []
   sems = []
@@ -90,7 +90,7 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
 
 def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed=True):
   t0 = time.time()
-  if reseed: _reseed(clf)
+  if reseed: reseed(clf)
   try:
     if (n_samples > X.shape[0]): n_samples = X.shape[0]
   except: pass
@@ -120,7 +120,7 @@ def proba_scores(y_true, y_preds, scoring=metrics.roc_auc_score):
 
 def score(clf, X, y, test_split=0.1, auc=False):
   X, y, test_X, test_y = split(X, y, test_split)
-  _reseed(clf)
+  reseed(clf)
   clf.fit(X, y)
   predictions = clf.predict_proba(test_X).T[1] if auc else clf.predict(test_X)
   return show_score(test_y, predictions)
@@ -149,7 +149,7 @@ def show_score(y_true, y_pred):
   return accuracy
 
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_params=None):
-  _reseed(clf)
+  reseed(clf)
   gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
   X2, y2 = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
   gs.fit(X2[:n_samples], y2[:n_samples])
