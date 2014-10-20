@@ -88,9 +88,9 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
   return (scores, sems)
 
 
-def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed=True):
+def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed_classifier=True):
   t0 = time.time()
-  if reseed: reseed(clf)
+  if reseed_classifier: reseed(clf)
   try:
     if (n_samples > X.shape[0]): n_samples = X.shape[0]
   except: pass
