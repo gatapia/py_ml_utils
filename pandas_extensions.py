@@ -470,6 +470,13 @@ def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):
   y = X['__tmpy']
   return (X.drop(['__tmpy'], 1), y)
 
+def _df_save_csv(self, file):    
+  compress = file.endswith('.gz')
+  in_name = file + '.uncompressed' if compress else file
+  self.to_csv(in_name, index=False)  
+  if compress: gzip_file(in_name, file)
+  return self
+
 # Extensions
 def extend_df(name, function):
   df = pd.DataFrame({})
@@ -502,6 +509,7 @@ extend_df('cv_ohe', _df_cv_ohe)
 extend_df('pca', _df_pca)
 extend_df('noise_filter', _df_noise_filter)
 extend_df('predict', _df_predict)
+extend_df('save_csv', _df_save_csv)
 
 extend_df('categoricals', _df_categoricals)
 extend_df('indexes', _df_indexes)
