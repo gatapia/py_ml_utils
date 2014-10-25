@@ -98,7 +98,7 @@ def _df_one_hot_encode(self, dtype=np.float):
 
   ohe_sparse = None
   for i, c in enumerate(indexes):
-    debug('converting column: ' + `c`)
+    debug('one hot encoding column: ' + `c`)
     col_ohe = OneHotEncoder(categorical_features=[0], dtype=dtype).\
       fit_transform(categorical_df[[c]])
     if ohe_sparse == None: ohe_sparse = col_ohe
@@ -114,7 +114,8 @@ def _df_to_indexes(self, drop_origianls=False):
   start('indexing categoricals in data frame')  
   for c in self.categoricals():
     cat = pd.Categorical.from_array(self[c])
-    self['i_' + c] = pd.Series(cat.codes if hasattr(cat, 'codes') else cat.labels, index=self[c].index)
+    self['i_' + c] = pd.Series(cat.codes if hasattr(cat, 'codes') else cat.labels, 
+        index=self[c].index, dtype=int)
     if drop_origianls: self.drop(c, 1, inplace=True)
   stop('done indexing categoricals in data frame')  
   return self
@@ -477,6 +478,85 @@ def _df_save_csv(self, file):
   if compress: gzip_file(in_name, file)
   return self
 
+def _df_nbytes(self):    
+  return self.index.nbytes + self.columns.nbytes + \
+    sum(map(lambda c: self[c].nbytes, self.columns))
+
+def _df_compress(self, aggresiveness=0):  
+  start('compressing dataset with ' + `len(self.columns)` + ' columns')
+  def _get_optimal_numeric_type(dtype, min, max):
+    dtype = str(dtype)
+    is_int = dtype.startswith('int')
+    if min >= 0 and is_int:
+      '''
+      uint8 Unsigned integer (0 to 255)
+      uint16  Unsigned integer (0 to 65535)
+      uint32  Unsigned integer (0 to 4294967295)
+      uint64  Unsigned integer (0 to 18446744073709551615)
+      '''
+      if max <= 255: return 'uint8'
+      if max <= 65535: return 'uint16'
+      if max <= 4294967295: return 'uint32'
+      if max <= 18446744073709551615: return 'uint64'
+      raise Exception(`max` + ' is too large')
+    elif is_int:
+      '''
+      int8 Byte (-128 to 127)
+      int16 Integer (-32768 to 32767)
+      int32 Integer (-2147483648 to 2147483647)
+      int64 Integer (-9223372036854775808 to 9223372036854775807)
+      '''
+      if min >= -128 and max <= 127: return 'int8'
+      if min >= -32768 and max <= 32767: return 'int16'
+      if min >= -2147483648 and max <= 2147483647: return 'int32'
+      if min >= -9223372036854775808 and max <= 9223372036854775807: return 'int64'
+      raise Exception(`min` + ' and ' + `max` + ' are out of supported range')
+    else:
+      '''
+      float16 Half precision float: sign bit, 5 bits exponent, 10 bits mantissa
+      float32 Single precision float: sign bit, 8 bits exponent, 23 bits mantissa
+      float64 Double precision float: sign bit, 11 bits exponent, 52 bits mantissa
+      '''
+      if not dtype.startswith('float'): raise Exception('Unsupported type: ' + dtype)
+      current = int(dtype[-2:])
+      if aggresiveness == 0: return dtype
+      if aggresiveness == 1: 
+        if current == 64: return 'float32'
+        elif current <= 32: return 'float16'
+        elif current == 16: return 'float16'
+        else: raise Exception('Unsupported type: ' + dtype)
+      if aggresiveness == 2: return 'float16'      
+
+  def _format_bytes(num):
+      for x in ['bytes','KB','MB','GB']:
+          if num < 1024.0 and num > -1024.0:
+              return "%3.1f%s" % (num, x)
+          num /= 1024.0
+      return "%3.1f%s" % (num, 'TB')
+
+  original_bytes = self.nbytes()
+  # Binary fields compressed just like categoricals
+  self.columns = map(lambda c: c.replace('b_', 'c_'), self.columns)
+  self.missing(categorical_fill='missing', numerical_fill='none')
+  self.toidxs(True)
+  for idx, c in enumerate(self.columns):
+    s = self[c]
+    if c[0] == 'n' or c[0] == 'i':  
+      if str(s.dtype).startswith('int'):        
+        self[c] = s.astype(_get_optimal_numeric_type(s.dtype, min(s), max(s))).\
+          to_sparse(fill_value=int(s.mode()))    
+      elif str(s.dtype).startswith('float'):
+        self[c] = s.astype(_get_optimal_numeric_type(s.dtype, min(s), max(s)))
+      else:
+        raise Exception(c + ' expected "int" or "float" type got: ', str(s.dtype))
+    else : raise Exception(c + ' is not supported')
+  new_bytes = self.nbytes()
+  diff_bytes = original_bytes - new_bytes
+  stop('original: %s new: %s improvement: %s percentage: %.2f%%' % 
+    (_format_bytes(original_bytes), _format_bytes(new_bytes), 
+        _format_bytes(diff_bytes), diff_bytes * 100.0 / original_bytes))
+  return self
+
 # Extensions
 def extend_df(name, function):
   df = pd.DataFrame({})
@@ -517,6 +597,8 @@ extend_df('numericals', _df_numericals)
 extend_df('dates', _df_dates)
 extend_df('binaries', _df_binaries)
 extend_df('trim_on_y', _df_trim_on_y)
+extend_df('nbytes', _df_nbytes)
+extend_df('compress', _df_compress)
 
 # Series Extensions  
 extend_s('one_hot_encode', _s_one_hot_encode)
