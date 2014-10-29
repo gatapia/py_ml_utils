@@ -16,7 +16,7 @@ def get_python_processes():
     except: return false
   return len([p for p in psutil.get_process_list() if is_python_process])
 
-def get_classifiers(module, done=[]):
+def get_classifiers(module=None, done=[]):
   if module is None: module = sklearn
   ignores = ['MemmapingPool', 'PicklingPool', 'externals', 
     'datasets', 'EllipticEnvelope', 'OneClassSVM']
