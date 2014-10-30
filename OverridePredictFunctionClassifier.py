@@ -16,7 +16,11 @@ class OverridePredictFunctionClassifier(BaseEstimator, ClassifierMixin):
       return self.base_classifier.decision_function(X)
     else: raise Exception(self.predict_function + ' not supported')
 
-  def predict_proba(self, X):     
-    return self.base_classifier.predict_proba(X)
+  def predict_proba(self, X):
+    if self.predict_function == 'decision_function':
+      df = self.base_classifier.decision_function(X)
+      return np.array([1 - df, df]).T
+    else:
+      return self.base_classifier.predict_proba(X)
   
   

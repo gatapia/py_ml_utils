@@ -7,6 +7,7 @@ import gzip, time, math, datetime, random, os, gc
 from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
+from sklearn.externals import joblib
 
 cfg = {
   'sys_seed':0,
@@ -156,6 +157,15 @@ def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_
   gs.fit(X2[:n_samples], y2[:n_samples])
   dbg(gs.best_params_, gs.best_score_)
   return gs
+
+def dump(file, data):
+  if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
+  joblib.dump(data, 'data/pickles/' + file, compress=1);
+
+def load(file):
+  file = 'data/pickles/' + file
+  if not os.path.isfile(file): return None
+  return joblib.load(file);
 
 def save_data(file, data):
   if (file.endswith('z')):
