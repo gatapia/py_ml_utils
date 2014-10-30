@@ -74,7 +74,9 @@ def test_all_classifiers(X, y, classifiers=None, scoring=None, ignore=[]):
     if classifier.__name__ in ignore: continue
     try:
       t0 = time.time()
-      score, sem = do_cv(classifier(), X.copy(), y, len(y), n_iter=3, scoring=scoring, quiet=True)
+      clf = classifier()
+      if hasattr(clf, 'n_estimators'): clf.n_estimators = 200
+      score, sem = do_cv(clf, X.copy(), y, len(y), n_iter=3, scoring=scoring, quiet=True)
       took = (time.time() - t0) / 60.
       all_scores.append({'name':classifier.__name__, 'score': score, 'sem': sem, 'took': took})      
       print 'classifier:', classifier.__name__, 'score:', score, 'sem:', sem, 'took: %.1fm' % took
