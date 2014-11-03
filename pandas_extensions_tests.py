@@ -344,17 +344,18 @@ class T(unittest.TestCase):
 
   def test_append_bottom(self):
     df1 = pd.DataFrame({'c_1':['a', 'b'], 
-      'n_1': [1, 2]})              
+      'n_1': [1., 2.]})              
     df2 = pd.DataFrame({'c_1':['c', 'd'], 
-      'n_1': [3, 4]})              
-    df1 = df1.append_bottom(df2)
-    np.testing.assert_array_equal(df1.values, 
+      'n_1': [3., 4.]})              
+    dfappended = df1.append_bottom(df2)
+    np.testing.assert_array_equal( 
       np.array([
-        ['a', 1],
-        ['b', 2],
-        ['c', 3],
-        ['d', 4]
-        ], 'object'))
+        ['a', 1.],
+        ['b', 2.],
+        ['c', 3.],
+        ['d', 4.]
+        ], 'object'),
+      dfappended.values)
 
   def test_shuffle(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'n_1': [1, 2, 3, 4, 5, 6, 7]})
