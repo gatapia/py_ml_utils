@@ -1,4 +1,5 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
+import numpy as np
 
 class OverridePredictFunctionClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, base_classifier, predict_function):        
