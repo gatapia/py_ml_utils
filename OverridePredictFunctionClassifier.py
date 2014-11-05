@@ -1,4 +1,5 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 
 class OverridePredictFunctionClassifier(BaseEstimator, ClassifierMixin):
@@ -20,6 +21,8 @@ class OverridePredictFunctionClassifier(BaseEstimator, ClassifierMixin):
   def predict_proba(self, X):
     if self.predict_function == 'decision_function':
       df = self.base_classifier.decision_function(X)
+      scaler = MinMaxScaler((0, 1))
+      df = scaler.fit_transform(df)
       return np.array([1 - df, df]).T
     else:
       return self.base_classifier.predict_proba(X)
