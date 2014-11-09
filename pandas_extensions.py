@@ -128,10 +128,11 @@ def _df_bin(self, n_bins=100, drop_origianls=False):
   stop('done binning data into ' + `n_bins` + ' bins')  
   return self
 
-def _df_combinations(self, group_size=2, columns=[], categoricals=False, 
+def _df_combinations(self, group_size=2, columns=[], categoricals=False, indexes=False,
     numericals=False, dates=False, binaries=False):
   cols = list(columns)
   if categoricals: cols = cols + self.categoricals()
+  if indexes: cols = cols + self.indexes()
   if numericals: cols = cols + self.numericals()
   if dates: cols = cols + self.dates()
   if binaries: cols = cols + self.binaries()
@@ -200,7 +201,7 @@ def _df_engineer(self, name, columns=None, quiet=False):
   if not quiet: debug('engineering feature: ' + name)
   if len(args) == 0 and (func == 'mult' or func == 'concat'):    
     combs = list(itertools.combinations(columns, 2)) if columns \
-      else self.combinations(categoricals=func=='concat', numericals=func=='mult')    
+      else self.combinations(categoricals=func=='concat', indexes=func=='concat', numericals=func=='mult')    
     for c1, c2 in combs: self.engineer(func + '(' + c1 + ',' + c2 + ')', quiet=True)
     return self
   elif func == 'concat': 
@@ -329,6 +330,61 @@ def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):
   under = vc[vc <= threshold]    
   if under.shape[0] > 0: col[col.isin(under.index)] = fill
   return col
+
+def _s_compress(self, aggresiveness=0):  
+  def _get_optimal_numeric_type(dtype, min, max):
+    dtype = str(dtype)
+    is_int = dtype.startswith('int')
+    if min >= 0 and is_int:
+      '''
+      uint8 Unsigned integer (0 to 255)
+      uint16  Unsigned integer (0 to 65535)
+      uint32  Unsigned integer (0 to 4294967295)
+      uint64  Unsigned integer (0 to 18446744073709551615)
+      '''
+      if max <= 255: return 'uint8'
+      if max <= 65535: return 'uint16'
+      if max <= 4294967295: return 'uint32'
+      if max <= 18446744073709551615: return 'uint64'
+      raise Exception(`max` + ' is too large')
+    elif is_int:
+      '''
+      int8 Byte (-128 to 127)
+      int16 Integer (-32768 to 32767)
+      int32 Integer (-2147483648 to 2147483647)
+      int64 Integer (-9223372036854775808 to 9223372036854775807)
+      '''
+      if min >= -128 and max <= 127: return 'int8'
+      if min >= -32768 and max <= 32767: return 'int16'
+      if min >= -2147483648 and max <= 2147483647: return 'int32'
+      if min >= -9223372036854775808 and max <= 9223372036854775807: return 'int64'
+      raise Exception(`min` + ' and ' + `max` + ' are out of supported range')
+    else:
+      '''
+      float16 Half precision float: sign bit, 5 bits exponent, 10 bits mantissa
+      float32 Single precision float: sign bit, 8 bits exponent, 23 bits mantissa
+      float64 Double precision float: sign bit, 11 bits exponent, 52 bits mantissa
+      '''
+      if not dtype.startswith('float'): raise Exception('Unsupported type: ' + dtype)
+      current = int(dtype[-2:])
+      if aggresiveness == 0: return dtype
+      if aggresiveness == 1: 
+        if current == 64: return 'float32'
+        elif current <= 32: return 'float16'
+        elif current == 16: return 'float16'
+        else: raise Exception('Unsupported type: ' + dtype)
+      if aggresiveness == 2: return 'float16'      
+  prefix = self.name[0:2]
+  if prefix == 'n_' or prefix == 'i_':  
+    if prefix == 'i_' or str(self.dtype).startswith('int'):        
+      return self.astype(_get_optimal_numeric_type('int', min(self), max(self))).\
+        to_sparse(fill_value=int(self.mode()))    
+    elif str(self.dtype).startswith('float'):
+      return self.astype(_get_optimal_numeric_type(self.dtype, min(self), max(self)))
+    else:
+      raise Exception(self.name + ' expected "int" or "float" type got: ', str(self.dtype))
+  else : raise Exception(self.name + ' is not supported')
+  return self
 
 def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):      
   start('binning categorical outliers, min_size: ' + `min_size`)
@@ -484,48 +540,6 @@ def _df_nbytes(self):
 
 def _df_compress(self, aggresiveness=0):  
   start('compressing dataset with ' + `len(self.columns)` + ' columns')
-  def _get_optimal_numeric_type(dtype, min, max):
-    dtype = str(dtype)
-    is_int = dtype.startswith('int')
-    if min >= 0 and is_int:
-      '''
-      uint8 Unsigned integer (0 to 255)
-      uint16  Unsigned integer (0 to 65535)
-      uint32  Unsigned integer (0 to 4294967295)
-      uint64  Unsigned integer (0 to 18446744073709551615)
-      '''
-      if max <= 255: return 'uint8'
-      if max <= 65535: return 'uint16'
-      if max <= 4294967295: return 'uint32'
-      if max <= 18446744073709551615: return 'uint64'
-      raise Exception(`max` + ' is too large')
-    elif is_int:
-      '''
-      int8 Byte (-128 to 127)
-      int16 Integer (-32768 to 32767)
-      int32 Integer (-2147483648 to 2147483647)
-      int64 Integer (-9223372036854775808 to 9223372036854775807)
-      '''
-      if min >= -128 and max <= 127: return 'int8'
-      if min >= -32768 and max <= 32767: return 'int16'
-      if min >= -2147483648 and max <= 2147483647: return 'int32'
-      if min >= -9223372036854775808 and max <= 9223372036854775807: return 'int64'
-      raise Exception(`min` + ' and ' + `max` + ' are out of supported range')
-    else:
-      '''
-      float16 Half precision float: sign bit, 5 bits exponent, 10 bits mantissa
-      float32 Single precision float: sign bit, 8 bits exponent, 23 bits mantissa
-      float64 Double precision float: sign bit, 11 bits exponent, 52 bits mantissa
-      '''
-      if not dtype.startswith('float'): raise Exception('Unsupported type: ' + dtype)
-      current = int(dtype[-2:])
-      if aggresiveness == 0: return dtype
-      if aggresiveness == 1: 
-        if current == 64: return 'float32'
-        elif current <= 32: return 'float16'
-        elif current == 16: return 'float16'
-        else: raise Exception('Unsupported type: ' + dtype)
-      if aggresiveness == 2: return 'float16'      
 
   def _format_bytes(num):
       for x in ['bytes','KB','MB','GB']:
@@ -539,17 +553,7 @@ def _df_compress(self, aggresiveness=0):
   self.columns = map(lambda c: c.replace('b_', 'c_'), self.columns)
   self.missing(categorical_fill='missing', numerical_fill='none')
   self.toidxs(True)
-  for idx, c in enumerate(self.columns):
-    s = self[c]
-    if c[0] == 'n' or c[0] == 'i':  
-      if str(s.dtype).startswith('int'):        
-        self[c] = s.astype(_get_optimal_numeric_type(s.dtype, min(s), max(s))).\
-          to_sparse(fill_value=int(s.mode()))    
-      elif str(s.dtype).startswith('float'):
-        self[c] = s.astype(_get_optimal_numeric_type(s.dtype, min(s), max(s)))
-      else:
-        raise Exception(c + ' expected "int" or "float" type got: ', str(s.dtype))
-    else : raise Exception(c + ' is not supported')
+  for idx, c in enumerate(self.columns): self[c] = self[c].s_compress()
   new_bytes = self.nbytes()
   diff_bytes = original_bytes - new_bytes
   stop('original: %s new: %s improvement: %s percentage: %.2f%%' % 
@@ -605,6 +609,7 @@ extend_s('one_hot_encode', _s_one_hot_encode)
 extend_s('bin', _s_bin)
 extend_s('categorical_outliers', _s_categorical_outliers)
 extend_s('sigma_limits', _s_sigma_limits)
+extend_s('s_compress', _s_compress)
 
 # Aliases
 extend_s('catout', _s_categorical_outliers)
