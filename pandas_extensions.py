@@ -111,11 +111,17 @@ def _df_one_hot_encode(self, dtype=np.float):
   return matrix
 
 def _df_to_indexes(self, drop_origianls=False):
-  start('indexing categoricals in data frame')  
+  start('indexing categoricals in data frame. Note: NA gets turned into max index (255, 65535, etc)')  
   for c in self.categoricals():
+    col = 'i_' + c
     cat = pd.Categorical.from_array(self[c])
-    self['i_' + c] = pd.Series(cat.codes if hasattr(cat, 'codes') else cat.labels, 
-        index=self[c].index, dtype=int)
+    lbls = cat.codes if hasattr(cat, 'codes') else cat.labels    
+    s = pd.Series(lbls, index=self[c].index, \
+      dtype=_get_optimal_numeric_type('int', 0, len(lbls) + 1))
+    modes = s.mode()
+    mode = lbls[0]
+    if len(modes) > 0: mode = modes.iget(0)
+    self[col] = s.to_sparse(fill_value=int(mode))            
     if drop_origianls: self.drop(c, 1, inplace=True)
   stop('done indexing categoricals in data frame')  
   return self
@@ -252,6 +258,12 @@ def _df_engineer(self, name, columns=None, quiet=False):
   
 def _df_scale(self, columns=[], min_max=None):  
   start('scaling data frame')
+  # If columns is not meant to be specified
+  if min_max == None and len(columns) == 2:
+    strtype = str(type(columns[0]))
+    if strtype.startswith('int') or strtype.startswith('float'):
+      min_max, columns = columns, []
+
   cols = columns if columns else self.numericals()
   for c in cols:
     if min_max:
@@ -395,6 +407,10 @@ def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):
   stop('done binning categorical outliers')
   return self
 
+def _is_sparse(o):
+  return type(o) is pd.sparse.frame.SparseDataFrame or \
+    type(o) is pd.sparse.series.SparseSeries
+
 def _df_append_right(self, df_or_s):  
   start('appending to the right.  note, this is a destructuve operation')
   if (type(df_or_s) is sparse.coo.coo_matrix):
@@ -409,9 +425,7 @@ def _df_append_right(self, df_or_s):
     self_sparse = sparse.hstack((self_sparse, df_or_s))
     stop('done appending to the right')
     return self_sparse
-  elif ((type(df_or_s) is pd.sparse.frame.SparseDataFrame or 
-      type(df_or_s) is pd.sparse.series.SparseSeries) and 
-      not type(self) is pd.sparse.frame.SparseDataFrame):
+  elif _is_sparse(df_or_s) and not _is_sparse(self):
     debug('converting data frame to a sparse frame')
     self = self.to_sparse(fill_value=0)
   if type(df_or_s) is pd.Series: self[df_or_s.name] = df_or_s.values
@@ -422,8 +436,15 @@ def _df_append_right(self, df_or_s):
 
 def _df_append_bottom(self, df):  
   debug('warning: DataFrame.append_bottom always returns a new DataFrame')
-  df = pd.concat((self, df), 0)
-  return df.reset_index(drop=True)
+  new_df = pd.DataFrame(columns=self.columns)
+  for c in self.columns:
+    values1 = self[c].to_dense().values if _is_sparse(self[c]) else self[c].values
+    values2 = df[c].to_dense().values if _is_sparse(df[c]) else df[c].values
+    data = np.append(values1, values2)
+    new_df[c] = pd.Series(data, dtype=self[c].dtype)
+    if _is_sparse(self[c]):
+      new_df[c] = new_df[c].to_sparse(fill_value=self[c].fill_value)
+  return new_df
 
 def _create_df_from_templage(template, data, index=None):
   df = pd.DataFrame(columns=template.columns, data=data, index=index)
@@ -538,8 +559,51 @@ def _df_nbytes(self):
   return self.index.nbytes + self.columns.nbytes + \
     sum(map(lambda c: self[c].nbytes, self.columns))
 
+def _get_optimal_numeric_type(dtype, min, max, aggresiveness=0):
+  dtype = str(dtype)
+  is_int = dtype.startswith('int')
+  if min >= 0 and is_int:
+    '''
+    uint8 Unsigned integer (0 to 255)
+    uint16  Unsigned integer (0 to 65535)
+    uint32  Unsigned integer (0 to 4294967295)
+    uint64  Unsigned integer (0 to 18446744073709551615)
+    '''
+    if max <= 255: return 'uint8'
+    if max <= 65535: return 'uint16'
+    if max <= 4294967295: return 'uint32'
+    if max <= 18446744073709551615: return 'uint64'
+    raise Exception(`max` + ' is too large')
+  elif is_int:
+    '''
+    int8 Byte (-128 to 127)
+    int16 Integer (-32768 to 32767)
+    int32 Integer (-2147483648 to 2147483647)
+    int64 Integer (-9223372036854775808 to 9223372036854775807)
+    '''
+    if min >= -128 and max <= 127: return 'int8'
+    if min >= -32768 and max <= 32767: return 'int16'
+    if min >= -2147483648 and max <= 2147483647: return 'int32'
+    if min >= -9223372036854775808 and max <= 9223372036854775807: return 'int64'
+    raise Exception(`min` + ' and ' + `max` + ' are out of supported range')
+  else:
+    '''
+    float16 Half precision float: sign bit, 5 bits exponent, 10 bits mantissa
+    float32 Single precision float: sign bit, 8 bits exponent, 23 bits mantissa
+    float64 Double precision float: sign bit, 11 bits exponent, 52 bits mantissa
+    '''
+    if not dtype.startswith('float'): raise Exception('Unsupported type: ' + dtype)
+    current = int(dtype[-2:])
+    if aggresiveness == 0: return dtype
+    if aggresiveness == 1: 
+      if current == 64: return 'float32'
+      elif current <= 32: return 'float16'
+      elif current == 16: return 'float16'
+      else: raise Exception('Unsupported type: ' + dtype)
+    if aggresiveness == 2: return 'float16'  
+
 def _df_compress(self, aggresiveness=0):  
-  start('compressing dataset with ' + `len(self.columns)` + ' columns')
+  start('compressing dataset with ' + `len(self.columns)` + ' columns')    
 
   def _format_bytes(num):
       for x in ['bytes','KB','MB','GB']:

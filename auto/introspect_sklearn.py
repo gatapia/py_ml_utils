@@ -2,6 +2,7 @@
 import inspect, warnings, sklearn, psutil, numpy, re, time
 import numpy as np
 from misc import *
+from OverridePredictFunctionClassifier import *
 
 from sklearn import cluster, covariance, \
   decomposition, ensemble, feature_extraction, feature_selection, \
@@ -58,7 +59,8 @@ def get_classifiers(module=None, done=[]):
 all_scores = []
 cached_classifiers = None
 
-def test_all_classifiers(X, y, classifiers=None, scoring=None, ignore=[]):
+def test_all_classifiers(X, y, classifiers=None, scoring=None, 
+    ignore=[], use_proba=False):
   global all_scores, cached_classifiers
   all_scores = []
   if classifiers is None: 
@@ -76,15 +78,18 @@ def test_all_classifiers(X, y, classifiers=None, scoring=None, ignore=[]):
       t0 = time.time()
       clf = classifier()
       if hasattr(clf, 'n_estimators'): clf.n_estimators = 200
+      if use_proba and not hasattr(clf, 'predict_proba'):
+        if hasattr(clf, 'decision_function'):
+          clf = OverridePredictFunctionClassifier(clf, 'decision_function')      
       score, sem = do_cv(clf, X.copy(), y, len(y), n_iter=3, scoring=scoring, quiet=True)
       took = (time.time() - t0) / 60.
       all_scores.append({'name':classifier.__name__, 'score': score, 'sem': sem, 'took': took})      
       print 'classifier:', classifier.__name__, 'score:', score, 'sem:', sem, 'took: %.1fm' % took
-    except:
-      print 'classifier:', classifier.__name__, 'error - not included in results - took: %.1fm' % ((time.time() - t0) / 60.)
+    except Exception, e:
+      print 'classifier:', classifier.__name__, 'error - not included in results - ' + str(e)
   all_scores = sorted(all_scores, key=lambda t: t['score'], reverse=True)  
   print '\t\tsuccessfull classifiers\n', '\n'.join(
-    map(lambda d: '{:>35}{:10.4f}(+-%.4f){:10.2f}m'.format(d['name'], d['score'], d['sem'], d['took']), all_scores))
+    map(lambda d: '{:>35}{:10.4f}(+-{5.4f}){:10.2f}m'.format(d['name'], d['score'], d['sem'], d['took']), all_scores))
   print all_scores
 
 def parse_classifier_meta(classifier):

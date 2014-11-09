@@ -33,6 +33,24 @@ class T(unittest.TestCase):
       [2., 2., 0.], 
       [3., 3., 1.]], 'object')))
 
+  def test_adding_sparse_col(self):
+    df = pd.DataFrame({'n_1': [1., 2., 3.], 'n_2': [1., 2., 3.]})
+    df['n_3'] = pd.Series([0, 0, 1]).to_sparse(fill_value=0)
+
+    self.assertTrue(np.array_equal(df.values, np.array([
+      [1., 1., 0.], 
+      [2., 2., 0.], 
+      [3., 3., 1.]], 'object')))
+
+  def test_replacing_w_sparse_col(self):
+    df = pd.DataFrame({'n_1': [1., 2., 3.], 'n_2': [1., 2., 3.], 'n_3': [0, 0, 1.]})
+    df['n_3'] = pd.Series([0, 0, 1]).to_sparse(fill_value=0)
+    
+    self.assertTrue(np.array_equal(df.values, np.array([
+      [1., 1., 0.], 
+      [2., 2., 0.], 
+      [3., 3., 1.]], 'object')))
+
   def test_one_hot_encode(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
     df = df.one_hot_encode().toarray()    
@@ -145,7 +163,7 @@ class T(unittest.TestCase):
   def test_scale_with_min_max(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
-    df.scale((0., 2.))
+    df.scale([], (0., 2.))
     np.testing.assert_array_equal(df.values, 
       np.array([
         ['a', 'd', 0, 0, 0],
@@ -155,7 +173,7 @@ class T(unittest.TestCase):
 
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
-    df.scale((10., 20.))
+    df.scale([], (10., 20.))
     np.testing.assert_array_equal(df.values, 
       np.array([
         ['a', 'd', 10, 10, 10],
@@ -326,17 +344,18 @@ class T(unittest.TestCase):
 
   def test_append_bottom(self):
     df1 = pd.DataFrame({'c_1':['a', 'b'], 
-      'n_1': [1, 2]})              
+      'n_1': [1., 2.]})              
     df2 = pd.DataFrame({'c_1':['c', 'd'], 
-      'n_1': [3, 4]})              
-    df1 = df1.append_bottom(df2)
-    np.testing.assert_array_equal(df1.values, 
+      'n_1': [3., 4.]})              
+    dfappended = df1.append_bottom(df2)
+    np.testing.assert_array_equal( 
       np.array([
-        ['a', 1],
-        ['b', 2],
-        ['c', 3],
-        ['d', 4]
-        ], 'object'))
+        ['a', 1.],
+        ['b', 2.],
+        ['c', 3.],
+        ['d', 4.]
+        ], 'object'),
+      dfappended.values)
 
   def test_shuffle(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'n_1': [1, 2, 3, 4, 5, 6, 7]})
@@ -359,7 +378,7 @@ class T(unittest.TestCase):
   def test_to_indexes_with_NA(self):
     df = pd.DataFrame({'c_1':['a', 'b', np.nan], 'c_2':['c', 'd', np.nan], 'n_1': [1, 2, 3]})
     df.to_indexes(True)
-    np.testing.assert_array_equal(df.values, [[1, 0, 0], [2, 1, 1], [3, -1, -1]])
+    np.testing.assert_array_equal(df.values, [[1, 0, 0], [2, 1, 1], [3, 255, 255]])
   
   def test_cv(self):
     df = pd.DataFrame({'n_1': [1, 2, 3, 4, 5, 6, 7]})
