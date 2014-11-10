@@ -212,13 +212,18 @@ def _df_engineer(self, name, columns=None, quiet=False):
   elif func == 'concat': 
     def to_obj(col):
       if not col in self: raise Exception('could not find "' + col + '" in data frame')
-      return self[col] if self[col].dtype == 'object' else self[col].astype('str')
+      s = self[col]
+      print 'col:', col, 'dtype:', s.dtype, 'is obj:', s.dtype == 'object'
+      if s.dtype == 'object': return s
+      else: 
+        print 'converting to string'
+        return s.astype(str)
     
     if len(args) < 2 or len(args) > 3: raise Exception(name + ' only supports 2 or 3 columns')
     if len(args) == 2: 
-      self[new_name] = to_obj(args[0]) + to_obj(args[1])
+      self[new_name] = self[args[0]].astype(str) + self[args[1]].astype(str)
     if len(args) == 3: 
-      self[new_name] = to_obj(args[0]) + to_obj(args[1]) + to_obj(args[2])
+      self[new_name] = self[args[0]].astype(str) + self[args[1]].astype(str) + self[args[2]].astype(str)
   elif func  == 'mult':     
     if len(args) < 2 or len(args) > 3: raise Exception(name + ' only supports 2 or 3 columns')
     if len(args) == 2: 
@@ -546,7 +551,7 @@ def _get_optimal_numeric_type(dtype, min, max, aggresiveness=0):
       else: raise Exception('Unsupported type: ' + dtype)
     if aggresiveness == 2: return 'float16'  
 
-def _df_compress(self, aggresiveness=0):  
+def _df_compress(self, aggresiveness=0, to_sparse=False):  
   start('compressing dataset with ' + `len(self.columns)` + ' columns')    
 
   def _format_bytes(num):
@@ -566,10 +571,11 @@ def _df_compress(self, aggresiveness=0):
     if c[0] == 'n' or c[0] == 'i':  
       strtype = str(s.dtype)
       if strtype.startswith('int'):        
-        self[c] = s.astype(_get_optimal_numeric_type(s.dtype, min(s), max(s), aggresiveness)).\
-          to_sparse(fill_value=int(s.mode()))    
+        self[c] = s.astype(_get_optimal_numeric_type(s.dtype, min(s), max(s), aggresiveness))
+        if to_sparse: self[c] = self[c].to_sparse(fill_value=int(s.mode()))    
       elif strtype.startswith('float'):
         self[c] = s.astype(_get_optimal_numeric_type(s.dtype, min(s), max(s), aggresiveness))
+        if to_sparse: self[c] = self[c].to_sparse(fill_value=s.mode())    
       elif strtype.startswith('uint'):
         pass
       else:
@@ -581,6 +587,24 @@ def _df_compress(self, aggresiveness=0):
     (_format_bytes(original_bytes), _format_bytes(new_bytes), 
         _format_bytes(diff_bytes), diff_bytes * 100.0 / original_bytes))
   return self
+
+def _df_to_vw(self, out_file, y=None, convert_zero_ys=True):  
+  with open(out_file,"wb") as outfile:    
+    for idx, row in self.iterrows():
+      label = 1. if y is None or idx >= len(y) else float(y[idx])
+      if convert_zero_ys and label == 0: label = -1.
+      new_line = [str(label) + ' |n ']
+    
+      for c in self.categoricals() + self.indexes():
+        new_line.append('c' + c + '_' + str(row[c]))
+      
+      for n in self.numericals():
+        val = row[n]
+        if val == 0: continue
+        new_line.append('i' + c + '_' + str(row[n]))
+
+      outfile.write(" ".join( new_line ) + '\n')
+  return self;
 
 # Extensions
 def extend_df(name, function):
@@ -615,6 +639,7 @@ extend_df('pca', _df_pca)
 extend_df('noise_filter', _df_noise_filter)
 extend_df('predict', _df_predict)
 extend_df('save_csv', _df_save_csv)
+extend_df('to_vw', _df_to_vw)
 
 extend_df('categoricals', _df_categoricals)
 extend_df('indexes', _df_indexes)

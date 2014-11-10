@@ -79,8 +79,9 @@ def test_all_classifiers(X, y, classifiers=None, scoring=None,
       clf = classifier()
       if hasattr(clf, 'n_estimators'): clf.n_estimators = 200
       if use_proba and not hasattr(clf, 'predict_proba'):
-        if hasattr(clf, 'decision_function'):
-          clf = OverridePredictFunctionClassifier(clf, 'decision_function')      
+        func = 'decision_function' if hasattr(clf, 'decision_function') else 'predict'
+        clf = OverridePredictFunctionClassifier(clf, func)      
+        
       score, sem = do_cv(clf, X.copy(), y, len(y), n_iter=3, scoring=scoring, quiet=True)
       took = (time.time() - t0) / 60.
       all_scores.append({'name':classifier.__name__, 'score': score, 'sem': sem, 'took': took})      
@@ -89,7 +90,7 @@ def test_all_classifiers(X, y, classifiers=None, scoring=None,
       print 'classifier:', classifier.__name__, 'error - not included in results - ' + str(e)
   all_scores = sorted(all_scores, key=lambda t: t['score'], reverse=True)  
   print '\t\tsuccessfull classifiers\n', '\n'.join(
-    map(lambda d: '{:>35}{:10.4f}(+-{5.4f}){:10.2f}m'.format(d['name'], d['score'], d['sem'], d['took']), all_scores))
+    map(lambda d: '{:>35}{:10.4f}(+-{:5.4f}){:10.2f}m'.format(d['name'], d['score'], d['sem'], d['took']), all_scores))
   print all_scores
 
 def parse_classifier_meta(classifier):

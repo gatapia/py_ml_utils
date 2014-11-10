@@ -1,0 +1,6 @@
+[submodule "lib/pyfm"]
+	path = lib/pyfm
+	url = https://github.com/coreylynch/pyFM.git
+[submodule "lib/elm"]
+	path = lib/elm
+	url = https://github.com/dclambert/Python-ELM.git

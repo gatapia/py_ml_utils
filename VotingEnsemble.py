@@ -8,10 +8,11 @@ from scipy.stats import sem
 from misc import *
 
 class VotingEnsemble(BaseEstimator, ClassifierMixin):
-  def __init__(self, models, voter='majority', use_proba=False):    
+  def __init__(self, models, voter='majority', use_proba=False, weights=None):    
     self.models = models
     self.voter = voter
     self.use_proba = use_proba    
+    self.weights = weights
 
   def cv(self, X, y, scorer, n_samples=None, n_folds=5):
     if not(isinstance(X, list)): 
@@ -80,7 +81,9 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       i_preds = [ps[i] for ps in all_preds]      
 
       if (self.voter == 'majority'): predictions[i] = stats.mode(i_preds)[0]
-      elif (self.voter == 'mean'): predictions[i] = np.mean(i_preds)
+      elif (self.voter == 'mean'): 
+        if self.weights is not None: predictions[i] = np.average(i_preds, 0, weights)
+        else: predictions[i] = np.mean(i_preds)
       elif (self.voter == 'max'): predictions[i] = np.max(i_preds)
       elif (self.voter == 'min'): predictions[i] = np.min(i_preds)
       elif (self.voter == 'median'): predictions[i] = np.median(i_preds)
