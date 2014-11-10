@@ -160,7 +160,7 @@ def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_
 
 def dump(file, data):
   if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
-  joblib.dump(data, 'data/pickles/' + file, compress=1);
+  joblib.dump(data, 'data/pickles/' + file);
 
 def load(file):
   file = 'data/pickles/' + file
