@@ -110,7 +110,7 @@ def _df_one_hot_encode(self, dtype=np.float):
   stop('done one_hot_encoding')
   return matrix
 
-def _df_to_indexes(self, drop_origianls=False):
+def _df_to_indexes(self, drop_origianls=False, sparsify=False):
   start('indexing categoricals in data frame. Note: NA gets turned into max index (255, 65535, etc)')  
   for c in self.categoricals():
     col = 'i_' + c
@@ -121,7 +121,7 @@ def _df_to_indexes(self, drop_origianls=False):
     modes = s.mode()
     mode = lbls[0]
     if len(modes) > 0: mode = modes.iget(0)
-    self[col] = s.to_sparse(fill_value=int(mode))            
+    self[col] = s.to_sparse(fill_value=int(mode)) if sparsify else s
     if drop_origianls: self.drop(c, 1, inplace=True)
   stop('done indexing categoricals in data frame')  
   return self
@@ -339,7 +339,7 @@ def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):
   if under.shape[0] > 0: col[col.isin(under.index)] = fill
   return col
 
-def _s_compress(self, aggresiveness=0):  
+def _s_compress(self, aggresiveness=0, sparsify=False):  
   def _get_optimal_numeric_type(dtype, min, max):
     dtype = str(dtype)
     is_int = dtype.startswith('int')
@@ -385,8 +385,8 @@ def _s_compress(self, aggresiveness=0):
   prefix = self.name[0:2]
   if prefix == 'n_' or prefix == 'i_':  
     if prefix == 'i_' or str(self.dtype).startswith('int'):        
-      return self.astype(_get_optimal_numeric_type('int', min(self), max(self))).\
-        to_sparse(fill_value=int(self.mode()))    
+      compressed = self.astype(_get_optimal_numeric_type('int', min(self), max(self)))
+      return compressed if not sparsify else compressed.to_sparse(fill_value=int(self.mode()))    
     elif str(self.dtype).startswith('float'):
       return self.astype(_get_optimal_numeric_type(self.dtype, min(self), max(self)))
     else:
@@ -598,7 +598,7 @@ def _get_optimal_numeric_type(dtype, min, max, aggresiveness=0):
       else: raise Exception('Unsupported type: ' + dtype)
     if aggresiveness == 2: return 'float16'  
 
-def _df_compress(self, aggresiveness=0, to_sparse=False):  
+def _df_compress(self, aggresiveness=0, sparsify=False):  
   start('compressing dataset with ' + `len(self.columns)` + ' columns')    
 
   def _format_bytes(num):
@@ -613,7 +613,7 @@ def _df_compress(self, aggresiveness=0, to_sparse=False):
   self.columns = map(lambda c: c.replace('b_', 'c_'), self.columns)
   self.missing(categorical_fill='missing', numerical_fill='none')
   self.toidxs(True)
-  for idx, c in enumerate(self.columns): self[c] = self[c].s_compress()
+  for idx, c in enumerate(self.columns): self[c] = self[c].s_compress(aggresiveness, sparsify)
   new_bytes = self.nbytes()
   diff_bytes = original_bytes - new_bytes
   stop('original: %s new: %s improvement: %s percentage: %.2f%%' % 
@@ -621,23 +621,45 @@ def _df_compress(self, aggresiveness=0, to_sparse=False):
         _format_bytes(diff_bytes), diff_bytes * 100.0 / original_bytes))
   return self
 
-def _df_to_vw(self, out_file, y=None, convert_zero_ys=True):  
-  with open(out_file,"wb") as outfile:    
-    for idx, row in self.iterrows():
-      label = 1. if y is None or idx >= len(y) else float(y[idx])
-      if convert_zero_ys and label == 0: label = -1.
-      new_line = [str(label) + ' |n ']
-    
-      for c in self.categoricals() + self.indexes():
-        new_line.append('c' + c + '_' + str(row[c]))
-      
-      for n in self.numericals():
-        val = row[n]
-        if val == 0: continue
-        new_line.append('i' + c + '_' + str(row[n]))
+def _df_to_vw(self, out_file_or_y=None, y=None, weights=None, convert_zero_ys=True):  
+  lines = []
+  out_file = out_file_or_y if type(out_file_or_y) is str else None
+  
+  if y is None and out_file_or_y is not None and out_file is None: 
+    y = out_file_or_y
 
-      outfile.write(" ".join( new_line ) + '\n')
-  return self;
+  def impl(outfile):
+    def add_cols(new_line, columns, is_numerical):
+      if len(columns) == 0: return
+      new_line.append('|' + ('n' if is_numerical else 'c'))
+      for c in columns:
+        val = row[c]
+        if val == 0: continue
+        new_line.append(c + (':' if is_numerical else '_') + str(val))
+        
+    for idx, row in self.iterrows():
+      label = '1.0' if y is None or idx >= len(y) else str(float(y[idx]))
+      if convert_zero_ys and label == '0.0': label = '-1.0'
+      if weights is not None and idx < len(weights):      
+        w = weights[idx]
+        if w != 1: label += ' ' + `w`
+        label += ' \'' + `idx`
+      
+      new_line = [label]      
+      
+      add_cols(new_line, self.numericals(), True)
+      add_cols(new_line, self.categoricals() + self.indexes() + self.binaries(), False)
+
+      line = ' '.join(new_line)
+      lines.append(line)
+      if outfile: outfile.write(line + '\n')
+  
+  if out_file:
+    with open(out_file,"wb") as outfile:    
+      impl(outfile)
+  else: impl(None)
+
+  return lines
 
 # Extensions
 def extend_df(name, function):

@@ -90,7 +90,7 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
   return (scores, sems)
 
 
-def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed_classifier=True):
+def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed_classifier=True, n_jobs=-1):
   t0 = time.time()
   if reseed_classifier: reseed(clf)
   try:
@@ -99,7 +99,7 @@ def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scori
   cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed']) \
     if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
 
-  test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring or cfg['scoring'], fit_params=fit_params)
+  test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring or cfg['scoring'], fit_params=fit_params, n_jobs=n_jobs)
   if not(quiet): 
     dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
@@ -193,6 +193,11 @@ def read_data(file):
     data = pickle.load(f)
     f.close()
     return data
+
+def read_lines(file, ignore_header=False):
+  with open(file) as f:
+    if ignore_header: f.readline()
+    return f.readlines()
 
 def to_csv_gz(data_dict, file):
   compress = file.endswith('.gz')
