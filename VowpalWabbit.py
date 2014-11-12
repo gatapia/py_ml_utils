@@ -35,7 +35,11 @@ class _VW(sklearn.base.BaseEstimator):
          old_model=None,
          incremental=False,
          mem=None,
-         nn=None,
+         nn=None,         
+         invariant=False,
+         normalized=False,
+         sgd=False,
+         ignore=None,
          ):
     self.logger = logger
     self.vw = vw
@@ -65,7 +69,12 @@ class _VW(sklearn.base.BaseEstimator):
     self.old_model = old_model
     self.incremental = incremental
     self.mem = mem
-    self.nn = nn
+    self.nn = nn    
+    self.invariant = invariant
+    self.normalized = normalized
+    self.sgd = sgd
+    self.ignore = ignore
+
 
   def fit(self, X, y=None):
     self.vw_ = VW(
@@ -97,7 +106,11 @@ class _VW(sklearn.base.BaseEstimator):
       old_model=self.old_model,
       incremental=self.incremental,
       mem=self.mem,
-      nn=self.nn
+      nn=self.nn,      
+      invariant=self.invariant,
+      normalized=self.normalized,
+      sgd=self.sgd,
+      ignore=self.ignore
     )
     self.vw_.training(X)
     return self
@@ -154,15 +167,14 @@ class VW:
          mem=None,
          nn=None,
          holdout_off=None,
-         no_model=None,
+         no_model=None,         
+         invariant=False,
+         normalized=False,
+         sgd=False,
+         ignore=None,
          **kwargs):
     assert moniker and passes
-    
-    if logger is None:
-      self.log = VPLogger()
-    else:
-      self.log = logger
-
+        
     self.node = node
     self.total = total
     self.unique_id = unique_id
@@ -203,6 +215,7 @@ class VW:
     self.decay_learning_rate = decay_learning_rate
     self.audit = audit
     self.initial_t = initial_t
+    self.sgd = sgd
     self.lda = lda
     self.lda_D = lda_D
     self.lda_rho = lda_rho
@@ -213,7 +226,11 @@ class VW:
     self.mem = mem
     self.nn = nn
     self.holdout_off = holdout_off
-    self.no_model = no_model
+    self.no_model = no_model    
+    self.invariant = invariant
+    self.normalized = normalized
+    self.sgd = sgd
+    self.ignore = ignore
     
     self.tmpdir = 'tmpfiles'
     if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
@@ -233,37 +250,46 @@ class VW:
       assert not self.lda_alpha
       assert not self.minibatch
 
+    if self.sgd:
+      assert not self.adaptive
+      assert not self.invariant
+      assert not self.normalized
+
     self.working_directory = working_dir or os.getcwd()
 
   def vw_base_command(self, base):
     l = base
-    if self.no_model      is   None: l.append('-f %s' % self.get_model_file())
-    if self.bits        is not None: l.append('-b %d' % self.bits)
-    if self.learning_rate     is not None: l.append('--learning_rate=%f' % self.learning_rate)
-    if self.l1          is not None: l.append('--l1=%f' % self.l1)
-    if self.l2          is not None: l.append('--l2=%f' % self.l2)
-    if self.initial_t       is not None: l.append('--initial_t=%f' % self.initial_t)
-    if self.quadratic       is not None: l.append('-q %s' % self.quadratic)
-    if self.cubic         is not None: l.append('--cubic %s' % self.cubic)
-    if self.power_t       is not None: l.append('--power_t=%f' % self.power_t)
-    if self.loss        is not None: l.append('--loss_function=%s' % self.loss)
-    if self.decay_learning_rate is not None: l.append('--decay_learning_rate=%f' % self.decay_learning_rate)
-    if self.lda         is not None: l.append('--lda=%d' % self.lda)
-    if self.lda_D         is not None: l.append('--lda_D=%d' % self.lda_D)
-    if self.lda_rho       is not None: l.append('--lda_rho=%f' % self.lda_rho)
-    if self.lda_alpha       is not None: l.append('--lda_alpha=%f' % self.lda_alpha)
-    if self.minibatch       is not None: l.append('--minibatch=%d' % self.minibatch)
-    if self.oaa         is not None: l.append('--oaa=%d' % self.oaa)
-    if self.unique_id       is not None: l.append('--unique_id=%d' % self.unique_id)
-    if self.total         is not None: l.append('--total=%d' % self.total)
-    if self.node        is not None: l.append('--node=%d' % self.node)
-    if self.span_server     is not None: l.append('--span_server=%s' % self.span_server)
-    if self.mem         is not None: l.append('--mem=%d' % self.mem)
-    if self.audit:               l.append('--audit')
-    if self.bfgs:              l.append('--bfgs')
-    if self.adaptive:            l.append('--adaptive')
-    if self.nn          is not None: l.append('--nn=%d' % self.nn)
-    if self.holdout_off     is not None: l.append('--holdout_off')
+    if self.no_model is None: l.append('-f %s' % self.get_model_file())
+    if self.bits is not None: l.append('-b %d' % self.bits)
+    if self.learning_rate is not None: l.append('--learning_rate=%f' % self.learning_rate)
+    if self.l1 is not None: l.append('--l1=%f' % self.l1)
+    if self.l2 is not None: l.append('--l2=%f' % self.l2)
+    if self.initial_t is not None: l.append('--initial_t=%f' % self.initial_t)
+    if self.quadratic is not None: l.append('-q %s' % self.quadratic)
+    if self.cubic is not None: l.append('--cubic %s' % self.cubic)
+    if self.power_t is not None: l.append('--power_t=%f' % self.power_t)
+    if self.loss is not None: l.append('--loss_function=%s' % self.loss)
+    if self.decay_learning_rate is not None: l.append('--decay_learning_rate=%f' % self.decay_learning_rate)    
+    if self.lda is not None: l.append('--lda=%d' % self.lda)
+    if self.lda_D is not None: l.append('--lda_D=%d' % self.lda_D)
+    if self.lda_rho is not None: l.append('--lda_rho=%f' % self.lda_rho)
+    if self.lda_alpha is not None: l.append('--lda_alpha=%f' % self.lda_alpha)
+    if self.minibatch is not None: l.append('--minibatch=%d' % self.minibatch)
+    if self.oaa is not None: l.append('--oaa=%d' % self.oaa)
+    if self.unique_id is not None: l.append('--unique_id=%d' % self.unique_id)
+    if self.total is not None: l.append('--total=%d' % self.total)
+    if self.node is not None: l.append('--node=%d' % self.node)
+    if self.span_server is not None: l.append('--span_server=%s' % self.span_server)
+    if self.mem is not None: l.append('--mem=%d' % self.mem)
+    if self.audit: l.append('--audit')
+    if self.bfgs: l.append('--bfgs')
+    if self.adaptive: l.append('--adaptive')
+    if self.invariant: l.append('--invariant')
+    if self.normalized: l.append('--normalized')
+    if self.sgd: l.append('--sgd')
+    if self.ignore is not None: l.append('--ignore=%d' % self.ignore)
+    if self.nn is not None: l.append('--nn=%d' % self.nn)
+    if self.holdout_off is not None: l.append('--holdout_off')
     return ' '.join(l)
 
   def vw_train_command(self, cache_file):
@@ -271,15 +297,12 @@ class VW:
       return self.vw_base_command([self.vw]) + ' --passes %d --cache_file %s -i %s' \
         % (self.passes, cache_file, self.get_model_file())
     else:
-      self.log.debug('No existing model file or not options.incremental')
+      print 'No existing model file or not options.incremental'
       return self.vw_base_command([self.vw]) + ' --passes %d --cache_file %s' \
           % (self.passes, cache_file)
 
   def vw_test_command(self, model_file, prediction_file):
     return self.vw_base_command([self.vw]) + ' -t -i %s -r %s' % (model_file, prediction_file)
-
-  def vw_test_command_library(self, model_file):
-    return self.vw_base_command([]) + ' -t -i %s' % (model_file)
 
   def training(self, instances):    
     f = self.save_tmp_file(instances, True)
@@ -303,23 +326,20 @@ class VW:
     os.close(_)
     return self.tmpdir + '/' + f.split('\\')[-1]
 
-
-  def predicting_library(self):
-    self.start_predicting_library()
-    self.end_predicting_library()
-
   def start_training(self, training_file):
-    cache_file = self.get_cache_file()
+    cache_file = self.tmpdir + '/' + self.handle + '.cache'
     model_file = self.get_model_file()
 
     # Remove the old cache and model files
     if not self.incremental:
-      safe_remove(cache_file)
-      safe_remove(model_file)
+      try: os.remove(cache_file)
+      except OSError: pass
+      try: os.remove(model_file)
+      except OSError: pass
 
     # Run the actual training
-    self.vw_process = self.make_subprocess(
-      self.vw_train_command(cache_file), training_file)
+    cmd = self.vw_train_command(cache_file)
+    self.vw_process = self.make_subprocess(cmd, training_file)
 
   def close_process(self):
     # Close the process
@@ -332,7 +352,7 @@ class VW:
     model_file = self.get_model_file()
     # Be sure that the prediction file has a unique filename, since many processes may try to
     # make predictions using the same model at the same time
-    pred_file = self.get_prediction_file()
+    pred_file = self.handle + '.prediction'
     prediction_file = self.tmpfile(pred_file)    
 
     self.vw_process = self.make_subprocess(
@@ -351,9 +371,9 @@ class VW:
     stdout = open('nul', 'w')
     stderr = open('nul', 'w') if self.silent else sys.stderr
 
-    self.log.debug('Running command: "%s"' % str(command))
+    print 'Running command: "%s"' % str(command)
     commands = shlex.split(str(command))
-    commands.append(file)
+    commands += ['-d', file]
     result = subprocess.Popen(commands, 
         stdout=stdout, stderr=stderr, 
         close_fds=sys.platform != "win32", 
@@ -367,25 +387,4 @@ class VW:
     else:
       return self.tmpdir + '/' + self.filename
 
-  def get_cache_file(self):
-    return self.tmpdir + '/' +  '%s.cache' % (self.handle)
-
-  def get_prediction_file(self):
-    return '%s.prediction' % (self.handle)
-
-def safe_remove(f):
-  try: os.remove(f)
-  except OSError: pass
-
-class VPLogger:
-  def debug(self, s):
-    print '[DEBUG] %s' % s
-
-  def info(self, s):
-    print '[INFO] %s' % s
-
-  def warning(self, s):
-    print '[WARNING] %s' % s
-
-  def error(self, s):
-    print '[ERROR] %s' % s
+  
