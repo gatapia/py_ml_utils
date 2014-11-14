@@ -502,13 +502,13 @@ def _df_split(self, y, train_ratio=0.5):
     _create_s_from_templage(y, y_test)
   )
 
-def _df_cv(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
-  return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring)
+def _df_cv(self, clf, y, n_samples=25000, n_iter=3, scoring=None, n_jobs=-1):  
+  return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring, n_jobs)
 
-def _df_cv_ohe(self, clf, y, n_samples=25000, n_iter=3, scoring=None):  
-  return _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring)
+def _df_cv_ohe(self, clf, y, n_samples=25000, n_iter=3, scoring=None, n_jobs=-1):  
+  return _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring, n_jobs)
 
-def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None):  
+def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None, n_jobs=-1):  
   if hasattr(y, 'values'): y = y.values
   n_samples = min(n_samples, len(y), X.shape[0])
   if len(y) < X.shape[0]: X = X[:len(y)]
@@ -516,7 +516,7 @@ def _df_cv_impl_(X, clf, y, n_samples=25000, n_iter=3, scoring=None):
     scoring = 'roc_auc'
   start('starting ' + `n_iter` + ' fold cross validation (' + 
       `n_samples` + ' samples) w/ metric: ' + `scoring or cfg['scoring']`)
-  cv = do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True)
+  cv = do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True, n_jobs=n_jobs)
   stop('done cross validation:\n  [CV]: ' + ("{0:.3f} (+/-{1:.3f})").format(cv[0], cv[1]))  
   return cv
 

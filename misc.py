@@ -158,8 +158,9 @@ def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_
   dbg(gs.best_params_, gs.best_score_)
   return gs
 
-def dump(file, data):
+def dump(file, data):  
   if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
+  if not '.' in file: file += '.pickle'
   joblib.dump(data, 'data/pickles/' + file);
 
 def load(file):
