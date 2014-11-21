@@ -165,6 +165,7 @@ def dump(file, data):
 
 def load(file):
   file = 'data/pickles/' + file
+  if not '.' in file: file += '.pickle'
   if not os.path.isfile(file): return None
   return joblib.load(file);
 
