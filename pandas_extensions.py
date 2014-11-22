@@ -318,6 +318,7 @@ def _get_col_aggregate(col, mode):
   if mode == 'median': return col.median()
   if mode == 'min': return col.min()
   if mode == 'max': return col.max()
+  if mode == 'max+1': return col.max()+1
   return mode
 
 def _df_outliers(self, stds=3):  
@@ -336,7 +337,9 @@ def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):
   fill = _get_col_aggregate(col, fill_mode)
   vc = col.value_counts()
   under = vc[vc <= threshold]    
-  if under.shape[0] > 0: col[col.isin(under.index)] = fill
+  if under.shape[0] > 0: 
+    debug('column [' + col.name + '] threshold[' + `threshold` + '] fill[' + `fill` + '] num of rows[' + `len(under.index)` + ']')
+    col[col.isin(under.index)] = fill
   return col
 
 def _s_compress(self, aggresiveness=0, sparsify=False):  
@@ -397,7 +400,7 @@ def _s_compress(self, aggresiveness=0, sparsify=False):
 def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):      
   start('binning categorical outliers, min_size: ' + `min_size`)
 
-  for c in self.categoricals():     
+  for c in self.categoricals() + self.indexes():     
     self[c] = self[c].categorical_outliers(min_size, fill_mode)
 
   stop('done binning categorical outliers')
