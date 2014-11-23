@@ -536,6 +536,15 @@ def _df_predict(self, clf, y, X_test=None):
     X_train = self[:len(y)]
   return clf.fit(X_train, y).predict(X_test)
 
+def _df_predict_proba(self, clf, y, X_test=None):    
+  reseed(clf)
+  X_train = self
+  if X_test is None and self.shape[0] > len(y):
+    X_test = self[len(y):]
+    X_train = self[:len(y)]
+  return clf.fit(X_train, y).predict_proba(X_test)
+
+
 def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):    
   X = self.copy()  
   X['__tmpy'] = y.copy()
