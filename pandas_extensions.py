@@ -673,6 +673,52 @@ def _df_to_vw(self, out_file_or_y=None, y=None, weights=None, convert_zero_ys=Tr
 
   return lines
 
+def _df_to_libfm(self, out_file_or_y=None, y=None):
+  columns_indexes = {}
+  max_col = {'index':0}
+  lines = []
+  out_file = out_file_or_y if type(out_file_or_y) is str else None
+  
+  if y is None and out_file_or_y is not None and out_file is None: 
+    y = out_file_or_y
+
+  def get_col_index(name):
+    if name not in columns_indexes:
+      columns_indexes[name] = max_col['index']
+      max_col['index'] += 1
+    return str(columns_indexes[name])
+
+  def impl(outfile):
+    def add_cols(new_line, columns, is_numerical):
+      if len(columns) == 0: return
+      for c in columns:
+        val = row[c]
+        if val == 0: continue
+        name = c
+        val = str(val)
+        if not is_numerical: 
+          name = c + '_' + str(val)
+          val = '1'            
+        new_line.append(get_col_index(name) + ':' + val)
+        
+    for idx, row in self.iterrows():
+      label = '1.0' if y is None or idx >= len(y) else str(float(y[idx]))
+      new_line = [label]      
+      
+      add_cols(new_line, self.numericals(), True)
+      add_cols(new_line, self.categoricals() + self.indexes() + self.binaries(), False)
+
+      line = ' '.join(new_line)
+      lines.append(line)
+      if outfile: outfile.write(line + '\n')
+  
+  if out_file:
+    with open(out_file,"wb") as outfile:    
+      impl(outfile)
+  else: impl(None)
+
+  return lines
+
 # Extensions
 def extend_df(name, function):
   df = pd.DataFrame({})
@@ -707,6 +753,7 @@ extend_df('noise_filter', _df_noise_filter)
 extend_df('predict', _df_predict)
 extend_df('save_csv', _df_save_csv)
 extend_df('to_vw', _df_to_vw)
+extend_df('to_libfm', _df_to_libfm)
 
 extend_df('categoricals', _df_categoricals)
 extend_df('indexes', _df_indexes)
