@@ -161,13 +161,17 @@ def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_
 def dump(file, data):  
   if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
   if not '.' in file: file += '.pickle'
-  joblib.dump(data, 'data/pickles/' + file);
+  joblib.dump(data, 'data/pickles/' + file);  
 
-def load(file):
-  file = 'data/pickles/' + file
-  if not '.' in file: file += '.pickle'
-  if not os.path.isfile(file): return None
-  return joblib.load(file);
+def load(file, opt_fallback=None):
+  full_file = 'data/pickles/' + file
+  if not '.' in full_file: full_file += '.pickle'
+  if os.path.isfile(full_file): return joblib.load(full_file);
+  if opt_fallback is None: return None
+  data = opt_fallback()
+  dump(file, data)
+  return data
+  
 
 def save_data(file, data):
   if (file.endswith('z')):
