@@ -230,10 +230,16 @@ def _df_engineer(self, name, columns=None, quiet=False):
     cols = columns if columns else self.numericals()
     for n in cols: self.engineer('lg(' + n + ')', quiet=True)    
     return self
+  elif len(args) == 0 and func == 'sqrt':
+    cols = columns if columns else self.numericals()
+    for n in cols: self.engineer('sqrt(' + n + ')', quiet=True)    
+    return self
   elif func == 'pow': 
     self[new_name] = np.power(self[args[0]], int(args[1]))
   elif func == 'lg': 
     self[new_name] = np.log(self[args[0]])
+  elif func == 'sqrt': 
+    self[new_name] = np.sqrt(self[args[0]])
   elif func.startswith('rolling_'):
     if len(args) == 1:
       cols = columns if columns else self.numericals()

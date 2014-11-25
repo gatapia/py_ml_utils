@@ -82,6 +82,26 @@ class T(unittest.TestCase):
         ['c', 3, 6, 9, math.log(6)],
         ], 'object')))
 
+  def test_engineer_sqrt_on_whole_data_frame(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_2': [1, 2, 3], 'n_3': [4, 5, 6], 'n_4': [7, 8, 9]})    
+    df.engineer('sqrt()')
+    self.assertTrue(np.array_equal(df.values, 
+      np.array([
+        ['a', 1, 4, 7, math.sqrt(1), math.sqrt(4), math.sqrt(7)],
+        ['b', 2, 5, 8, math.sqrt(2), math.sqrt(5), math.sqrt(8)],
+        ['c', 3, 6, 9, math.sqrt(3), math.sqrt(6), math.sqrt(9)],
+        ], 'object')))
+
+  def test_engineer_sqrt_on_cols(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_2': [1, 2, 3], 'n_3': [4, 5, 6], 'n_4': [7, 8, 9]})    
+    df.engineer('sqrt(n_3)')
+    self.assertTrue(np.array_equal(df.values, 
+      np.array([
+        ['a', 1, 4, 7, math.sqrt(4)],
+        ['b', 2, 5, 8, math.sqrt(5)],
+        ['c', 3, 6, 9, math.sqrt(6)],
+        ], 'object')))
+
   def test_engineer_rolling_sum_on_single_col(self):
     df = pd.DataFrame({'n_1': [10, 12, 13, 15, 2, 12, 34]})
     col = 'rolling_sum(n_1,3)'

@@ -10,7 +10,9 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
     self.shift_val = 0
 
   def _do_transform(self, y):
-    if self.transformation == 'log': 
+    if hasattr(self.transformation, '__call__'):
+      return self.transformation(y)      
+    elif self.transformation == 'log': 
       ymin = y.min()
       if ymin < 0:
         self.shift_val = ymin * -1.01
