@@ -3,20 +3,34 @@ import pandas as pd
 import scipy as scipy
 import cPickle as pickle
 from collections import Counter
-import gzip, time, math, datetime, random, os
+import gzip, time, math, datetime, random, os, gc
 from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
+from sklearn.externals import joblib
 
-sys_seed = 0
-random.seed(sys_seed)
-np.random.seed(sys_seed) 
+cfg = {
+  'sys_seed':0,
+  'debug':True,
+  'scoring': None
+}
+
+random.seed(cfg['sys_seed'])
+np.random.seed(cfg['sys_seed']) 
 NA = 99999.0
 
-def _reseed(clf):
-  clf.random_state = sys_seed
-  random.seed(sys_seed)
-  np.random.seed(sys_seed) 
+def reseed(clf):
+  clf.random_state = cfg['sys_seed']
+  random.seed(cfg['sys_seed'])
+  np.random.seed(cfg['sys_seed']) 
+  return clf
+
+
+def model_name(clf):
+  name = type(clf).__name__
+  if hasattr(clf, 'base_classifier'): 
+    name += '[' + model_name(clf.base_classifier) + ']'
+  return name
 
 def get_col_aggregate(col, mode):
   '''
@@ -40,7 +54,7 @@ def scale(X, min_max=None):
   return scaler.fit_transform(X)
 
 def fillnas(X, categoricals=[], categorical_fill='mode', numerical_fill='mean', inplace=False):
-  if not (inplace): X = X.copy()
+  if not inplace: X = X.copy()
   for c in X.columns: 
     fill_mode = categorical_fill if c in categoricals else numerical_fill
     if fill_mode != 'none':
@@ -60,36 +74,42 @@ def one_hot_encode(X, columns, drop_originals=True):
 # Does a search through n_samples_arr to test what n_samples is acceptable
 #   for cross validation.  No use using very high n_samples if not required
 def do_n_sample_search(clf, X, y, n_samples_arr):
-  _reseed(clf)
+  reseed(clf)
 
   scores = []
   sems = []
   for n_samples in n_samples_arr:
     cv = do_cv(clf, X, y, n_samples, quiet=True)
-    print "n_samples:", n_samples, "cv:", cv
+    dbg("n_samples:", n_samples, "cv:", cv)
     scores.append(cv[0])
     sems.append(cv[1])
   max_score_idx = scores.index(max(scores))
   min_sem_idx = sems.index(min(sems))
-  print "best score n_samples:", n_samples_arr[max_score_idx], "score:", scores[max_score_idx]
-  print "best sem n_samples:", n_samples_arr[min_sem_idx], "sem:", sems[min_sem_idx]
+  dbg("best score n_samples:", n_samples_arr[max_score_idx], "score:", scores[max_score_idx])
+  dbg("best sem n_samples:", n_samples_arr[min_sem_idx], "sem:", sems[min_sem_idx])
   return (scores, sems)
 
 
-def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed=True):
+def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed_classifier=True, n_jobs=-1):
   t0 = time.time()
-  if reseed: _reseed(clf)
-  if (n_samples > X.shape[0]): n_samples = X.shape[0]
-  cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=sys_seed) \
-    if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=sys_seed)
+  if reseed_classifier: reseed(clf)
+  try:
+    if (n_samples > X.shape[0]): n_samples = X.shape[0]
+  except: pass
+  cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed']) \
+    if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
 
-  test_scores = cross_validation.cross_val_score(clf, X, y, cv=cv, scoring=scoring, fit_params=fit_params)
-  if (not(quiet)): 
-    print '%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60)
+  print 'lenX:', len(X), 'leny:', len(y)
+  test_scores = cross_validation.cross_val_score(
+    clf, X, y, cv=cv, scoring=scoring or cfg['scoring'], 
+    fit_params=fit_params, n_jobs=n_jobs)
+  print 
+  if not(quiet): 
+    dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
 
 def split(X, y, test_split=0.1):
-  X, y = utils.shuffle(X, y, random_state=sys_seed)  
+  X, y = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
   num_split = math.floor(X.shape[0] * test_split) if type(test_split) is float else test_split
   test_X, test_y = X[:num_split], y[:num_split]
   X, y = X[num_split:], y[num_split:]
@@ -106,7 +126,7 @@ def proba_scores(y_true, y_preds, scoring=metrics.roc_auc_score):
 
 def score(clf, X, y, test_split=0.1, auc=False):
   X, y, test_X, test_y = split(X, y, test_split)
-  _reseed(clf)
+  reseed(clf)
   clf.fit(X, y)
   predictions = clf.predict_proba(test_X).T[1] if auc else clf.predict(test_X)
   return show_score(test_y, predictions)
@@ -119,28 +139,43 @@ def show_score(y_true, y_pred):
   if (utils.multiclass.type_of_target(y_true) == 'binary' and
       utils.multiclass.type_of_target(y_pred) == 'continuous'):
     auc = metrics.roc_auc_score(y_true, y_pred)
-    print 'auc: ', auc
+    dbg('auc: ', auc)
     return auc
 
   if (utils.multiclass.type_of_target(y_true) == 'continuous' and
       utils.multiclass.type_of_target(y_pred) == 'continuous'):
     r2 = metrics.r2_score(y_true, y_pred)
-    print 'r2: ', r2
+    dbg('r2: ', r2)
     return r2
 
   accuracy = metrics.accuracy_score(y_true, y_pred)
   matrix = metrics.confusion_matrix(y_true, y_pred)
   report = metrics.classification_report(y_true, y_pred)
-  print 'Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report
+  dbg('Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report)
   return accuracy
 
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_params=None):
-  _reseed(clf)
-  gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring, fit_params=fit_params)
-  X2, y2 = utils.shuffle(X, y, random_state=sys_seed)  
+  reseed(clf)
+  gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
+  X2, y2 = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
   gs.fit(X2[:n_samples], y2[:n_samples])
-  print(gs.best_params_, gs.best_score_)
+  dbg(gs.best_params_, gs.best_score_)
   return gs
+
+def dump(file, data):  
+  if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
+  if not '.' in file: file += '.pickle'
+  joblib.dump(data, 'data/pickles/' + file);  
+
+def load(file, opt_fallback=None):
+  full_file = 'data/pickles/' + file
+  if not '.' in full_file: full_file += '.pickle'
+  if os.path.isfile(full_file): return joblib.load(full_file);
+  if opt_fallback is None: return None
+  data = opt_fallback()
+  dump(file, data)
+  return data
+  
 
 def save_data(file, data):
   if (file.endswith('z')):
@@ -169,21 +204,43 @@ def read_data(file):
     f.close()
     return data
 
+def read_lines(file, ignore_header=False):
+  with open(file) as f:
+    if ignore_header: f.readline()
+    return f.readlines()
+
 def to_csv_gz(data_dict, file):
-  in_name = file + '.uncompressed'
-  pd.DataFrame(data_dict).to_csv(in_name, index=False)  
+  compress = file.endswith('.gz')
+  in_name = file + '.uncompressed' if compress else file
+  df = data_dict
+  if type(df) is not pd.DataFrame: df = pd.DataFrame(df)
+  df.to_csv(in_name, index=False)  
+  if compress: gzip_file(in_name, file)
+
+def gzip_file(in_name, out_name):  
   f_in = open(in_name, 'rb')
-  f_out = gzip.open(file, 'wb')
+  f_out = gzip.open(out_name, 'wb')
   f_out.writelines(f_in)
   f_out.close()
   f_in.close()
   os.remove(in_name) 
 
-def to_index(df, columns, drop_originals=False):
-  to_drop = []
+def to_index(df_or_series, columns=[], drop_originals=False, inplace=False):
+  if type(df_or_series) is pd.Series:
+    labels = pd.Categorical.from_array(df_or_series).codes
+    return pd.Series(labels)
+
+  if not inplace: df_or_series = df_or_series.copy()
+
   for col in columns:
-    if type(col) is int: col = df.columns[col]
-    labels = pd.Categorical.from_array(df[col]).labels
-    df[col + '_indexes'] = pd.Series(labels)
-    to_drop.append(col)
-  return df.drop(to_drop, 1) if drop_originals else df
+    if type(col) is int: col = df_or_series.columns[col]
+    if not col in df_or_series.columns: continue
+    
+    df_or_series[col + '_indexes'] = to_index(df_or_series[col])
+    if drop_originals: 
+      df_or_series.drop(col, 1, inplace=True)
+      gc.collect()
+  return df_or_series
+
+def dbg(*args):
+  if cfg['debug']: print args

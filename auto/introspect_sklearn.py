@@ -1,6 +1,8 @@
 
-import inspect, warnings, sklearn, psutil, numpy, re
+import inspect, warnings, sklearn, psutil, numpy, re, time
 import numpy as np
+from misc import *
+from OverridePredictFunctionClassifier import *
 
 from sklearn import cluster, covariance, \
   decomposition, ensemble, feature_extraction, feature_selection, \
@@ -15,8 +17,10 @@ def get_python_processes():
     except: return false
   return len([p for p in psutil.get_process_list() if is_python_process])
 
-def get_classifiers(module, done=[]):
-  ignores = ['MemmapingPool', 'PicklingPool']
+def get_classifiers(module=None, done=[]):
+  if module is None: module = sklearn
+  ignores = ['MemmapingPool', 'PicklingPool', 'externals', 
+    'datasets', 'EllipticEnvelope', 'OneClassSVM']
   classifiers = []
   X, y = sklearn.datasets.make_regression(20, 5)
   for name, cls in inspect.getmembers(module):                
@@ -25,7 +29,10 @@ def get_classifiers(module, done=[]):
     if inspect.ismodule(cls):       
       if cls.__name__.startswith('_') or \
           cls.__name__.endswith('_') or \
-          not cls.__name__.startswith('sklearn'): continue
+          not cls.__name__.startswith('sklearn') or\
+          cls.__name__ in done or \
+          any([t in ignores for t in cls.__name__.split('.')]): continue
+      done.append(cls.__name__)
       classifiers += get_classifiers(cls, done)      
 
     if inspect.isclass(cls):             
@@ -50,21 +57,40 @@ def get_classifiers(module, done=[]):
   return classifiers
 
 all_scores = []
-def test_all_classifiers(classifiers, X, y, scoring=None):
-  global all_scores
+cached_classifiers = None
+
+def test_all_classifiers(X, y, classifiers=None, scoring=None, 
+    ignore=[], use_proba=False):
+  global all_scores, cached_classifiers
   all_scores = []
+  if classifiers is None: 
+    print 'calling get_classifiers'    
+    if cached_classifiers is None:
+      classifiers = get_classifiers(sklearn)
+      cached_classifiers = classifiers
+    else:
+      classifiers = cached_classifiers
+    print 'got ' + `len(classifiers)` + ' classifiers'
+
   for classifier in classifiers:    
+    if classifier.__name__ in ignore: continue
     try:
-      scores = sklearn.cross_validation.cross_val_score(
-          classifier(), X, y, scoring=scoring)
-      score = numpy.mean(scores)      
-      all_scores.append({'name':classifier.__name__, 'score': score})      
-      print 'classifier:', classifier.__name__, 'score:', score
-    except:
-      print 'classifier:', classifier.__name__, 'error - not included in results'
+      t0 = time.time()
+      clf = classifier()
+      if hasattr(clf, 'n_estimators'): clf.n_estimators = 200
+      if use_proba and not hasattr(clf, 'predict_proba'):
+        func = 'decision_function' if hasattr(clf, 'decision_function') else 'predict'
+        clf = OverridePredictFunctionClassifier(clf, func)      
+        
+      score, sem = do_cv(clf, X.copy(), y, len(y), n_iter=3, scoring=scoring, quiet=True)
+      took = (time.time() - t0) / 60.
+      all_scores.append({'name':classifier.__name__, 'score': score, 'sem': sem, 'took': took})      
+      print 'classifier:', classifier.__name__, 'score:', score, 'sem:', sem, 'took: %.1fm' % took
+    except Exception, e:
+      print 'classifier:', classifier.__name__, 'error - not included in results - ' + str(e)
   all_scores = sorted(all_scores, key=lambda t: t['score'], reverse=True)  
   print '\t\tsuccessfull classifiers\n', '\n'.join(
-    map(lambda d: '{:>35}{:10.4f}'.format(d['name'], d['score']), all_scores))
+    map(lambda d: '{:>35}{:10.4f}(+-{:5.4f}){:10.2f}m'.format(d['name'], d['score'], d['sem'], d['took']), all_scores))
   print all_scores
 
 def parse_classifier_meta(classifier):
@@ -138,11 +164,12 @@ def test_classifier_with_arg_customisation(meta):
 
 
 
+'''
 if __name__ == '__main__':
-  classifiers = get_classifiers(sklearn)
   boston_data = datasets.load_boston()
   X = boston_data['data']
   y = boston_data['target']
-  test_all_classifiers(classifiers, X, y)
+  test_all_classifiers(X, y)
   # metas = [parse_classifier_meta(clf) for clf in classifiers]
   # ignore = [test_classifier_with_arg_customisation(m) for m in metas]
+'''

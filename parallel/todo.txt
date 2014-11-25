@@ -1,0 +1,27 @@
+Distributed Model Finder:
+- Define data sets
+  - Numerical only
+  - Categoricals only
+  - Categoricals to index
+  - One hot encoded
+  - One hot encoded + numericals
+  - Custom splits
+    - i.e. One data set per country or other category before splitting into 
+      above sets
+- Create a definition (JSON) of all available classifiers/regressors with
+  their limitiations and some basic configuration:
+  - Supports sparse
+  - Supports categoricals
+  - Supports indexes
+  - Needs one hot encoding
+  - Base settings that differ results dramatically, like kernel is svm.  This
+    can be a complex structure of settings ie. so for some kernels some settings
+    not supported.  Perhaps another classifier defined for such large settings.
+- Build all classifiers to be tested and put them in a queue with all 
+  compatible datasets.
+- Launch all engines to take items from queue and process a CV and return 
+  results to hub. Errors also sent to hub
+- Data not to be sent accross network but stored on each machines local data 
+  dir.
+- Hub to save results as they come in.
+- User can then analyse results interactively
