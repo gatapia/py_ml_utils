@@ -121,14 +121,15 @@ class _VW(sklearn.base.BaseEstimator):
 
   def predict_proba(self, X):    
     self.vw_.predicting(X)
-    return np.asarray(list(self.vw_.read_predictions_()))
+    preds = list(self.vw_.read_predictions_())
+    predictions = np.asarray(map(lambda p: 1 / (1 + math.exp(-p)), preds))
+    return predictions
 
 class VowpalWabbitRegressor(sklearn.base.RegressorMixin, _VW):
   pass
 
 class VowpalWabbitClassifier(sklearn.base.ClassifierMixin, _VW):
-  def predict_proba(self, X):
-    return super(VowpalWabbitClassifier, self).predict(X)
+  pass
 
 class VW:
   def __init__(self,
