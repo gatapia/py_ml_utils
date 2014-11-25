@@ -673,7 +673,7 @@ def _df_to_vw(self, out_file_or_y=None, y=None, weights=None, convert_zero_ys=Tr
 
   return lines
 
-def _df_to_libfm(self, out_file_or_y=None, y=None):
+def _df_to_libfm(self, out_file_or_y=None, y=None, convert_zero_ys=True):
   columns_indexes = {}
   max_col = {'index':0}
   lines = []
@@ -703,6 +703,7 @@ def _df_to_libfm(self, out_file_or_y=None, y=None):
         
     for idx, row in self.iterrows():
       label = '1.0' if y is None or idx >= len(y) else str(float(y[idx]))
+      if convert_zero_ys and label == '0.0': label = '-1.0'
       new_line = [label]      
       
       add_cols(new_line, self.numericals(), True)
