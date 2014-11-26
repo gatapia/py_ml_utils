@@ -178,9 +178,11 @@ def load(file, opt_fallback=None):
   dump(file, data)
   return data
   
+def get_write_file_stream(file):
+  return gzip.GzipFile(file, 'wb') if file.endswith('.gz') else open(file, "wb")
 
 def save_data(file, data):
-  if (file.endswith('z')):
+  if (file.endswith('.gz')):
     f = gzip.GzipFile(file, 'wb')
     f.write(pickle.dumps(data, 0))
     f.close()

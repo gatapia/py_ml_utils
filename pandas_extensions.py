@@ -639,8 +639,7 @@ def _df_compress(self, aggresiveness=0, sparsify=False):
         _format_bytes(diff_bytes), diff_bytes * 100.0 / original_bytes))
   return self
 
-def _df_to_vw(self, out_file_or_y=None, y=None, weights=None, convert_zero_ys=True):  
-  lines = []
+def _df_to_vw(self, out_file_or_y=None, y=None, weights=None, convert_zero_ys=True):    
   out_file = out_file_or_y if type(out_file_or_y) is str else None
   
   if y is None and out_file_or_y is not None and out_file is None: 
@@ -654,7 +653,8 @@ def _df_to_vw(self, out_file_or_y=None, y=None, weights=None, convert_zero_ys=Tr
         val = row[c]
         if val == 0: continue
         new_line.append(c + (':' if is_numerical else '_') + str(val))
-        
+      
+    lines = []  
     for idx, row in self.iterrows():
       label = '1.0' if y is None or idx >= len(y) else str(float(y[idx]))
       if convert_zero_ys and label == '0.0': label = '-1.0'
@@ -669,15 +669,16 @@ def _df_to_vw(self, out_file_or_y=None, y=None, weights=None, convert_zero_ys=Tr
       add_cols(new_line, self.categoricals() + self.indexes() + self.binaries(), False)
 
       line = ' '.join(new_line)
-      lines.append(line)
+  
       if outfile: outfile.write(line + '\n')
+      else: lines.append(line)
+    return lines
   
   if out_file:
-    with open(out_file,"wb") as outfile:    
-      impl(outfile)
-  else: impl(None)
-
-  return lines
+    with get_write_file_stream(out_file) as outfile:    
+      return impl(outfile)
+  else: 
+    return impl(None)
 
 def _df_to_libfm(self, out_file_or_y=None, y=None, convert_zero_ys=True):
   columns_indexes = {}
@@ -707,6 +708,7 @@ def _df_to_libfm(self, out_file_or_y=None, y=None, convert_zero_ys=True):
           val = '1'            
         new_line.append(get_col_index(name) + ':' + val)
         
+    lines = []
     for idx, row in self.iterrows():
       label = '1.0' if y is None or idx >= len(y) else str(float(y[idx]))
       if convert_zero_ys and label == '0.0': label = '-1.0'
@@ -718,13 +720,13 @@ def _df_to_libfm(self, out_file_or_y=None, y=None, convert_zero_ys=True):
       line = ' '.join(new_line)
       lines.append(line)
       if outfile: outfile.write(line + '\n')
+      else: lines.append(line)
+    return lines
   
   if out_file:
-    with open(out_file,"wb") as outfile:    
-      impl(outfile)
-  else: impl(None)
-
-  return lines
+    with get_write_file_stream(out_file) as outfile:    
+      return impl(outfile)
+  else: return impl(None)
 
 # Extensions
 def extend_df(name, function):
