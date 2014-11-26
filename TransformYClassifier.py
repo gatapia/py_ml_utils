@@ -4,12 +4,13 @@ import pandas as pd
 import math
 
 class TransformYClassifier(BaseEstimator, ClassifierMixin):
-  def __init__(self, base_classifier, transformation):    
+  def __init__(self, base_classifier, transformation, transform_on_fit=True, anti_transform_on_predict=True):    
     self.base_classifier = base_classifier
     self.transformation = transformation
     self.shift_val = 0
+    self.transform_on_fit = transform_on_fit
 
-  def _do_transform(self, y):
+  def _do_transformation_impl(self, y):
     if hasattr(self.transformation, '__call__'):
       return self.transformation(y)      
     elif self.transformation == 'log': 
@@ -19,17 +20,27 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
       return np.log(y + self.shift_val)
     elif self.transformation == 'arcsinh':
       return np.arcsinh(y)
-    else: raise Exception('Not Supported: ' + self.transformation)    
+    else: raise Exception('Not Supported: ' + `self.transformation`)    
+
+  def _on_fit_transform(self, y):
+    if not self.transform_on_fit: return y    
+    return self._do_transformation_impl(y)
   
-  def _do_anti_transform(self, y):
-    if self.transformation == 'log': return np.power(math.e, y) - self.shift_val
+  def _post_predict_transform(self, y):
+    if not self.transform_on_fit: return self._do_transformation_impl(y)
+    if not anti_transform_on_predict: return y
+
+    elif self.transformation == 'log': return np.power(math.e, y) - self.shift_val
     elif self.transformation == 'arcsinh': return np.sinh(y)
     else: raise Exception('Not Supported: ' + self.transformation)
 
 
   def fit(self, X, y):    
-    self.base_classifier.fit(X, self._do_transform(y))
+    self.base_classifier.fit(X, self._on_fit_transform(y))
     return self
 
   def predict(self, X): 
-    return self._do_anti_transform(self.base_classifier.predict(X))
+    return self._post_predict_transform(self.base_classifier.predict(X))
+
+  def predict_proba(self, X): 
+    return self._post_predict_transform(self.base_classifier.predict_proba(X))
