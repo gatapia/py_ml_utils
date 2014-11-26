@@ -110,8 +110,8 @@ class _LibFM(sklearn.base.BaseEstimator):
 
 
 
-class LibFM2Regressor(sklearn.base.RegressorMixin, _LibFM):
+class LibFMRegressor(sklearn.base.RegressorMixin, _LibFM):
   pass
 
-class LibFM2Classifier(sklearn.base.ClassifierMixin, _LibFM):
+class LibFMClassifier(sklearn.base.ClassifierMixin, _LibFM):
   pass

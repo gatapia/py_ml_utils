@@ -12,7 +12,8 @@ from sklearn.externals import joblib
 cfg = {
   'sys_seed':0,
   'debug':True,
-  'scoring': None
+  'scoring': None,
+  'indent': 0
 }
 
 random.seed(cfg['sys_seed'])
@@ -93,6 +94,7 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
 def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed_classifier=True, n_jobs=-1):
   t0 = time.time()
   if reseed_classifier: reseed(clf)
+  if type(n_samples) is float: n_samples = int(n_samples)
   try:
     if (n_samples > X.shape[0]): n_samples = X.shape[0]
   except: pass
@@ -154,6 +156,7 @@ def show_score(y_true, y_pred):
   return accuracy
 
 def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_params=None):
+  if type(n_samples) is float: n_samples = int(n_samples)
   reseed(clf)
   gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
   X2, y2 = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
