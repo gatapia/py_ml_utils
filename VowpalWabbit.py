@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import
-import os, sys, subprocess, shlex, tempfile, time, sklearn.base
+import os, sys, subprocess, shlex, tempfile, time, sklearn.base, math
 import numpy as np
 
 _vw_default_path = 'utils/lib/vw'
