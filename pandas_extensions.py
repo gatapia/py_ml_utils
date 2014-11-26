@@ -639,51 +639,15 @@ def _df_compress(self, aggresiveness=0, sparsify=False):
         _format_bytes(diff_bytes), diff_bytes * 100.0 / original_bytes))
   return self
 
-def _df_to_vw(self, out_file_or_y=None, y=None, weights=None, convert_zero_ys=True):    
-  out_file = out_file_or_y if type(out_file_or_y) is str else None
-  
-  if y is None and out_file_or_y is not None and out_file is None: 
-    y = out_file_or_y
-
-  def impl(outfile):
-    def add_cols(new_line, columns, is_numerical):
-      if len(columns) == 0: return
-      new_line.append('|' + ('n' if is_numerical else 'c'))
-      for c in columns:
-        val = row[c]
-        if val == 0: continue
-        new_line.append(c + (':' if is_numerical else '_') + str(val))
-      
-    lines = []  
-    for idx, row in _chunked_iterator(self):
-      label = '1.0' if y is None or idx >= len(y) else str(float(y[idx]))
-      if convert_zero_ys and label == '0.0': label = '-1.0'
-      if weights is not None and idx < len(weights):      
-        w = weights[idx]
-        if w != 1: label += ' ' + `w`
-        label += ' \'' + `idx`
-      
-      new_line = [label]      
-      
-      add_cols(new_line, self.numericals(), True)
-      add_cols(new_line, self.categoricals() + self.indexes() + self.binaries(), False)
-
-      line = ' '.join(new_line)
-  
-      if outfile: outfile.write(line + '\n')
-      else: lines.append(line)
-    return lines
-  
-  if out_file:
-    with get_write_file_stream(out_file) as outfile:    
-      return impl(outfile)
-  else: 
-    return impl(None)
-
-def _df_to_libfm(self, out_file_or_y=None, y=None, convert_zero_ys=True):
+def __df_to_lines(df, 
+    out_file_or_y=None, 
+    y=None, 
+    weights=None, 
+    convert_zero_ys=True,
+    output_categorical_value=True,
+    tag_feature_sets=True):    
   columns_indexes = {}
   max_col = {'index':0}
-  lines = []
   out_file = out_file_or_y if type(out_file_or_y) is str else None
   
   if y is None and out_file_or_y is not None and out_file is None: 
@@ -698,27 +662,34 @@ def _df_to_libfm(self, out_file_or_y=None, y=None, convert_zero_ys=True):
   def impl(outfile):
     def add_cols(new_line, columns, is_numerical):
       if len(columns) == 0: return
-      for c in columns:
-        val = row[c]
-        if val == 0: continue
-        name = c
-        val = str(val)
-        if not is_numerical: 
+      if tag_feature_sets: new_line.append('|' + ('n' if is_numerical else 'c'))
+      for c in columns:        
+        val = row[c] 
+        if val == 0: continue        
+        if not is_numerical:
           name = c + '_' + str(val)
-          val = '1'            
-        new_line.append(get_col_index(name) + ':' + val)
-        
-    lines = []
-    for idx, row in _chunked_iterator(self):
+          if output_categorical_value: line = get_col_index(name) + ':1'
+          else: line = get_col_index(name)
+        else:           
+          line = get_col_index(c) + ':' + str(val)
+        new_line.append(line)
+      
+    lines = []  
+    for idx, row in _chunked_iterator(df):
       label = '1.0' if y is None or idx >= len(y) else str(float(y[idx]))
       if convert_zero_ys and label == '0.0': label = '-1.0'
+      if weights is not None and idx < len(weights):      
+        w = weights[idx]
+        if w != 1: label += ' ' + `w`
+        label += ' \'' + `idx`
+      
       new_line = [label]      
       
-      add_cols(new_line, self.numericals(), True)
-      add_cols(new_line, self.categoricals() + self.indexes() + self.binaries(), False)
+      add_cols(new_line, df.numericals(), True)
+      add_cols(new_line, df.categoricals() + df.indexes() + df.binaries(), False)
 
       line = ' '.join(new_line)
-      lines.append(line)
+  
       if outfile: outfile.write(line + '\n')
       else: lines.append(line)
     return lines
@@ -726,7 +697,27 @@ def _df_to_libfm(self, out_file_or_y=None, y=None, convert_zero_ys=True):
   if out_file:
     with get_write_file_stream(out_file) as outfile:    
       return impl(outfile)
-  else: return impl(None)
+  else: 
+    return impl(None)
+
+def _df_to_vw(self, out_file_or_y=None, y=None, weights=None):    
+  return __df_to_lines(self, out_file_or_y, y, weights, 
+      convert_zero_ys=True,
+      output_categorical_value=False,
+      tag_feature_sets=True)  
+
+def _df_to_svmlight(self, out_file_or_y=None, y=None):
+  return __df_to_lines(self, out_file_or_y, y, None,
+      convert_zero_ys=True,
+      output_categorical_value=True,
+      tag_feature_sets=False)
+
+def _df_to_libfm(self, out_file_or_y=None, y=None):
+  return __df_to_lines(self, out_file_or_y, y, None,
+      convert_zero_ys=False,
+      output_categorical_value=True,
+      tag_feature_sets=False)
+  
 
 def _chunked_iterator(df, chunk_size=1000000):
   start = 0
@@ -773,6 +764,8 @@ extend_df('predict_proba', _df_predict_proba)
 extend_df('save_csv', _df_save_csv)
 extend_df('to_vw', _df_to_vw)
 extend_df('to_libfm', _df_to_libfm)
+extend_df('to_svmlight', _df_to_svmlight)
+extend_df('to_xgboost', _df_to_svmlight)
 
 extend_df('categoricals', _df_categoricals)
 extend_df('indexes', _df_indexes)

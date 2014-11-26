@@ -444,24 +444,40 @@ class T(unittest.TestCase):
     df.to_vw(file, y, weights)
     with open(file) as f: lines = f.readlines()
     os.remove(file)
+    print lines
     np.testing.assert_array_equal([
-      '-1.0 \'0 |n n_price:0.23 n_sqft:0.25 |c c_year_2006.0\n',
-      '1.0 2 \'1 |n n_price:0.18 n_sqft:0.15 |c c_year_1976.0\n',
-      '-1.0 0.5 \'2 |n n_price:0.53 n_sqft:0.32 |c c_year_1924.0\n',
+      
+      '-1.0 \'0 |n 0:0.23 1:0.25 |c 2\n',
+      '1.0 2 \'1 |n 0:0.18 1:0.15 |c 3\n',
+      '-1.0 0.5 \'2 |n 0:0.53 1:0.32 |c 4\n',
       ], lines)
 
   def test_to_libfm(self):
     df = pd.DataFrame({'n_price': [0.23, 0.18, 0.53], 'n_sqft': [0.25, 0.15, 0.32], 'c_year': [2006, 1976, 1924]})
     y = pd.Series([0, 1, 0])
-    file = 'test_libfm_file.vw'    
+    file = 'test_libfm_file.libfm'    
     df.to_libfm(file, y)
     with open(file) as f: lines = f.readlines()
     os.remove(file)
     np.testing.assert_array_equal([
-      '-1.0 n_price:0.23 n_sqft:0.25 c_year_2006.0:1\n',
-      '1.0 n_price:0.18 n_sqft:0.15 c_year_1976.0:1\n',
-      '-1.0 n_price:0.53 n_sqft:0.32 c_year_1924.0:1\n',
+      '0.0 0:0.23 1:0.25 2:1\n',
+      '1.0 0:0.18 1:0.15 3:1\n',
+      '0.0 0:0.53 1:0.32 4:1\n',
       ], lines)
+
+  def test_to_svmlight(self):
+    df = pd.DataFrame({'n_price': [0.23, 0.18, 0.53], 'n_sqft': [0.25, 0.15, 0.32], 'c_year': [2006, 1976, 1924]})
+    y = pd.Series([0, 1, 0])
+    file = 'test_libfm_file.svmlight'    
+    df.to_svmlight(file, y)
+    with open(file) as f: lines = f.readlines()
+    os.remove(file)
+    np.testing.assert_array_equal([
+      '-1.0 0:0.23 1:0.25 2:1\n',
+      '1.0 0:0.18 1:0.15 3:1\n',
+      '-1.0 0:0.53 1:0.32 4:1\n',
+      ], lines)
+
 
   def test_describe_data(self):
     pass
