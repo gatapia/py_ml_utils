@@ -306,12 +306,21 @@ class VW:
     return self.vw_base_command([self.vw]) + ' -t -i %s -r %s' % (model_file, prediction_file)
 
   def training(self, instances):    
+    if type(instances) is str:
+      self.start_training(instances)
+      self.close_process()  
+      return
+
     f = self.save_tmp_file(instances, True)
     self.start_training(f)
     self.close_process()
     os.remove(f)
 
   def predicting(self, instances):
+    if type(instances) is str:
+      self.start_predicting(instances)
+      self.close_process()  
+      return
     f = self.save_tmp_file(instances, False)
     self.start_predicting(f)
     self.close_process()
