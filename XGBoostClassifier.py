@@ -46,7 +46,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
 
   def fit(self, X, y):    
     if hasattr(y, 'values'): y = y.values
-    X = xgb.DMatrix(X, y)
+    X = X if hasattr(X, 'handle') else xgb.DMatrix(X, y)
     param = {
       'silent':0 if self.silent else 1, 
       'use_buffer': int(self.use_buffer),
@@ -73,9 +73,9 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     return self
 
   def predict(self, X): 
-    X = xgb.DMatrix(X)
+    X = X if hasattr(X, 'handle') else xgb.DMatrix(X)
     return self.bst.predict(X)
   
   def predict_proba(self, X): 
-    X = xgb.DMatrix(X)
+    X = X if hasattr(X, 'handle') else xgb.DMatrix(X)
     return self.bst.predict(X)

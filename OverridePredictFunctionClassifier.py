@@ -21,9 +21,8 @@ class OverridePredictFunctionClassifier(BaseEstimator, ClassifierMixin):
   def predict_proba(self, X):
     if self.predict_function == 'decision_function':
       df = self.base_classifier.decision_function(X)
-      scaler = MinMaxScaler((0, 1))
-      df = scaler.fit_transform(df)
-      return np.array([1 - df, df]).T
+      df = df.T[0]
+      return 1.0 / (1.0 + np.exp(-0.5 * preprocessing.scale(df)))
     elif self.predict_function == 'predict':
       return self.base_classifier.predict(X)
     else:
