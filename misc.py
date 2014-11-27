@@ -1,3 +1,5 @@
+import sys
+sys.path.append('utils/lib')
 import numpy as np
 import pandas as pd
 import scipy as scipy
