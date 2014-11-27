@@ -295,11 +295,11 @@ class VW:
 
   def vw_train_command(self, cache_file):
     if os.path.exists(self.get_model_file()) and self.incremental:
-      return self.vw_base_command([self.vw]) + ' --passes %d --cache_file %s -i %s' \
+      return self.vw_base_command([self.vw]) + ' --passes %d -c --cache_file %s -i %s' \
         % (self.passes, cache_file, self.get_model_file())
     else:
       print 'No existing model file or not options.incremental'
-      return self.vw_base_command([self.vw]) + ' --passes %d --cache_file %s' \
+      return self.vw_base_command([self.vw]) + ' --passes %d -c --cache_file %s' \
           % (self.passes, cache_file)
 
   def vw_test_command(self, model_file, prediction_file):
