@@ -1,4 +1,5 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn import preprocessing
 import numpy as np
 import pandas as pd
 import math
@@ -44,3 +45,9 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
 
   def predict_proba(self, X): 
     return self._post_predict_transform(self.base_classifier.predict_proba(X))
+
+def get_sigmoid_transform(beta):
+  return lambda y: 0.5 * ((2 * abs(y - 0.5)) ** beta) * np.sign(y - 0.5) + 0.5
+
+def get_logistic_transform(k):
+  return lambda y: 1.0 / (1.0 + np.exp(-k * preprocessing.scale(y)))
