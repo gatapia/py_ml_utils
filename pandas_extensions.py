@@ -548,8 +548,9 @@ def _df_predict_proba(self, clf, y, X_test=None):
   if X_test is None and self.shape[0] > len(y):
     X_test = self[len(y):]
     X_train = self[:len(y)]
-  return clf.fit(X_train, y).predict_proba(X_test)
-
+  probas = clf.fit(X_train, y).predict_proba(X_test)
+  if probas.ndim == 1: return probas
+  return probas.T[1]
 
 def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):    
   X = self.copy()  
