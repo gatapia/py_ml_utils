@@ -104,9 +104,8 @@ def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scori
     if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
 
   test_scores = cross_validation.cross_val_score(
-    clf, X, y, cv=cv, scoring=scoring or cfg['scoring'], 
-    fit_params=fit_params, n_jobs=n_jobs)
-  print 
+      clf, X, y, cv=cv, scoring=scoring or cfg['scoring'], 
+      fit_params=fit_params, n_jobs=n_jobs)
   if not(quiet): 
     dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
