@@ -108,7 +108,7 @@ def _df_one_hot_encode(self, dtype=np.float):
   
   matrix = ohe_sparse if not others else sparse.hstack((ohe_sparse, others_df))
   stop('done one_hot_encoding')
-  return matrix
+  return matrix.tocsr()
 
 def _df_to_indexes(self, drop_origianls=False, sparsify=False):
   start('indexing categoricals in data frame. Note: NA gets turned into max index (255, 65535, etc)')  
