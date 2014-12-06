@@ -64,7 +64,9 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
       ' -o ' + self._model_file + ' --alpha ' + `self.alpha` + \
       ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
       ' --dropout ' + `self.dropout` + ' --bits ' + `self.bits` + \
-      ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout`
+      ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` + \
+      ' --columns ' + '|;|'.join(self.column_names)
+
     if self.interaction: cmd += ' --interactions'
     if self.sparse: cmd += ' --sparse'
     self._make_subprocess(cmd)
@@ -73,7 +75,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     predictions_file = self._get_tmp_file('predictions')
     cmd = 'pypy ' + _ftrl_default_path + \
       ' predict --test ' + test_file + ' -i ' + self._model_file + \
-      ' -p ' + predictions_file
+      ' --columns ' + '|;|'.join(self.column_names) + ' -p ' + predictions_file
     self._make_subprocess(cmd)
     return predictions_file
 
@@ -84,7 +86,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
       ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
       ' --dropout ' + `self.dropout` + ' --bits ' + `self.bits` + \
       ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` +\
-      ' -p ' + predictions_file
+      ' --columns ' + '|;|'.join(self.column_names) + ' -p ' + predictions_file
     if self.interaction: cmd += ' --interactions'
     if self.sparse: cmd += ' --sparse'
     self._make_subprocess(cmd)

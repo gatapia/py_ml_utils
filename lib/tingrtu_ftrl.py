@@ -165,7 +165,7 @@ def logloss(p, y):
   return -log(p) if y == 1. else -log(1. - p)
 
 
-def data(f_train, D):
+def data(f_train, D, columns):
   ''' GENERATOR: Apply hash-trick to the original csv row
            and for simplicity, we one-hot-encode everything
 
@@ -178,7 +178,7 @@ def data(f_train, D):
          we only need the index since all values are either 0 or 1
       y: y = 1 if positive example else negative
   '''
-
+  
   for t, row in enumerate(DictReader(f_train)):
     y = 0.
     if 'y' in row:
@@ -189,6 +189,7 @@ def data(f_train, D):
     # build x
     x = [0]  # 0 is the index of the bias term
     for key in row:
+      if key not in columns: continue
       value = row[key]
 
       # one-hot encode everything with hash trick
@@ -238,11 +239,12 @@ Perform training and prediction based on FTRL Optimal algorithm, with dropout ad
   parser.add_argument("--interactions", action = "store_true")
   parser.add_argument("--sparse", action = "store_true")
   parser.add_argument("-v", '--verbose', default = 3, type = int)
+  parser.add_argument("-c", '--columns', default = '', type = str)
   
   args = parser.parse_args()
   for v in vars(args).keys():
     stderr.write("%s => %s\n" % (v, str(vars(args)[v])))
-    
+  args.columns = args.columns.split('|;|')
   return args
 
 
@@ -286,7 +288,7 @@ def train_learner(train, args):
      
      if train != "/dev/stdin": f_train.seek(0,0)
 
-     for t, x, y in data(f_train, D):
+     for t, x, y in data(f_train, D, args.columns):
        # data is a generator
        #  t: just a instance counter
        #  x: features
@@ -335,7 +337,7 @@ def predict_learner(learner, test, predictions_file, args):
   if test[-3:] == ".gz": f_test = gzip.open(test, "rb")
   else: f_test = open(test, "r")
 
-  for t, x, y in data(f_test, D):
+  for t, x, y in data(f_test, D, args.columns):
     predictions.append('%.5f' % learner.predict(x))
   f_test.close()
 
