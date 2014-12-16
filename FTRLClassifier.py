@@ -7,6 +7,16 @@ from pandas_extensions import *
 
 _ftrl_default_path = 'utils/lib/tingrtu_ftrl.py'
 
+def save_ftrl_csv(out_file, X, columns, opt_y=None):
+  created_df = False
+  if type(X) is not pd.DataFrame:      
+    created_df = True
+    X = pd.DataFrame(data=X, columns=columns)
+  if opt_y is not None: X['y'] = opt_y.values
+  X.save_csv(out_file)
+  if not created_df and opt_y is not None: X.remove('y')
+
+
 class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, column_names, alpha=0.15, beta=1.1, L1=1.1, L2=1.1, bits=23,  
                 n_epochs=1,holdout=100,interaction=False, dropout=0.8, 
@@ -102,13 +112,13 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def _get_train_file(self, X, y):
     if type(X) is str: return X    
     f = self._get_tmp_file('train')
-    self._save_csv(f, X, y)
+    save_ftrl_csv(f, X, self.column_names, y)
     return f
 
   def _get_test_file(self, X):
     if type(X) is str: return X
     f = self._get_tmp_file('test')
-    self._save_csv(f, X)
+    save_ftrl_csv(f, X, self.column_names)
     return f
 
   def _get_tmp_file(self, purpose, ext='csv.gz'):
@@ -133,12 +143,3 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
         (result.pid, result.command, result.returncode))
 
     return result
-
-  def _save_csv(self, out_file, X, opt_y=None):
-    created_df = False
-    if type(X) is not pd.DataFrame:      
-      created_df = True
-      X = pd.DataFrame(data=X, columns=self.column_names)
-    if opt_y is not None: X['y'] = opt_y.values
-    X.save_csv(out_file)
-    if not created_df and opt_y is not None: X.remove('y')
