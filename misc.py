@@ -209,6 +209,11 @@ def read_data(file):
     f.close()
     return data
 
+def read_df(file, nrows=None):
+  compression = 'gzip' if file.endswith('.gz') else None
+  nrows = None if nrows == None else int(nrows)
+  return pd.read_csv(file, compression=compression, nrows=nrows);
+
 def read_lines(file, ignore_header=False):
   with open(file) as f:
     if ignore_header: f.readline()

@@ -164,7 +164,6 @@ def logloss(p, y):
   p = max(min(p, 1. - 10e-15), 10e-15)
   return -log(p) if y == 1. else -log(1. - p)
 
-
 def data(f_train, D, columns):
   ''' GENERATOR: Apply hash-trick to the original csv row
            and for simplicity, we one-hot-encode everything
@@ -178,25 +177,27 @@ def data(f_train, D, columns):
          we only need the index since all values are either 0 or 1
       y: y = 1 if positive example else negative
   '''
-  
-  for t, row in enumerate(DictReader(f_train)):
+  positive_counts = 0
+  for t, row in enumerate(DictReader(f_train)):    
     y = 0.
     if 'y' in row:
-      if row['y'] == '1':
+      if len(row['y']) > 0 and float(row['y']) == 1.:
         y = 1.
+        positive_counts += 1
       del row['y']
  
     # build x
     x = [0]  # 0 is the index of the bias term
     for key in row:
       if key not in columns: continue
+      
       value = row[key]
 
       # one-hot encode everything with hash trick
       index = abs(hash(key + '_' + value)) % D
       x.append(index)
 
-    yield t, x, y
+    yield t, x, y, positive_counts
 
 
 ##############################################################################
@@ -288,7 +289,8 @@ def train_learner(train, args):
      
      if train != "/dev/stdin": f_train.seek(0,0)
 
-     for t, x, y in data(f_train, D, args.columns):
+     pc = 0
+     for t, x, y, pc in data(f_train, D, args.columns):
        # data is a generator
        #  t: just a instance counter
        #  x: features
@@ -315,14 +317,13 @@ def train_learner(train, args):
          next_report *= 2
 
      if count != 0:
-       stderr.write('Epoch %d finished, %d/%d samples per pass, holdout logloss: %f, elapsed time: %s\n' % (
-          e, c, t, loss/count, str(datetime.now() - start)))
+       stderr.write('Epoch %d finished, %d/%d samples per pass, holdout logloss: %f, elapsed time: %s\n, positives: %d ' % (
+          e, c, t, loss/count, str(datetime.now() - start), pc))
      else:
-       stderr.write('Epoch %d finished, %d/%d samples per pass, suspicious holdout logloss: %f/%f, elapsed time: %s\n' % (
-          e, c, t, loss, count, str(datetime.now() - start)))
+       stderr.write('Epoch %d finished, %d/%d samples per pass, suspicious holdout logloss: %f/%f, elapsed time: %s\n, positives: %d ' % (
+          e, c, t, loss, count, str(datetime.now() - start), pc))
 
   f_train.close()
-
   return learner
   
 
@@ -337,8 +338,10 @@ def predict_learner(learner, test, predictions_file, args):
   if test[-3:] == ".gz": f_test = gzip.open(test, "rb")
   else: f_test = open(test, "r")
 
-  for t, x, y in data(f_test, D, args.columns):
+  pc = 0
+  for t, x, y, pc in data(f_test, D, args.columns):
     predictions.append('%.5f' % learner.predict(x))
+  stderr.write("Positives in test: %d " % pc)      
   f_test.close()
 
   if predictions_file[-3:] == ".gz": f = gzip.open(predictions_file, "wb")

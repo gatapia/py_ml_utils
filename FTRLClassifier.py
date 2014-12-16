@@ -27,6 +27,9 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     self._model_file = None
     self._train_file = None
     self._train_file_keep = False
+    
+    for cn in column_names: 
+      if cn.startswith('n_'): raise Exception('Invlida columns, numericals not allowed')
 
   def fit(self, X, y, delay=True):
     train_file = self._get_train_file(X, y)
@@ -136,6 +139,6 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     if type(X) is not pd.DataFrame:      
       created_df = True
       X = pd.DataFrame(data=X, columns=self.column_names)
-    if opt_y is not None: X['y'] = opt_y
+    if opt_y is not None: X['y'] = opt_y.values
     X.save_csv(out_file)
     if not created_df and opt_y is not None: X.remove('y')
