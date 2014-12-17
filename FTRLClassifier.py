@@ -7,9 +7,10 @@ from pandas_extensions import *
 
 _ftrl_default_path = 'utils/lib/tingrtu_ftrl.py'
 
-def save_ftrl_csv(out_file, X, columns, opt_y=None):
+def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
   created_df = False
   if type(X) is not pd.DataFrame:      
+    if columns is None: raise Exception('When X is not a data frame columns are expected')
     created_df = True
     X = pd.DataFrame(data=X, columns=columns)
   if opt_y is not None: X['y'] = opt_y.values
