@@ -181,7 +181,7 @@ def data(f_train, D, columns):
   for t, row in enumerate(DictReader(f_train)):    
     y = 0.
     if 'y' in row:
-      if len(row['y']) > 0 and float(row['y']) == 1.:
+      if row['y'].startswith('1'):
         y = 1.
         positive_counts += 1
       del row['y']
@@ -243,8 +243,9 @@ Perform training and prediction based on FTRL Optimal algorithm, with dropout ad
   parser.add_argument("-c", '--columns', default = '', type = str)
   
   args = parser.parse_args()
-  for v in vars(args).keys():
-    stderr.write("%s => %s\n" % (v, str(vars(args)[v])))
+  if args.verbose > 1:
+    for v in vars(args).keys():
+      stderr.write("%s => %s\n" % (v, str(vars(args)[v])))
   args.columns = args.columns.split('|;|')
   return args
 
@@ -340,8 +341,7 @@ def predict_learner(learner, test, predictions_file, args):
 
   pc = 0
   for t, x, y, pc in data(f_test, D, args.columns):
-    predictions.append('%.5f' % learner.predict(x))
-  stderr.write("Positives in test: %d " % pc)      
+    predictions.append('%.5f' % learner.predict(x))  
   f_test.close()
 
   if predictions_file[-3:] == ".gz": f = gzip.open(predictions_file, "wb")

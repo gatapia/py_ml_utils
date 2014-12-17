@@ -20,7 +20,7 @@ def save_ftrl_csv(out_file, X, columns, opt_y=None):
 class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, column_names, alpha=0.15, beta=1.1, L1=1.1, L2=1.1, bits=23,  
                 n_epochs=1,holdout=100,interaction=False, dropout=0.8, 
-                sparse=False, seed=0):    
+                sparse=False, seed=0, verbose=True):    
     self.column_names = column_names
     self.alpha = alpha
     self.beta = beta
@@ -33,6 +33,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     self.n_epochs = n_epochs
     self.sparse=sparse
     self.seed=seed    
+    self.verbose=verbose
     self.tmpdir = 'tmpfiles'
     self._model_file = None
     self._train_file = None
@@ -56,14 +57,14 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def predict(self, X): 
     return self.predict_proba(X)
   
-  def predict_proba(self, X): 
+  def predict_proba(self, X, reuse=False): 
     test_file = self._get_test_file(X)
     if self._train_file is not None:
       predictions_file = self._do_train_test_command(self._train_file, test_file)
       if not self._train_file_keep: os.remove(self._train_file)
     else:
       predictions_file = self._do_test_command(test_file)
-      os.remove(self._model_file)
+      if not reuse: os.remove(self._model_file)
     if not type(X) is str: os.remove(test_file)    
     
     predictions = self._read_predictions(predictions_file)  
@@ -78,6 +79,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
       ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
       ' --dropout ' + `self.dropout` + ' --bits ' + `self.bits` + \
       ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` + \
+      ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names)
 
     if self.interaction: cmd += ' --interactions'
@@ -88,6 +90,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     predictions_file = self._get_tmp_file('predictions')
     cmd = 'pypy ' + _ftrl_default_path + \
       ' predict --test ' + test_file + ' -i ' + self._model_file + \
+      ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names) + ' -p ' + predictions_file
     self._make_subprocess(cmd)
     return predictions_file
@@ -98,7 +101,8 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
       ' --test ' + test_file + ' --alpha ' + `self.alpha` + \
       ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
       ' --dropout ' + `self.dropout` + ' --bits ' + `self.bits` + \
-      ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` +\
+      ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` + \
+      ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names) + ' -p ' + predictions_file
     if self.interaction: cmd += ' --interactions'
     if self.sparse: cmd += ' --sparse'
@@ -130,7 +134,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     stdout = open('nul', 'w')
     stderr = sys.stderr
 
-    print 'Running command: "%s"' % str(command)
+    if self.verbose: print 'Running command: "%s"' % str(command)
     commands = shlex.split(str(command))
     result = subprocess.Popen(commands, 
         stdout=stdout, stderr=stderr, 
@@ -139,7 +143,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     result.command = command
 
     if result.wait() != 0:
-      raise Exception("pypy %d (%s) exited abnormally with return code %d" % \
-        (result.pid, result.command, result.returncode))
+      raise Exception("%s - exited abnormally with return code %d" % \
+        (result.command, result.returncode))
 
     return result
