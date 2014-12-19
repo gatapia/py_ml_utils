@@ -220,12 +220,10 @@ def read_lines(file, ignore_header=False):
     return f.readlines()
 
 def to_csv_gz(data_dict, file):
-  compress = file.endswith('.gz')
-  in_name = file + '.uncompressed' if compress else file
+  if file.endswith('.gz'): file = gzip.open(file, "wb")
   df = data_dict
   if type(df) is not pd.DataFrame: df = pd.DataFrame(df)
-  df.to_csv(in_name, index=False)  
-  if compress: gzip_file(in_name, file)
+  df.to_csv(file, index=False)  
 
 def gzip_file(in_name, out_name):  
   f_in = open(in_name, 'rb')

@@ -13,7 +13,7 @@ def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
     if columns is None: raise Exception('When X is not a data frame columns are expected')
     created_df = True
     X = pd.DataFrame(data=X, columns=columns)
-  else if columns is not None and type(columns) is pd.Series:    
+  elif columns is not None and type(columns) is pd.Series:    
     opt_y = columns
     
   if opt_y is not None: X['y'] = opt_y.values

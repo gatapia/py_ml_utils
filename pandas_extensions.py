@@ -21,7 +21,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.decomposition import PCA
 from sklearn import utils, cross_validation
 from scipy import sparse
-import itertools, logging, time, datetime, random
+import itertools, logging, time, datetime, random, gzip
 from scipy.ndimage.filters import *
 
 logging.basicConfig(level=logging.DEBUG, 
@@ -564,10 +564,8 @@ def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):
   return (X.drop(['__tmpy'], 1), y)
 
 def _df_save_csv(self, file):    
-  compress = file.endswith('.gz')
-  in_name = file + '.uncompressed' if compress else file
-  self.to_csv(in_name, index=False)  
-  if compress: gzip_file(in_name, file)
+  if file.endswith('.gz'): file = gzip.open(file, "wb")
+  self.to_csv(file, index=False)  
   return self
 
 def _df_nbytes(self):    

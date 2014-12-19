@@ -478,6 +478,25 @@ class T(unittest.TestCase):
       '-1.0 0:0.53 1:0.32 4:1\n',
       ], lines)
 
+  def test_save_csv(self):
+    rows = 10000
+    '''
+    Before optimisations took (rows=1M):    
+    to csv takes:     8-9s
+    to csv.gz takes:  319s
+    
+    After (rows=1M):
+    to csv.gz takes: 24s
+
+    '''
+    df = pd.DataFrame({'col_1': range(rows), 'col_2': range(rows), 'col_3': range(rows)})    
+    def impl(file):
+      df.save_csv(file)      
+      df2 = read_df(file)
+      os.remove(file)    
+      self.assertEquals(rows, df2.shape[0])
+    impl('test.csv.gz')
+
 
   def test_describe_data(self):
     pass
