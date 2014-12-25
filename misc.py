@@ -210,6 +210,8 @@ def read_data(file):
     return data
 
 def read_df(file, nrows=None):
+  if file.endswith('.pickle'): return load(file)
+  
   compression = 'gzip' if file.endswith('.gz') else None
   nrows = None if nrows == None else int(nrows)
   return pd.read_csv(file, compression=compression, nrows=nrows);

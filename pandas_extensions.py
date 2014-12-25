@@ -400,7 +400,8 @@ def _s_compress(self, aggresiveness=0, sparsify=False):
       return self.astype(_get_optimal_numeric_type(self.dtype, min(self), max(self)))
     else:
       raise Exception(self.name + ' expected "int" or "float" type got: ', str(self.dtype))
-  else : raise Exception(self.name + ' is not supported')
+  else : 
+    print self.name + ' is not supported, ignored during compression'
   return self
 
 def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):      
@@ -441,15 +442,7 @@ def _df_append_right(self, df_or_s):
 
 def _df_append_bottom(self, df):  
   debug('warning: DataFrame.append_bottom always returns a new DataFrame')
-  new_df = pd.DataFrame(columns=self.columns)
-  for c in self.columns:
-    values1 = self[c].to_dense().values if _is_sparse(self[c]) else self[c].values
-    values2 = df[c].to_dense().values if _is_sparse(df[c]) else df[c].values
-    data = np.append(values1, values2)
-    new_df[c] = pd.Series(data, dtype=self[c].dtype)
-    if _is_sparse(self[c]):
-      new_df[c] = new_df[c].to_sparse(fill_value=self[c].fill_value)
-  return new_df
+  return pd.concat([self, df], ignore_index=True)
 
 def _create_df_from_templage(template, data, index=None):
   df = pd.DataFrame(columns=template.columns, data=data, index=index)
@@ -563,7 +556,10 @@ def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):
   y = X['__tmpy']
   return (X.drop(['__tmpy'], 1), y)
 
-def _df_save_csv(self, file):    
+def _df_save_csv(self, file):   
+  if file.endswith('.pickle'): 
+    dump(file, self)
+    return self
   if file.endswith('.gz'): file = gzip.open(file, "wb")
   self.to_csv(file, index=False)  
   return self
