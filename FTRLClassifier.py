@@ -6,7 +6,7 @@ import xgboost as xgb
 from pandas_extensions import *
 
 # _ftrl_default_path = 'utils/lib/tingrtu_ftrl.py'
-_ftrl_default_path = 'utils/lib/tingrtu_ftrl_2.py'
+_ftrl_default_path = 'utils/lib/tingrtu_ftrl.py'
 
 def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
   created_df = False
