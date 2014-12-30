@@ -163,20 +163,14 @@ def data(f_train, D, columns):
       D: the max index that we can hash to
 
     YIELDS:
-      ID: id of the instance, mainly useless
       x: a list of hashed and one-hot-encoded 'indices'
          we only need the index since all values are either 0 or 1
       y: y = 1 if positive example else negative
   '''
 
   for t, row in enumerate(DictReader(f_train)):    
-    # process id
-    ID = row['id']
-    del row['id']
-
-    # process clicks
     y = 0.
-    if 'click' in row:
+    if 'y' in row:
       if row['y'] == '1':
         y = 1.
       del row['y']
@@ -218,22 +212,21 @@ Perform training and prediction based on FTRL Optimal algorithm, with dropout ad
 """)
   parser.add_argument('action', type=str,
             help='action to perform: train   / predict')
-  parser.add_argument('-t', "--train", default = "/dev/stdin")
-  parser.add_argument('--test', default = "/dev/stdin")
-  parser.add_argument('-p', "--predictions", default = "/dev/stdout")
+  parser.add_argument('-t', "--train", default="/dev/stdin")
+  parser.add_argument('--test', default="/dev/stdin")
+  parser.add_argument('-p', "--predictions", default="/dev/stdout")
   parser.add_argument("-o", "--outmodel")
   parser.add_argument("-i", "--inmodel")
-  parser.add_argument('--alpha', default = 0.015, type = float)
-  parser.add_argument('--beta', default = 2, type = float)
-  parser.add_argument('--L1', default = 0, type = float)
-  parser.add_argument('--L2', default = 0, type = float)
-  parser.add_argument('--dropout', default = 0.8, type = float)
-  parser.add_argument('--bits', default = 23, type = int)
-  parser.add_argument('--n_epochs', default = 1, type = int)
-  parser.add_argument('--holdout', default = 100, type = int)
-  parser.add_argument("--interactions", action = "store_true")
-  parser.add_argument("-v", '--verbose', default = 3, type = int)
-  parser.add_argument("-c", '--columns', default = '', type = str)
+  parser.add_argument('--alpha', default=0.1, type=float)
+  parser.add_argument('--beta', default=1.0, type=float)
+  parser.add_argument('--L1', default=1.0, type=float)
+  parser.add_argument('--L2', default=1.0, type=float)
+  parser.add_argument('--bits', default=20, type=int)
+  parser.add_argument('--n_epochs', default=1, type=int)
+  parser.add_argument('--holdout', default=None, type=int)
+  parser.add_argument("--interactions", action="store_true")
+  parser.add_argument("-v", '--verbose', default=3, type=int)
+  parser.add_argument("-c", '--columns', default='', type=str)
   
   args = parser.parse_args()
   if args.verbose > 1:
@@ -272,36 +265,36 @@ def train_learner(train, args):
          args.L1, args.L2, D, 
          interaction=args.interactions)
     
-  for e in xrange(args.n_epoch):
-  loss = 0.
-  count = 0
-     if train != "/dev/stdin": f_train.seek(0,0)
+  for e in xrange(args.n_epochs):
+    loss = 0.
+    count = 0
+    if train != "/dev/stdin": f_train.seek(0,0)
 
-  for t, x, y in data(f_train, D, args.columns):
-    #  t: just a instance counter
-    #  x: features
-    #  y: label (click)
+    for t, x, y in data(f_train, D, args.columns):
+      #  t: just a instance counter
+      #  x: features
+      #  y: label (click)
 
-    # step 1, get prediction from learner
-    p = learner.predict(x)
+      # step 1, get prediction from learner
+      p = learner.predict(x)
 
-    if holdout and t % holdout == 0:
-      # step 2-1, calculate validation loss
-      #       we do not train with the validation data so that our
-      #       validation loss is an accurate estimation
-      #
-      # holdafter: train instances from day 1 to day N
-      #      validate with instances from day N + 1 and after
-      #
-      # holdout: validate with every N instance, train with others
-      loss += logloss(p, y)
-      count += 1
-    else:
-      # step 2-2, update learner with label (click) information
-      learner.update(x, p, y)
+      if holdout > 0 and t % holdout == 0:
+        # step 2-1, calculate validation loss
+        #       we do not train with the validation data so that our
+        #       validation loss is an accurate estimation
+        #
+        # holdafter: train instances from day 1 to day N
+        #      validate with instances from day N + 1 and after
+        #
+        # holdout: validate with every N instance, train with others
+        loss += logloss(p, y)
+        count += 1
+      else:
+        # step 2-2, update learner with label (click) information
+        learner.update(x, p, y)
 
-  print('Epoch %d finished, validation logloss: %f, elapsed time: %s' % (
-    e, loss/count, str(datetime.now() - start)))
+    print('Epoch %d finished, validation logloss: %f, elapsed time: %s' % (
+      e, loss/count if count > 0 else -1, str(datetime.now() - start)))
 
   f_train.close()
   return learner
@@ -315,9 +308,8 @@ def predict_learner(learner, test, predictions_file, args):
   if test[-3:] == ".gz": f_test = gzip.open(test, "rb")
   else: f_test = open(test, "r")
 
-  pc = 0
-  for t, x, y, pc in data(f_test, D, args.columns):
-  predictions.append('%.5f' % learner.predict(x))  
+  for t, x, y in data(f_test, D, args.columns):
+    predictions.append('%.5f' % learner.predict(x))  
   f_test.close()
 
   if predictions_file[-3:] == ".gz": f = gzip.open(predictions_file, "wb")
@@ -334,13 +326,15 @@ def main_fast_dropout():
   learner = None
   
   if args.action in ["train", "train_predict"]:
-  random.seed(0)
+    random.seed(0)
+
   learner = train_learner(args.train, args)
   if args.outmodel != None:
     write_learner(learner, args.outmodel, args)
     
   if args.action in ["predict", "train_predict"]:
-  random.seed(0)
+    random.seed(0)
+
   if learner == None:
     learner = load_learner(args.inmodel)
   predict_learner(learner, args.test, args.predictions, args)

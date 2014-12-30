@@ -5,9 +5,6 @@ sys.path.append('lib')
 import xgboost as xgb
 from pandas_extensions import *
 
-# _ftrl_default_path = 'utils/lib/tingrtu_ftrl.py'
-_ftrl_default_path = 'utils/lib/tingrtu_ftrl.py'
-
 def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
   created_df = False
   if type(X) is not pd.DataFrame:      
@@ -24,26 +21,26 @@ def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
 
 class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, column_names, alpha=0.15, beta=1.1, L1=1.1, L2=1.1, bits=23,  
-                n_epochs=1,holdout=100,interaction=False, dropout=0.8, 
-                sparse=False, seed=0, verbose=True):    
+                n_epochs=1,holdout=100,interaction=False, 
+                sparse=False, seed=0, verbose=True, ftrl_default_path = 'utils/lib/tingrtu_ftrl.py'):    
     self.column_names = column_names
     self.alpha = alpha
     self.beta = beta
     self.L1 = L1
     self.L2 = L2
     self.interaction = interaction 
-    self.dropout = dropout
     self.bits = bits
     self.holdout = holdout
     self.n_epochs = n_epochs
     self.sparse=sparse
     self.seed=seed    
     self.verbose=verbose
+    self.ftrl_default_path = ftrl_default_path
     self.tmpdir = 'tmpfiles'
     self._model_file = None
     self._train_file = None
-    self._train_file_keep = False
-    
+    self._train_file_keep = False    
+
     for cn in column_names: 
       if cn.startswith('n_'): raise Exception('Invlida columns, numericals not allowed')
 
@@ -79,10 +76,10 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
 
   def _do_train_command(self, train_file):    
     self._model_file = self._get_tmp_file('model', 'model')
-    cmd = 'pypy ' + _ftrl_default_path + ' train -t ' + train_file + \
+    cmd = 'pypy ' + self.ftrl_default_path + ' train -t ' + train_file + \
       ' -o ' + self._model_file + ' --alpha ' + `self.alpha` + \
       ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
-      ' --dropout ' + `self.dropout` + ' --bits ' + `self.bits` + \
+      ' --bits ' + `self.bits` + \
       ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` + \
       ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names)
@@ -93,7 +90,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
 
   def _do_test_command(self, test_file):    
     predictions_file = self._get_tmp_file('predictions')
-    cmd = 'pypy ' + _ftrl_default_path + \
+    cmd = 'pypy ' + self.ftrl_default_path + \
       ' predict --test ' + test_file + ' -i ' + self._model_file + \
       ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names) + ' -p ' + predictions_file
@@ -102,10 +99,10 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
 
   def _do_train_test_command(self, train_file, test_file):    
     predictions_file = self._get_tmp_file('predictions')
-    cmd = 'pypy ' + _ftrl_default_path + ' train_predict -t ' + train_file + \
+    cmd = 'pypy ' + self.ftrl_default_path + ' train_predict -t ' + train_file + \
       ' --test ' + test_file + ' --alpha ' + `self.alpha` + \
       ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
-      ' --dropout ' + `self.dropout` + ' --bits ' + `self.bits` + \
+      ' --bits ' + `self.bits` + \
       ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` + \
       ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names) + ' -p ' + predictions_file
