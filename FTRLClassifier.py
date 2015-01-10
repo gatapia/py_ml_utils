@@ -5,6 +5,28 @@ sys.path.append('lib')
 import xgboost as xgb
 from pandas_extensions import *
 
+def _hashcode(X, opt_y):
+  hashcode = 0
+  if type(X) is not pd.DataFrame: 
+    hashcode = hash(X.shape)
+    hashcode = hashcode * 17 + hash(''.join(map(str, X[0:min(3, X.shape[0])])))
+  else:
+    hashcode = X.hashcode()
+
+  if opt_y is not None: 
+    if type(opt_y) is not pd.Series: 
+      hashcode = hashcode * 17 + hash(str(len(opt_y)))
+      hashcode = hashcode * 31 + hash(''.join(map(str, opt_y[0:min(3, opt_y.shape[0])])))
+    else:
+      hashcode = hashcode * 31 + opt_y.hashcode()
+  return hashcode
+
+def save_reusable_ftrl_csv(tmpdir, X, columns=None, opt_y=None):
+  filename = 'reusable_' + str(abs(_hashcode(X, opt_y))) + 'csv.gz'
+  filename = tmpdir + '/' + filename
+  if os.path.isfile(filename): return filename
+  return save_ftrl_csv(filename, X, columns, opt_y)
+
 def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
   created_df = False
   if type(X) is not pd.DataFrame:      
@@ -14,15 +36,19 @@ def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
   elif columns is not None and type(columns) is pd.Series:    
     opt_y = columns
     
-  if opt_y is not None: X['y'] = opt_y.values
+  if opt_y is not None: 
+    X['y'] = opt_y.values if hasattr(opt_y, 'values') else opt_y
   X.save_csv(out_file)
   if not created_df and opt_y is not None: X.remove('y')
+  return out_file
 
 
 class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, column_names, alpha=0.15, beta=1.1, L1=1.1, L2=1.1, bits=23,  
                 n_epochs=1,holdout=100,interaction=False, 
-                sparse=False, seed=0, verbose=True, ftrl_default_path = 'utils/lib/tingrtu_ftrl.py'):    
+                sparse=False, seed=0, verbose=True, 
+                ftrl_default_path = 'utils/lib/tingrtu_ftrl.py',
+                leave_out_day=None):    
     self.column_names = column_names
     self.alpha = alpha
     self.beta = beta
@@ -36,10 +62,10 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     self.seed=seed    
     self.verbose=verbose
     self.ftrl_default_path = ftrl_default_path
+    self.leave_out_day = leave_out_day
     self.tmpdir = 'tmpfiles'
     self._model_file = None
     self._train_file = None
-    self._train_file_keep = False    
 
     for cn in column_names: 
       if cn.startswith('n_'): raise Exception('Invlida columns, numericals not allowed')
@@ -48,26 +74,21 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     train_file = self._get_train_file(X, y)
     if delay: 
       self._train_file = train_file
-      self._train_file_keep = True
       return self
 
     self._train_file = None
     self._do_train_command(train_file)
-    if not type(X) is str: os.remove(train_file)
     return self
 
   def predict(self, X): 
     return self.predict_proba(X)
   
-  def predict_proba(self, X, reuse=False): 
+  def predict_proba(self, X): 
     test_file = self._get_test_file(X)
     if self._train_file is not None:
       predictions_file = self._do_train_test_command(self._train_file, test_file)
-      if not self._train_file_keep: os.remove(self._train_file)
     else:
       predictions_file = self._do_test_command(test_file)
-      if not reuse: os.remove(self._model_file)
-    if not type(X) is str: os.remove(test_file)    
     
     predictions = self._read_predictions(predictions_file)  
     os.remove(predictions_file)
@@ -86,6 +107,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
 
     if self.interaction: cmd += ' --interactions'
     if self.sparse: cmd += ' --sparse'
+    if self.leave_out_day >= 0: cmd += ' --leave_out_day ' + `self.leave_out_day`
     self._make_subprocess(cmd)
 
   def _do_test_command(self, test_file):    
@@ -108,6 +130,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
       ' --columns ' + '|;|'.join(self.column_names) + ' -p ' + predictions_file
     if self.interaction: cmd += ' --interactions'
     if self.sparse: cmd += ' --sparse'
+    if self.leave_out_day >= 0: cmd += ' --leave_out_day ' + `self.leave_out_day`
     self._make_subprocess(cmd)
     return predictions_file
 
@@ -117,15 +140,11 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
 
   def _get_train_file(self, X, y):
     if type(X) is str: return X    
-    f = self._get_tmp_file('train')
-    save_ftrl_csv(f, X, self.column_names, y)
-    return f
+    return save_reusable_ftrl_csv(self.tmpdir, X, self.column_names, y)
 
   def _get_test_file(self, X):
     if type(X) is str: return X
-    f = self._get_tmp_file('test')
-    save_ftrl_csv(f, X, self.column_names)
-    return f
+    return save_reusable_ftrl_csv(self.tmpdir, X, self.column_names)
 
   def _get_tmp_file(self, purpose, ext='csv.gz'):
     _, f = tempfile.mkstemp(dir=self.tmpdir, suffix=purpose + '.' + ext)
@@ -135,7 +154,6 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def _make_subprocess(self, command):    
     stdout = open('nul', 'w')
     stderr = sys.stderr
-
     if self.verbose: print 'Running command: "%s"' % str(command)
     commands = shlex.split(str(command))
     result = subprocess.Popen(commands, 

@@ -634,6 +634,18 @@ def _df_compress(self, aggresiveness=0, sparsify=False):
         _format_bytes(diff_bytes), diff_bytes * 100.0 / original_bytes))
   return self
 
+def _s_hashcode(self):
+  hashcode = hash(self.name)
+  hashcode = hashcode * 17 + self.index.values.sum()
+  hashcode = hashcode * 31 + hash(''.join(map(str, self[0:min(3, self.shape[0])].values)))
+  return hashcode
+
+def _df_hashcode(self):
+  hashcode = self.index.values.sum()
+  hashcode = hashcode * 17 + hash(''.join(self.columns.values))
+  hashcode = hashcode * 31 + hash(''.join(map(str, self[0:min(3, self.shape[0])].values)))
+  return hashcode
+
 def __df_to_lines(df, 
     out_file_or_y=None, 
     y=None, 
@@ -761,6 +773,7 @@ extend_df('to_vw', _df_to_vw)
 extend_df('to_libfm', _df_to_libfm)
 extend_df('to_svmlight', _df_to_svmlight)
 extend_df('to_xgboost', _df_to_svmlight)
+extend_df('hashcode', _df_hashcode)
 
 extend_df('categoricals', _df_categoricals)
 extend_df('indexes', _df_indexes)
@@ -777,6 +790,7 @@ extend_s('bin', _s_bin)
 extend_s('categorical_outliers', _s_categorical_outliers)
 extend_s('sigma_limits', _s_sigma_limits)
 extend_s('s_compress', _s_compress)
+extend_s('hashcode', _s_hashcode)
 
 # Aliases
 extend_s('catout', _s_categorical_outliers)

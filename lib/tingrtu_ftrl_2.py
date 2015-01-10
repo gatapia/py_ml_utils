@@ -21,7 +21,7 @@ class ftrl_proximal(object):
   '''
 
   def __init__(self, alpha, beta, L1, L2, D, 
-         interaction=False):
+         interaction=False, leave_out_day=None):
     # parameters
     self.alpha = alpha
     self.beta = beta
@@ -31,6 +31,8 @@ class ftrl_proximal(object):
     # feature related parameters
     self.D = D
     self.interaction = interaction
+    # This is specific for a project, should make generic.
+    self.leave_out_day = str(leave_out_day)
 
     # model
     # n: squared sum of past gradients
@@ -153,8 +155,7 @@ def logloss(p, y):
   p = max(min(p, 1. - 10e-15), 10e-15)
   return -log(p) if y == 1. else -log(1. - p)
 
-
-def data(f_train, D, columns):
+def data(f_train, D, columns, leave_out_day):
   ''' GENERATOR: Apply hash-trick to the original csv row
            and for simplicity, we one-hot-encode everything
 
@@ -167,13 +168,17 @@ def data(f_train, D, columns):
          we only need the index since all values are either 0 or 1
       y: y = 1 if positive example else negative
   '''
-
+  debug_count_0 = 0
+  debug_count = 0
   for t, row in enumerate(DictReader(f_train)):    
     y = 0.
     if 'y' in row:
       if row['y'] == '1':
         y = 1.
       del row['y']
+
+    if row['i_c_day'] == leave_out_day: # TODO remove block to make generic
+      continue
 
     # build x
     x = []
@@ -224,6 +229,7 @@ Perform training and prediction based on FTRL Optimal algorithm, with dropout ad
   parser.add_argument('--bits', default=20, type=int)
   parser.add_argument('--n_epochs', default=1, type=int)
   parser.add_argument('--holdout', default=None, type=int)
+  parser.add_argument('--leave_out_day', default=None, type=str)
   parser.add_argument("--interactions", action="store_true")
   parser.add_argument("-v", '--verbose', default=3, type=int)
   parser.add_argument("-c", '--columns', default='', type=str)
@@ -270,7 +276,7 @@ def train_learner(train, args):
     count = 0
     if train != "/dev/stdin": f_train.seek(0,0)
 
-    for t, x, y in data(f_train, D, args.columns):
+    for t, x, y in data(f_train, D, args.columns, args.leave_out_day):
       #  t: just a instance counter
       #  x: features
       #  y: label (click)
@@ -293,8 +299,9 @@ def train_learner(train, args):
         # step 2-2, update learner with label (click) information
         learner.update(x, p, y)
 
-    print('Epoch %d finished, validation logloss: %f, elapsed time: %s' % (
-      e, loss/count if count > 0 else -1, str(datetime.now() - start)))
+    if args.verbose > 1: 
+      stderr.write('Epoch %d finished, validation logloss: %f, elapsed time: %s' % (
+        e, loss/count if count > 0 else -1, str(datetime.now() - start)))
 
   f_train.close()
   return learner
@@ -308,7 +315,7 @@ def predict_learner(learner, test, predictions_file, args):
   if test[-3:] == ".gz": f_test = gzip.open(test, "rb")
   else: f_test = open(test, "r")
 
-  for t, x, y in data(f_test, D, args.columns):
+  for t, x, y in data(f_test, D, args.columns, args.leave_out_day):
     predictions.append('%.5f' % learner.predict(x))  
   f_test.close()
 

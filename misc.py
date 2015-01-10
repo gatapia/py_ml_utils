@@ -156,9 +156,10 @@ def show_score(y_true, y_pred):
   dbg('Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report)
   return accuracy
 
-def do_gs(clf, X, y, params, n_samples=1000, cv=3, n_jobs=-1, scoring=None, fit_params=None):
+def do_gs(clf, X, y, params, n_samples=1000, n_iter=3, n_jobs=-2, scoring=None, fit_params=None):
   if type(n_samples) is float: n_samples = int(n_samples)
   reseed(clf)
+  cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, random_state=cfg['sys_seed'])
   gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
   X2, y2 = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
   gs.fit(X2[:n_samples], y2[:n_samples])
