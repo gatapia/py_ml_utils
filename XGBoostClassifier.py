@@ -43,10 +43,38 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     self.eval_metric=eval_metric
     self.seed=seed
 
+  def build_matrix(self, X, opt_y=None):
+    if hasattr(X, 'values'): X = X.values
+    if opt_y is not None and hasattr(opt_y, 'values'): opt_y = opt_y.values
+    return X if hasattr(X, 'handle') else xgb.DMatrix(X, opt_y)
+
+  def cv(self, X, y): 
+    X = self.build_matrix(X, y)
+    param = {
+      'silent':0 if self.silent else 1, 
+      'use_buffer': int(self.use_buffer),
+      'num_round': self.num_round,
+      'ntree_limit': self.ntree_limit,
+      'nthread': self.nthread,
+      'booster': self.booster,
+      'eta': self.eta,
+      'gamma': self.gamma,
+      'max_depth': self.max_depth,
+      'min_child_weight': self.min_child_weight,
+      'subsample': self.subsample,
+      'colsample_bytree': self.colsample_bytree,
+      'l': self.l,
+      'alpha': self.alpha,
+      'lambda_bias': self.lambda_bias,
+      'objective': self.objective,
+      'eval_metric': self.eval_metric,
+      'seed': self.seed
+    }
+    results = xgb.cv(param, X, self.num_round, 3)
+    return results
 
   def fit(self, X, y):    
-    if hasattr(y, 'values'): y = y.values
-    X = X if hasattr(X, 'handle') else xgb.DMatrix(X, y)
+    X = self.build_matrix(X, y)
     param = {
       'silent':0 if self.silent else 1, 
       'use_buffer': int(self.use_buffer),
@@ -73,9 +101,9 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     return self
 
   def predict(self, X): 
-    X = X if hasattr(X, 'handle') else xgb.DMatrix(X)
+    X = self.build_matrix(X)
     return self.bst.predict(X)
   
   def predict_proba(self, X): 
-    X = X if hasattr(X, 'handle') else xgb.DMatrix(X)
+    X = self.build_matrix(X)
     return self.bst.predict(X)
