@@ -3,6 +3,7 @@ import pandas as pd
 import sys
 sys.path.append('lib')
 import xgboost as xgb
+import numpy as np
 
 class XGBoostClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, silent=True,
@@ -42,11 +43,12 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     self.objective=objective
     self.eval_metric=eval_metric
     self.seed=seed
+    self.stale = False
 
   def build_matrix(self, X, opt_y=None):
     if hasattr(X, 'values'): X = X.values
     if opt_y is not None and hasattr(opt_y, 'values'): opt_y = opt_y.values
-    return X if hasattr(X, 'handle') else xgb.DMatrix(X, opt_y)
+    return X if hasattr(X, 'handle') else xgb.DMatrix(X, opt_y, missing=np.nan)
 
   def cv(self, X, y): 
     X = self.build_matrix(X, y)
@@ -74,6 +76,9 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     return results
 
   def fit(self, X, y):    
+    if self.stale: raise Exception('XGBoostClassifier should not be reused, create a new instance.')
+    self.stale = True
+    
     X = self.build_matrix(X, y)
     param = {
       'silent':0 if self.silent else 1, 

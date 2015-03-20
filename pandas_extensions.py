@@ -805,3 +805,18 @@ extend_df('nas', _df_missing)
 extend_df('catout', _df_categorical_outliers)
 
 if not 'pd_extensions' in cfg: cfg['pd_extensions'] = True
+
+
+def _df_describe(self, opt_y=None, columns=None):
+  # If too large, subsample
+  if columns is None: columns = self.columns
+  print 'Summary for ', len(columns), 'columns'
+  for c in columns:
+    print '\nColumn [', c, ']'
+    s = self[c]
+    type_of_col = utils.multiclass.type_of_target(s) == 'continuous'
+    # check is valid (within specified range)
+    # hist and box plots w/ points overlayed
+    # correlation between this variable and target
+    # plot relationship betwee this and target
+    if type_of_col == 'discreet': pass
