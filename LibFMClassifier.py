@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import os, sys, subprocess, shlex, tempfile, time, sklearn.base
 import numpy as np
+import pandas as pd
 
 _libfm_default_path = 'utils/lib/libfm'
 
@@ -14,7 +15,8 @@ class _LibFM(sklearn.base.BaseEstimator):
          learn_rate=0.1,
          method='mcmc',
          regular=None,         
-         task='c'):
+         task='c', 
+         columns=None):
     assert method in ['sgd', 'sgda', 'als', 'mcmc']
     assert task in ['r', 'c']
 
@@ -27,16 +29,25 @@ class _LibFM(sklearn.base.BaseEstimator):
     self.method = method    
     self.regular = regular
     self.task = task
+    self.columns = columns
 
 
   def fit(self, X, y=None):    
+    if type(X) is np.ndarray: X = pd.DataFrame(X, columns=self.columns)
+    if type(X) is pd.DataFrame: X = X.to_libfm(y)    
+
     self.training_instances = X
     return self
 
   def predict(self, X):    
+    if type(X) is np.ndarray: X = pd.DataFrame(X, columns=self.columns)
+    if type(X) is pd.DataFrame: X = X.to_libfm()    
     return self.predict_proba(X)
 
-  def predict_proba(self, X):    
+  def predict_proba(self, X):   
+    if type(X) is np.ndarray: X = pd.DataFrame(X, columns=self.columns)
+    if type(X) is pd.DataFrame: X = X.to_libfm() 
+
     train_file = self.save_tmp_file(self.training_instances, True)
     test_file = self.save_tmp_file(X, False)
     self.start_predicting(train_file, test_file)
@@ -84,8 +95,10 @@ class _LibFM(sklearn.base.BaseEstimator):
   def start_predicting(self, training_file, testing_file):
     self.prediction_file = self.tmpfile('libfm.prediction')    
 
-    self.libfm_process = self.make_subprocess(self.get_command(
-        training_file, testing_file, self.prediction_file))      
+    command = self.get_command(
+        training_file, testing_file, self.prediction_file)
+    print 'running command:', command
+    self.libfm_process = self.make_subprocess(command)      
 
   def read_predictions(self):
     lines = []

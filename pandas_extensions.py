@@ -67,6 +67,14 @@ def _s_sigma_limits(self, sigma):
   m = self.mean()
   return (m - delta, m + delta)
 
+def _s_to_indexes(self):
+  c = self.name
+  col = 'i_' + c
+  cat = pd.Categorical.from_array(self)
+  lbls = cat.codes if hasattr(cat, 'codes') else cat.labels    
+  return pd.Series(lbls, index=self.index, \
+      dtype=_get_optimal_numeric_type('int', 0, len(lbls) + 1))
+
 '''
 DataFrame Extensions
 '''
@@ -491,18 +499,26 @@ def _df_noise_filter(self, type, *args, **kargs):
   filtered = filter(self.values, *args, **kargs)
   return  _create_df_from_templage(self, filtered, self.index)
 
-def _df_split(self, y, train_ratio=0.5):
+def _df_split(self, y, train_ratio=0.5, stratified=False):
   train_size = int(self.shape[0] * 0.5)
   test_size = int(self.shape[0] * (1-0.5))
-  X_train, X_test, y_train, y_test = cross_validation.train_test_split(self, y, 
-    train_size=train_size, test_size=test_size, random_state=cfg['sys_seed'])
-
-  return (
-    _create_df_from_templage(self, X_train), 
-    _create_s_from_templage(y, y_train),
-    _create_df_from_templage(self, X_test),
-    _create_s_from_templage(y, y_test)
-  )
+  if stratified:
+    train_indexes, test_indexes = list(cross_validation.StratifiedShuffleSplit(y, 1, train_size=0.5))[0]
+    return (
+      self.iloc[train_indexes], 
+      y[train_indexes], 
+      self.iloc[test_indexes], 
+      y[test_indexes]
+    )
+  else:
+    X_train, X_test, y_train, y_test = cross_validation.train_test_split(self, y, 
+      train_size=train_size, test_size=test_size, random_state=cfg['sys_seed'])
+    return (
+      _create_df_from_templage(self, X_train), 
+      _create_s_from_templage(y, y_train),
+      _create_df_from_templage(self, X_test),
+      _create_s_from_templage(y, y_test)
+    )
 
 def _df_cv(self, clf, y, n_samples=25000, n_iter=3, scoring=None, n_jobs=-1):  
   return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring, n_jobs)
@@ -791,10 +807,12 @@ extend_s('categorical_outliers', _s_categorical_outliers)
 extend_s('sigma_limits', _s_sigma_limits)
 extend_s('s_compress', _s_compress)
 extend_s('hashcode', _s_hashcode)
+extend_s('to_indexes', _s_to_indexes)
 
 # Aliases
 extend_s('catout', _s_categorical_outliers)
 extend_s('ohe', _s_one_hot_encode)
+extend_s('toidxs', _s_to_indexes)
 
 extend_df('ohe', _df_one_hot_encode)
 extend_df('toidxs', _df_to_indexes)

@@ -13,7 +13,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       max_depth=6, min_child_weight=1, subsample=1, 
       colsample_bytree=1,      
       l=0, alpha=0, lambda_bias=0, objective='reg:linear',
-      eval_metric=None, seed=0
+      eval_metric=None, seed=0, num_class=None
       ):    
     assert booster in ['gbtree', 'gblinear']
     assert objective in ['reg:linear', 'reg:logistic', 
@@ -44,6 +44,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     self.eval_metric=eval_metric
     self.seed=seed
     self.stale = False
+    self.num_class = num_class
 
   def build_matrix(self, X, opt_y=None):
     if hasattr(X, 'values'): X = X.values
@@ -70,8 +71,9 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       'lambda_bias': self.lambda_bias,
       'objective': self.objective,
       'eval_metric': self.eval_metric,
-      'seed': self.seed
-    }
+      'seed': self.seed,
+      'num_class': self.num_class
+    }    
     results = xgb.cv(param, X, self.num_round, 3)
     return results
 
@@ -98,7 +100,8 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       'lambda_bias': self.lambda_bias,
       'objective': self.objective,
       'eval_metric': self.eval_metric,
-      'seed': self.seed
+      'seed': self.seed,
+      'num_class': self.num_class
     }
     watchlist  = [(X,'train')]    
     self.bst = xgb.train(param, X, self.num_round, watchlist)
