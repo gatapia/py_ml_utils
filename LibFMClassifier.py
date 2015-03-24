@@ -1,8 +1,9 @@
-
 from __future__ import absolute_import
 import os, sys, subprocess, shlex, tempfile, time, sklearn.base
 import numpy as np
 import pandas as pd
+import math
+from pandas_extensions import * 
 
 _libfm_default_path = 'utils/lib/libfm'
 
@@ -52,9 +53,12 @@ class _LibFM(sklearn.base.BaseEstimator):
     test_file = self.save_tmp_file(X, False)
     self.start_predicting(train_file, test_file)
     self.close_process()
-    #os.remove(train_file)
-    #os.remove(test_file)
-    return np.asarray(list(self.read_predictions()))
+    os.remove(train_file)
+    os.remove(test_file)
+    
+    predictions = np.asarray(list(self.read_predictions()))    
+    return np.vstack([1 - predictions, predictions]).T
+
 
 
   def get_command(self, train_file, test_file, predictions_file):
@@ -95,9 +99,7 @@ class _LibFM(sklearn.base.BaseEstimator):
   def start_predicting(self, training_file, testing_file):
     self.prediction_file = self.tmpfile('libfm.prediction')    
 
-    command = self.get_command(
-        training_file, testing_file, self.prediction_file)
-    print 'running command:', command
+    command = self.get_command(training_file, testing_file, self.prediction_file)
     self.libfm_process = self.make_subprocess(command)      
 
   def read_predictions(self):
@@ -112,7 +114,7 @@ class _LibFM(sklearn.base.BaseEstimator):
     stdout = open('nul', 'w')
     stderr = sys.stderr
 
-    print 'Running command: "%s"' % str(command)
+    print 'running command: "%s"' % str(command)
     commands = shlex.split(str(command))
     result = subprocess.Popen(commands, 
         stdout=stdout, stderr=stderr, 

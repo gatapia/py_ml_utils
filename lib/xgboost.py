@@ -28,6 +28,7 @@ def load_xglib():
         dll_path = os.path.join(dll_path, 'xgboost_wrapper.dll')
     else:
         dll_path = os.path.join(dll_path, 'libxgboostwrapper.so')
+
     # load the xgboost wrapper library
     lib = ctypes.cdll.LoadLibrary(dll_path)
 

@@ -222,11 +222,11 @@ def read_lines(file, ignore_header=False):
     if ignore_header: f.readline()
     return f.readlines()
 
-def to_csv_gz(data_dict, file):
+def to_csv_gz(data_dict, file, columns=None):
   if file.endswith('.gz'): file = gzip.open(file, "wb")
   df = data_dict
   if type(df) is not pd.DataFrame: df = pd.DataFrame(df)
-  df.to_csv(file, index=False)  
+  df.to_csv(file, index=False, columns=columns)  
 
 def gzip_file(in_name, out_name):  
   f_in = open(in_name, 'rb')

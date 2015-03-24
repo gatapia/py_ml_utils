@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os, sys, subprocess, shlex, tempfile, time, sklearn.base, math
 import numpy as np
 import pandas as pd
+from pandas_extensions import * 
 
 _vw_default_path = 'utils/lib/vw'
 
@@ -151,7 +152,7 @@ class _VW(sklearn.base.BaseEstimator):
     self.vw_.predicting(X)
     preds = list(self.vw_.read_predictions_())
     predictions = np.asarray(map(lambda p: 1 / (1 + math.exp(-p)), preds))
-    return predictions
+    return np.vstack([1 - predictions, predictions]).T
 
 class VowpalWabbitRegressor(sklearn.base.RegressorMixin, _VW):
   pass

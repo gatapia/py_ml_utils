@@ -499,11 +499,11 @@ def _df_noise_filter(self, type, *args, **kargs):
   filtered = filter(self.values, *args, **kargs)
   return  _create_df_from_templage(self, filtered, self.index)
 
-def _df_split(self, y, train_ratio=0.5, stratified=False):
-  train_size = int(self.shape[0] * 0.5)
-  test_size = int(self.shape[0] * (1-0.5))
+def _df_split(self, y, stratified=False, train_fraction=0.5):
+  train_size = int(self.shape[0] * train_fraction)
+  test_size = int(self.shape[0] * (1.0-train_fraction))  
   if stratified:
-    train_indexes, test_indexes = list(cross_validation.StratifiedShuffleSplit(y, 1, train_size=0.5))[0]
+    train_indexes, test_indexes = list(cross_validation.StratifiedShuffleSplit(y, 1, 0.5))[0]
     return (
       self.iloc[train_indexes], 
       y[train_indexes], 
@@ -557,9 +557,7 @@ def _df_predict_proba(self, clf, y, X_test=None):
   if X_test is None and self.shape[0] > len(y):
     X_test = self[len(y):]
     X_train = self[:len(y)]
-  probas = clf.fit(X_train, y).predict_proba(X_test)
-  if probas.ndim == 1: return probas
-  return probas.T[1]
+  return clf.fit(X_train, y).predict_proba(X_test)
 
 def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):    
   X = self.copy()  

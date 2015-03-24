@@ -18,7 +18,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     assert booster in ['gbtree', 'gblinear']
     assert objective in ['reg:linear', 'reg:logistic', 
       'binary:logistic', 'binary:logitraw', 'multi:softmax',
-      'rank:pairwise']
+      'multi:softprob', 'rank:pairwise']
     assert eval_metric in [None, 'rmse', 'logloss', 'error', 'merror',  
       'auc', 'ndcg', 'map', 'ndcg@n', 'map@n']
 
@@ -43,7 +43,6 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     self.objective=objective
     self.eval_metric=eval_metric
     self.seed=seed
-    self.stale = False
     self.num_class = num_class
 
   def build_matrix(self, X, opt_y=None):
@@ -78,9 +77,6 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     return results
 
   def fit(self, X, y):    
-    if self.stale: raise Exception('XGBoostClassifier should not be reused, create a new instance.')
-    self.stale = True
-    
     X = self.build_matrix(X, y)
     param = {
       'silent':0 if self.silent else 1, 
@@ -100,9 +96,11 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       'lambda_bias': self.lambda_bias,
       'objective': self.objective,
       'eval_metric': self.eval_metric,
-      'seed': self.seed,
-      'num_class': self.num_class
+      'seed': self.seed          
     }
+    if self.num_class is not None:
+      param['num_class']= self.num_class
+
     watchlist  = [(X,'train')]    
     self.bst = xgb.train(param, X, self.num_round, watchlist)
 
@@ -114,4 +112,6 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
   
   def predict_proba(self, X): 
     X = self.build_matrix(X)
-    return self.bst.predict(X)
+    predictions = self.bst.predict(X)
+    if self.objective == 'multi:softprob': return predictions
+    return np.vstack([1 - predictions, predictions]).T
