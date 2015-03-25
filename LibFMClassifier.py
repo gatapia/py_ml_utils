@@ -31,22 +31,29 @@ class _LibFM(sklearn.base.BaseEstimator):
     self.regular = regular
     self.task = task
     self.columns = columns
+    if hasattr(self.columns, 'tolist'): self.columns = self.columns.tolist()
 
 
   def fit(self, X, y=None):    
-    if type(X) is np.ndarray: X = pd.DataFrame(X, columns=self.columns)
+    if type(X) is np.ndarray: 
+      if self.columns is None: raise Exception('LibFM requires columns be set')      
+      X = pd.DataFrame(X, columns=self.columns)
     if type(X) is pd.DataFrame: X = X.to_libfm(y)    
 
     self.training_instances = X
     return self
 
   def predict(self, X):    
-    if type(X) is np.ndarray: X = pd.DataFrame(X, columns=self.columns)
+    if type(X) is np.ndarray: 
+      if self.columns is None: raise Exception('LibFM requires columns be set')      
+      X = pd.DataFrame(X, columns=self.columns)
     if type(X) is pd.DataFrame: X = X.to_libfm()    
     return self.predict_proba(X)
 
   def predict_proba(self, X):   
-    if type(X) is np.ndarray: X = pd.DataFrame(X, columns=self.columns)
+    if type(X) is np.ndarray: 
+      if self.columns is None: raise Exception('LibFM requires columns be set')      
+      X = pd.DataFrame(X, columns=self.columns)
     if type(X) is pd.DataFrame: X = X.to_libfm() 
 
     train_file = self.save_tmp_file(self.training_instances, True)

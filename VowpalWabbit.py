@@ -88,10 +88,13 @@ class _VW(sklearn.base.BaseEstimator):
     self.sgd = sgd
     self.ignore = ignore
     self.columns = columns
+    if hasattr(self.columns, 'tolist'): self.columns = self.columns.tolist()
 
 
   def fit(self, X, y=None):
-    if type(X) is np.ndarray: X = pd.DataFrame(X, columns=self.columns)
+    if type(X) is np.ndarray: 
+      if self.columns is None: raise Exception('VowpalWabbit requires columns be set')      
+      X = pd.DataFrame(X, columns=self.columns)
     if type(X) is pd.DataFrame: X = X.to_vw(y)    
 
     self.vw_ = VW(
@@ -138,7 +141,9 @@ class _VW(sklearn.base.BaseEstimator):
     return self
 
   def predict(self, X):    
-    if type(X) is np.ndarray: X = pd.DataFrame(X, columns=self.columns)
+    if type(X) is np.ndarray: 
+      if self.columns is None: raise Exception('VowpalWabbit requires columns be set')      
+      X = pd.DataFrame(X, columns=self.columns)
     if type(X) is pd.DataFrame: X = X.to_vw()    
 
     self.vw_.predicting(X)
@@ -146,7 +151,9 @@ class _VW(sklearn.base.BaseEstimator):
     return np.asarray(list(raw))
 
   def predict_proba(self, X):    
-    if type(X) is np.ndarray: X = pd.DataFrame(X, columns=self.columns)
+    if type(X) is np.ndarray: 
+      if self.columns is None: raise Exception('VowpalWabbit requires columns be set')      
+      X = pd.DataFrame(X, columns=self.columns)
     if type(X) is pd.DataFrame: X = X.to_vw()    
 
     self.vw_.predicting(X)
