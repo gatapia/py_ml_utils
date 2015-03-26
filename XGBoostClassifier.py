@@ -53,7 +53,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
   def cv(self, X, y): 
     X = self.build_matrix(X, y)
     param = {
-      'silent':0 if self.silent else 1, 
+      'silent': 1 if self.silent else 0, 
       'use_buffer': int(self.use_buffer),
       'num_round': self.num_round,
       'ntree_limit': self.ntree_limit,
@@ -79,7 +79,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
   def fit(self, X, y):    
     X = self.build_matrix(X, y)
     param = {
-      'silent':0 if self.silent else 1, 
+      'silent': 1 if self.silent else 0, 
       'use_buffer': int(self.use_buffer),
       'num_round': self.num_round,
       'ntree_limit': self.ntree_limit,
