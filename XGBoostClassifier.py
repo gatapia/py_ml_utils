@@ -19,8 +19,8 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     assert objective in ['reg:linear', 'reg:logistic', 
       'binary:logistic', 'binary:logitraw', 'multi:softmax',
       'multi:softprob', 'rank:pairwise']
-    assert eval_metric in [None, 'rmse', 'logloss', 'error', 'merror',  
-      'auc', 'ndcg', 'map', 'ndcg@n', 'map@n']
+    assert eval_metric in [None, 'rmse', 'mlogloss', 'logloss', 'error', 
+      'merror',  'auc', 'ndcg', 'map', 'ndcg@n', 'map@n']
 
     self.silent = silent
     self.use_buffer = use_buffer
