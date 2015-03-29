@@ -13,7 +13,8 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       max_depth=6, min_child_weight=1, subsample=1, 
       colsample_bytree=1,      
       l=0, alpha=0, lambda_bias=0, objective='reg:linear',
-      eval_metric=None, seed=0, num_class=None
+      eval_metric=None, seed=0, num_class=None,
+      max_delta_step=0
       ):    
     assert booster in ['gbtree', 'gblinear']
     assert objective in ['reg:linear', 'reg:logistic', 
@@ -35,6 +36,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     self.min_child_weight=min_child_weight
     self.subsample=subsample
     self.colsample_bytree=colsample_bytree
+    self.max_delta_step=max_delta_step
     # Parameter for Linear Booster
     self.l=l
     self.alpha=alpha
@@ -65,13 +67,14 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       'min_child_weight': self.min_child_weight,
       'subsample': self.subsample,
       'colsample_bytree': self.colsample_bytree,
+      'max_delta_step': self.max_delta_step,
       'l': self.l,
       'alpha': self.alpha,
       'lambda_bias': self.lambda_bias,
       'objective': self.objective,
       'eval_metric': self.eval_metric,
       'seed': self.seed,
-      'num_class': self.num_class
+      'num_class': self.num_class,
     }    
     results = xgb.cv(param, X, self.num_round, 3)
     return results
@@ -91,6 +94,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       'min_child_weight': self.min_child_weight,
       'subsample': self.subsample,
       'colsample_bytree': self.colsample_bytree,
+      'max_delta_step': self.max_delta_step,
       'l': self.l,
       'alpha': self.alpha,
       'lambda_bias': self.lambda_bias,

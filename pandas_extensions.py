@@ -213,9 +213,9 @@ def _df_engineer(self, name, columns=None, quiet=False):
       self.engineer(func_to_string(a))
 
   if not quiet: debug('engineering feature: ' + name)
-  if len(args) == 0 and (func == 'mult' or func == 'concat'):    
+  if len(args) == 0 and (func == 'avg' or func == 'mult' or func == 'concat'):    
     combs = list(itertools.combinations(columns, 2)) if columns \
-      else self.combinations(categoricals=func=='concat', indexes=func=='concat', numericals=func=='mult')    
+      else self.combinations(categoricals=func=='concat', indexes=func=='concat', numericals=func=='mult' or func=='avg')    
     for c1, c2 in combs: self.engineer(func + '(' + c1 + ',' + c2 + ')', quiet=True)
     return self
   elif func == 'concat': 
@@ -230,6 +230,12 @@ def _df_engineer(self, name, columns=None, quiet=False):
       self[new_name] = self[args[0]] * self[args[1]]
     if len(args) == 3: 
       self[new_name] = self[args[0]] * self[args[1]] * self[args[2]]
+  elif func  == 'avg':     
+    if len(args) < 2 or len(args) > 3: raise Exception(name + ' only supports 2 or 3 columns')
+    if len(args) == 2: 
+      self[new_name] = (self[args[0]] + self[args[1]]) / 2
+    if len(args) == 3: 
+      self[new_name] = (self[args[0]] + self[args[1]] + self[args[2]]) / 3
   elif len(args) == 1 and func == 'pow':
     cols = columns if columns else self.numericals()
     for n in cols: self.engineer('pow(' + n + ', ' + args[0] + ')', quiet=True)
@@ -464,6 +470,19 @@ def _create_s_from_templage(template, data):
   if template.dtype != s.dtype: s = s.astype(template.dtype)
   return s
 
+def _df_subsample(self, y=None, size=0.5):  
+  if type(size) is float:
+    if size < 1.0: size = df.shape[0] * size
+    size = int(size)
+  if self.shape[0] <= size: return self if y is None else (self, y) # unchanged    
+
+  start('subsample data frame')
+  df = self.copy().shuffle(y)
+  
+  result = df[:size] if y is None else df[0][:size], df[1][:size]  
+  start('done, subsample data frame')
+  return result
+
 def _df_shuffle(self, y=None):  
   start('shuffling data frame')
   df = self.copy()  
@@ -558,6 +577,36 @@ def _df_predict_proba(self, clf, y, X_test=None):
     X_test = self[len(y):]
     X_train = self[:len(y)]
   return clf.fit(X_train, y).predict_proba(X_test)
+
+def _df_self_predict(self, clf, y, n_chunks=5):    
+  return __df_self_predict_impl(self, clf, y, n_chunks, False)
+
+def _df_self_predict_proba(self, clf, y, n_chunks=5):    
+  return __df_self_predict_impl(self, clf, y, n_chunks, True)
+
+def __df_self_predict_impl(X, clf, y, n_chunks, predict_proba):    
+  if y is not None and X.shape[0] != len(y): 
+    raise Exception('self_predict should have enough y values to do full prediction.')
+  reseed(clf)
+  chunk_size = int(math.ceil(X.shape[0] / float(n_chunks)))
+  predictions = None
+  iteration = 0
+  while True:
+    start = iteration * chunk_size
+    iteration += 1
+    if start >= X.shape[0]: break
+    end = start + chunk_size
+    X_train = X[:start].append_bottom(X[end:])
+    X_test = X[start:end]
+    y2 = None if y is None else pd.concat((y[:start], y[end:]), 0, ignore_index=True)    
+
+    clf.fit(X_train, y2)    
+    new_predictions = clf.predict_proba(X_test) if predict_proba else clf.predict(X_test)
+    if new_predictions.shape[0] == 1:      
+      new_predictions = new_predictions.reshape(-1, 1)
+    predictions = new_predictions if predictions is None else np.append(predictions, new_predictions)
+  return predictions
+
 
 def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):    
   X = self.copy()  
@@ -738,7 +787,22 @@ def _df_to_libfm(self, out_file_or_y=None, y=None):
       convert_zero_ys=False,
       output_categorical_value=True,
       tag_feature_sets=False)
+
+
+def _df_summarise(self, opt_y=None, filename='dataset_description', columns=None):
+  from describe import Describe
+  from IPython.nbformat import current as nbf
+
+  if not filename.endswith('.ipynb'): filename = filename + '.ipynb'
+  desc = Describe(self, opt_y, columns)
   
+  nb = nbf.new_notebook()
+  nb['worksheets'].append(nbf.new_worksheet(cells=desc.get_cells()))
+
+  with open(filename, 'w') as f: nbf.write(nb, f, 'ipynb')
+  print 'dataset description notebook written to:', filename
+  print 'execute with command:'
+  print 'ipython notebook --pylab inline ' + filename
 
 def _chunked_iterator(df, chunk_size=1000000):
   start = 0
@@ -775,6 +839,7 @@ extend_df('categorical_outliers', _df_categorical_outliers)
 extend_df('append_right', _df_append_right)
 extend_df('append_bottom', _df_append_bottom)
 extend_df('shuffle', _df_shuffle)
+extend_df('subsample', _df_subsample)
 extend_df('split', _df_split)
 extend_df('cv', _df_cv)
 extend_df('cv_ohe', _df_cv_ohe)
@@ -782,6 +847,8 @@ extend_df('pca', _df_pca)
 extend_df('noise_filter', _df_noise_filter)
 extend_df('predict', _df_predict)
 extend_df('predict_proba', _df_predict_proba)
+extend_df('self_predict', _df_self_predict)
+extend_df('self_predict_proba', _df_self_predict_proba)
 extend_df('save_csv', _df_save_csv)
 extend_df('to_vw', _df_to_vw)
 extend_df('to_libfm', _df_to_libfm)
@@ -797,6 +864,7 @@ extend_df('binaries', _df_binaries)
 extend_df('trim_on_y', _df_trim_on_y)
 extend_df('nbytes', _df_nbytes)
 extend_df('compress', _df_compress)
+extend_df('summarise', _df_summarise)
 
 # Series Extensions  
 extend_s('one_hot_encode', _s_one_hot_encode)
@@ -821,18 +889,3 @@ extend_df('nas', _df_missing)
 extend_df('catout', _df_categorical_outliers)
 
 if not 'pd_extensions' in cfg: cfg['pd_extensions'] = True
-
-
-def _df_describe(self, opt_y=None, columns=None):
-  # If too large, subsample
-  if columns is None: columns = self.columns
-  print 'Summary for ', len(columns), 'columns'
-  for c in columns:
-    print '\nColumn [', c, ']'
-    s = self[c]
-    type_of_col = utils.multiclass.type_of_target(s) == 'continuous'
-    # check is valid (within specified range)
-    # hist and box plots w/ points overlayed
-    # correlation between this variable and target
-    # plot relationship betwee this and target
-    if type_of_col == 'discreet': pass
