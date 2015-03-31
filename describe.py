@@ -22,6 +22,10 @@ class Describe():
     self._do_global_imports()
     self._do_header_markdown()
     self._do_target_description()
+    '''
+    TODO: 
+    - if len()
+    '''
     for col in self.columns: self._do_column_description(col)
     return list(self.cells)
 
@@ -108,7 +112,13 @@ class Describe():
     
     self._txt(md + '\n')
     code = []
-        
+    
+    '''
+    TODO:    
+    - If specified type does not match inferred raise issue
+    - Charts for both specified and inferred type
+    '''
+
     if col.startswith('c_') or col.startswith('b_') \
         or col.startswith('i_'): self._categorical_charts(c, code)
     elif col.startswith('n_'): self._continous_charts(c, code)
