@@ -85,14 +85,13 @@ class Describe():
 
   def _intialise_feature_scores(self):
     self.importances = self._get_column_importances()    
-    idxs = range(1, len(self.columns) + 1)
     if self.is_regression:
       self.f_scores = self._get_column_f_regression_scores()    
-      self.col_details = zip(self.columns, idxs, self.importances, self.f_scores)
+      self.col_details = zip(self.columns, self.importances, self.f_scores)
     else:
       self.f_classif_scores = self._get_column_f_classification_scores()    
       self.chi2_scores = self._get_column_chi2_classification_scores()          
-      self.col_details = zip(self.columns, idxs, self.importances, self.f_classif_scores, self.chi2_scores)
+      self.col_details = zip(self.columns, self.importances, self.f_classif_scores, self.chi2_scores)
 
     self.col_details = sorted(self.col_details, key=lambda d: d[1], reverse=True)
       
@@ -126,8 +125,9 @@ class Describe():
         'for idx, v in enumerate(pd.unique(y)):',
         '  col=colours[idx % len(colours)]',
         '  mkr=markers[idx % len(markers)]',
-        '  if ax is None: ax = X2.plot(kind="scatter", x="A", y="B", label=v, alpha=0.2, marker=mkr, color=col)',
-        '  else: X2.plot(kind="scatter", x="A", y="B", label=v, ax=ax, alpha=0.2, marker=mkr, color=col)',
+        '  X3 = X2[X2.y == v]'
+        '  if ax is None: ax = X3.plot(kind="scatter", x="A", y="B", label=v, alpha=0.2, marker=mkr, color=col)',
+        '  else: X3.plot(kind="scatter", x="A", y="B", label=v, ax=ax, alpha=0.2, marker=mkr, color=col)',
         '_ = ax.set_title("2D PCA - Target Variable Distribution")'
       ])
 
@@ -142,15 +142,15 @@ class Describe():
     self._txt('<hr/>\n#Features Summary Table')
     self._txt('<table>')
     self._do_column_summary_header_row()
-    for col in self.col_details: self._do_column_summary_row(col)            
+    for idx, col in enumerate(self.col_details): self._do_column_summary_row(idx, col)            
     self._txt('</table>', True)
 
   def _do_column_summary_header_row(self):
-    cols = ['Column', 'Inferred', 'Specified','RF Importance V', 'F Score']
+    cols = ['Column', 'Inferred', 'Specified', 'RF Imp Rank', 'RF Importance V', 'F Score']
     if not self.is_regression: cols.append('Chi2')
     self._txt('<tr><th>' + '</th><th>'.join(cols) + '</th></tr>')
 
-  def _do_column_summary_row(self, col):
+  def _do_column_summary_row(self, idx, col):
     col_name = col[0]
     inferred = sklearn.utils.multiclass.type_of_target(self.X[col_name])
     specified = self._get_column_specified_type(col_name)
@@ -159,6 +159,7 @@ class Describe():
       col_name, 
       inferred, 
       specified if inf_same_specified else self._warn(specified),
+      idx + 1,
       col[1]
     ]
     if self.is_regression: cols.append(col[2])
@@ -178,11 +179,11 @@ class Describe():
 
   def _do_all_columns_details(self):
     self._txt('<hr/>\n#Features Details', True)
-    for col in self.col_details:       
-      self._do_column_details(col)  
+    for idx, col in enumerate(self.col_details):       
+      self._do_column_details(idx, col)  
 
 
-  def _do_column_details(self, col):    
+  def _do_column_details(self, idx, col):    
     col_name = col[0]
     c = self.X[col_name]    
     specified_type = self._get_column_specified_type(col_name)
@@ -193,7 +194,8 @@ class Describe():
     self._name_value('Distinct values', len(pd.unique(c)))
     self._name_value('Specified type', self._get_column_specified_type(col_name))
     self._name_value('Inferred type', sklearn.utils.multiclass.type_of_target(c))
-    self._name_value('RF Importance', col[1])
+    self._name_value('RF Importance Rank', idx + 1)
+    self._name_value('RF Importance Score', col[1])
 
     if self.is_regression: self._name_value('F-Score', col[2])
     else:
@@ -318,7 +320,10 @@ class Describe():
     if flush: self._flush_cell()
 
   def _pretty(self, value):
-    if type(value) is float: return '%.4f' % value
+    if type(value) is float or \
+      type(value) is np.float or \
+      type(value) is np.float32 or \
+      type(value) is np.float64: return '%.4f' % value
     else: return str(value)
 
   def _warn(self, value):
