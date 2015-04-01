@@ -5,7 +5,7 @@ import pandas as pd
 import scipy as scipy
 import cPickle as pickle
 from collections import Counter
-import gzip, time, math, datetime, random, os, gc
+import gzip, time, math, datetime, random, os, gc, logging
 from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
@@ -21,13 +21,33 @@ cfg = {
 random.seed(cfg['sys_seed'])
 np.random.seed(cfg['sys_seed']) 
 NA = 99999.0
+logging.basicConfig(level=logging.DEBUG, 
+    format='%(asctime)s %(levelname)s %(message)s')
+log = logging.getLogger(__name__)
+t0 = time.time()
+
+def debug(msg): 
+  if not cfg['debug']: return
+  log.info(msg)
+
+def start(msg): 
+  if not cfg['debug']: return
+  global t0
+  t0 = time.time()
+  log.info(msg)
+
+def stop(msg): 
+  if not cfg['debug']: return
+  global t0
+  log.info(msg + (', took (h:m:s): %s' % 
+    datetime.timedelta(seconds=time.time() - t0)))
+  t0 = time.time()
 
 def reseed(clf):
   clf.random_state = cfg['sys_seed']
   random.seed(cfg['sys_seed'])
   np.random.seed(cfg['sys_seed']) 
   return clf
-
 
 def model_name(clf):
   name = type(clf).__name__

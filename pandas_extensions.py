@@ -21,30 +21,8 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.decomposition import PCA
 from sklearn import utils, cross_validation
 from scipy import sparse
-import itertools, logging, time, datetime, random, gzip
+import itertools, random, gzip
 from scipy.ndimage.filters import *
-
-logging.basicConfig(level=logging.DEBUG, 
-    format='%(asctime)s %(levelname)s %(message)s')
-log = logging.getLogger(__name__)
-t0 = time.time()
-
-def debug(msg): 
-  if not cfg['debug']: return
-  log.info(msg)
-
-def start(msg): 
-  if not cfg['debug']: return
-  global t0
-  t0 = time.time()
-  log.info(msg)
-
-def stop(msg): 
-  if not cfg['debug']: return
-  global t0
-  log.info(msg + (', took (h:m:s): %s' % 
-    datetime.timedelta(seconds=time.time() - t0)))
-  t0 = time.time()
 
 '''
 Series Extensions
@@ -790,19 +768,8 @@ def _df_to_libfm(self, out_file_or_y=None, y=None):
 
 
 def _df_summarise(self, opt_y=None, filename='dataset_description', columns=None):
-  from describe import Describe
-  from IPython.nbformat import current as nbf
-
-  if not filename.endswith('.ipynb'): filename = filename + '.ipynb'
-  desc = Describe(self, opt_y, columns)
-  
-  nb = nbf.new_notebook()
-  nb['worksheets'].append(nbf.new_worksheet(cells=desc.get_cells()))
-
-  with open(filename, 'w') as f: nbf.write(nb, f, 'ipynb')
-  print 'dataset description notebook written to:', filename
-  print 'execute with command:'
-  print 'ipython notebook --pylab inline ' + filename
+  from describe import describe
+  describe.Describe(self, opt_y).show()  
 
 def _chunked_iterator(df, chunk_size=1000000):
   start = 0
