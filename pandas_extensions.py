@@ -152,7 +152,7 @@ def _df_remove(self, columns=[], categoricals=False, numericals=False,
     raise Exception('At least one of categoricals, numericals, ' +
       'dates binaries should be set to True or columns array passed')
 
-  debug('removing from data frame: ' + `cols`)
+  debug('removing ' + `len(cols)` + ' columns from data frame')
   self.drop(cols, 1, inplace=True)
   return self
 
@@ -496,26 +496,21 @@ def _df_noise_filter(self, type, *args, **kargs):
   filtered = filter(self.values, *args, **kargs)
   return  _create_df_from_templage(self, filtered, self.index)
 
-def _df_split(self, y, stratified=False, train_fraction=0.5):
+def _df_split(self, y, stratified=False, train_fraction=0.5):  
   train_size = int(self.shape[0] * train_fraction)
   test_size = int(self.shape[0] * (1.0-train_fraction))  
-  if stratified:
-    train_indexes, test_indexes = list(cross_validation.StratifiedShuffleSplit(y, 1, 0.5))[0]
-    return (
-      self.iloc[train_indexes], 
-      y[train_indexes], 
-      self.iloc[test_indexes], 
-      y[test_indexes]
-    )
-  else:
-    X_train, X_test, y_train, y_test = cross_validation.train_test_split(self, y, 
-      train_size=train_size, test_size=test_size, random_state=cfg['sys_seed'])
-    return (
-      _create_df_from_templage(self, X_train), 
-      _create_s_from_templage(y, y_train),
-      _create_df_from_templage(self, X_test),
-      _create_s_from_templage(y, y_test)
-    )
+  start('splitting train_size: ' + `train_size` + ' test_size: ' + `test_size`)
+  splitter = cross_validation.StratifiedShuffleSplit if stratified else \
+    cross_validation.ShuffleSplit
+  train_indexes, test_indexes = list(splitter(y, 1, test_size, train_size))[0]
+  new_set = (
+    self.iloc[train_indexes], 
+    y.iloc[train_indexes], 
+    self.iloc[test_indexes], 
+    y.iloc[test_indexes]
+  )
+  stop('splitting done')
+  return new_set
 
 def _df_cv(self, clf, y, n_samples=25000, n_iter=3, scoring=None, n_jobs=-1):  
   return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring, n_jobs)
@@ -565,24 +560,28 @@ def _df_self_predict_proba(self, clf, y, n_chunks=5):
 def __df_self_predict_impl(X, clf, y, n_chunks, predict_proba):    
   if y is not None and X.shape[0] != len(y): 
     raise Exception('self_predict should have enough y values to do full prediction.')
+  start('self_predict with ' + `n_chunks` + ' starting')
   reseed(clf)
   chunk_size = int(math.ceil(X.shape[0] / float(n_chunks)))
-  predictions = None
+  predictions = []
   iteration = 0
   while True:
-    start = iteration * chunk_size
+    begin = iteration * chunk_size
     iteration += 1
-    if start >= X.shape[0]: break
-    end = start + chunk_size
-    X_train = X[:start].append_bottom(X[end:])
-    X_test = X[start:end]
-    y2 = None if y is None else pd.concat((y[:start], y[end:]), 0, ignore_index=True)    
+    if begin >= X.shape[0]: break
+    end = begin + chunk_size
+    X_train = X[:begin].append_bottom(X[end:])
+    X_test = X[begin:end]
+    y2 = None if y is None else pd.concat((y[:begin], y[end:]), 0, ignore_index=True)    
 
     clf.fit(X_train, y2)    
-    new_predictions = clf.predict_proba(X_test) if predict_proba else clf.predict(X_test)
+    new_predictions = clf.predict_proba(X_test) if predict_proba else clf.predict(X_test)    
+    if new_predictions.shape[1] == 2:
+      new_predictions = new_predictions.T[1]
     if new_predictions.shape[0] == 1:      
       new_predictions = new_predictions.reshape(-1, 1)
-    predictions = new_predictions if predictions is None else np.append(predictions, new_predictions)
+    predictions = new_predictions if iteration == 1 else np.append(predictions, new_predictions)
+  stop('self_predict completed')
   return predictions
 
 
