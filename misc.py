@@ -178,14 +178,24 @@ def show_score(y_true, y_pred):
   dbg('Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report)
   return accuracy
 
-def do_gs(clf, X, y, params, n_samples=1000, n_iter=3, n_jobs=-2, scoring=None, fit_params=None):
+def do_gs(clf, X, y, params, n_samples=1000, n_iter=3, 
+    n_jobs=-2, scoring=None, fit_params=None, 
+    random_iterations=None):
+  start('starting grid search')
   if type(n_samples) is float: n_samples = int(n_samples)
   reseed(clf)
   cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, random_state=cfg['sys_seed'])
-  gs = grid_search.GridSearchCV(clf, params, cv=cv, n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
+  if random_iterations is None:
+    gs = grid_search.GridSearchCV(clf, params, cv=cv, 
+      n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
+  else:
+    gs = grid_search.RandomizedSearchCV(clf, params, random_iterations, cv=cv, 
+      n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], 
+      fit_params=fit_params, refit=False)
   X2, y2 = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
   gs.fit(X2[:n_samples], y2[:n_samples])
-  dbg(gs.best_params_, gs.best_score_)
+  stop('done grid search')
+  dbg(gs.best_params_, gs.best_score_)  
   return gs
 
 def dump(file, data):  
