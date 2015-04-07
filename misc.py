@@ -69,7 +69,7 @@ def get_col_aggregate(col, mode):
   raise Exception('Unsupported aggregate mode: ' + `mode`)
 
 def mean_score(scores):
-  return ("{0:.3f} (+/-{1:.3f})").format(np.mean(scores), sem(scores))
+  return ("{0:.5f} (+/-{1:.5f})").format(np.mean(scores), sem(scores))
 
 def scale(X, min_max=None):  
   pp = preprocessing
@@ -113,10 +113,13 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
   return (scores, sems)
 
 
-def do_cv(clf, X, y, n_samples=1000, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed_classifier=True, n_jobs=-1):
+def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed_classifier=True, n_jobs=-1):
   t0 = time.time()
   if reseed_classifier: reseed(clf)
-  if type(n_samples) is float: n_samples = int(n_samples)
+  
+  if n_samples is None: n_samples = len(y)
+  elif type(n_samples) is float: n_samples = int(n_samples)
+  
   try:
     if (n_samples > X.shape[0]): n_samples = X.shape[0]
   except: pass
