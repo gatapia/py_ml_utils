@@ -12,7 +12,40 @@ class Describe():
   #       Public Interface
   #############################################################################
 
-  def __init__(self, X, opt_y=None):
+  def __init__(self, X, opt_y=None):    
+    self._importance_row_limit = 50000
+    self._code_lines = []
+    self._text_lines = []        
+
+  def show_classifier_performance(self, clf, X, y, use_proba=False):    
+    predictions = X.self_predict_proba(clf, y) if use_proba else \
+        X.self_predict(clf, y)
+    self.show_prediction_comparison(predictions, y)
+
+  def show_prediction_comparison(self, y1, y2):    
+    '''
+    TODO: implement (move things out of constructor)
+    '''
+
+    # scatter plot
+    # bland altman plot
+    # confusion matrix
+    # correlations
+    # reliability diagram (see: http://fastml.com/classifier-calibration-with-platts-scaling-and-isotonic-regression/)
+    # predicted vs actual
+    if y1.shape != y2.shape: raise Exception('y1 and y2 are not compatible shapes (must be same rows and same columns)')
+    if y1.shape[1] > 1:
+      for col in y1.shape[1]:
+        # Heading for y index
+        self.show_prediction_comparison(y1[:, col], y2[:, col])
+    pass
+
+  def show_dataset(self, X, opt_y=None):    
+    '''
+    TODO: If we are evaluating results over years or location then
+      we should plot data by this same fold. Maybe ensure also that
+      each year for each attribute correlates nicely
+    '''
     self.columns = X.columns
     self.cells = []
     self.original_rows = X.shape[0]
@@ -23,13 +56,7 @@ class Describe():
     self.y_type = sklearn.utils.multiclass.type_of_target(self.y) if self.y is not None else 'na'
     self.is_regression = self.y_type == 'continuous'
 
-    self._importance_row_limit = 50000
-    self._code_lines = []
-    self._text_lines = []    
 
-    dump('_desc_data', (self.X, self.y)) 
-
-  def show(self):    
     nb = nbf.new_notebook()
     nb.cells = self.get_cells()
     with open('dataset_description.ipynb', 'w') as f: 
@@ -38,9 +65,11 @@ class Describe():
     call(['ipython', 'notebook', 'dataset_description.ipynb'])
 
 
-  def get_cells(self):
+  def get_dataset_cells(self):
     if len(self.cells) > 0: return list(self.cells)    
     start('get_cells')
+    dump('_desc_data', (self.X, self.y)) 
+
     self._do_global_imports()    
     self._do_header_markdown()    
     self._intialise_feature_scores()
@@ -171,6 +200,7 @@ class Describe():
     top_5 = map(lambda c: c[0], self.col_details[:5])
     self._code('top_5 = ' + str(top_5))
     self._code('_ = pd.tools.plotting.scatter_matrix(X[top_5], alpha=0.2, figsize=(12, 12), diagonal="kde")', True)
+    # TODO: Add PCA scree plot
 
 
   #############################################################################
@@ -230,6 +260,7 @@ class Describe():
   def _continuous_charts(self, series):
     identifier = '_ = X["_tmpy"]' if series is self.y else '_ = X["' + series.name + '"]'    
     self._code('fig, axs = plt.subplots(1,2)')
+    # TODO: Show boxcox transformed distribution also???    
     self._code(identifier + '.hist(bins=20, ax=axs[0])')
     self._code(identifier + '.plot(kind="box", ax=axs[1])')
 
