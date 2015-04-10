@@ -12,7 +12,7 @@ class Describe():
   #       Public Interface
   #############################################################################
 
-  def __init__(self, X, opt_y=None):    
+  def __init__(self):    
     self._importance_row_limit = 50000
     self._code_lines = []
     self._text_lines = []        
@@ -74,6 +74,8 @@ class Describe():
     self._do_header_markdown()    
     self._intialise_feature_scores()
     self._do_column_summary_table()
+    # Do table of all columns x column with correlation values for
+    #  all relationships
     self._do_column_summary_charts()
     self._do_target_description()
     self._do_all_columns_details()
@@ -144,6 +146,9 @@ class Describe():
     elif self.y_type == 'binary' or self.y_type == 'multiclass': 
       self._categorical_charts(self.y)
       
+      # TODO: Consider doing a scatter plot scatter plot matrix, see
+      #    code here: https://github.com/breze-no-salt/breze/blob/master/
+      #         breze/learn/display.py
       self._code([
         'X2 = X.copy().missing("na", 0)',
         'X2 = pd.DataFrame(decomposition.PCA(2).fit_transform(X2), columns=["A", "B"])',
@@ -175,6 +180,7 @@ class Describe():
     self._txt('</table>', True)
 
   def _do_column_summary_header_row(self):
+    # TODO: Add a measure of variance of the column (zero variance is useless)
     cols = ['Column', 'Inferred', 'Specified', 'RF Imp Rank', 'RF Importance V', 'F Score']
     if not self.is_regression: cols.append('Chi2')
     self._txt('<tr><th>' + '</th><th>'.join(cols) + '</th></tr>')
