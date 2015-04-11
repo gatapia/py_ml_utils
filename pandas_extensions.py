@@ -577,11 +577,16 @@ def __df_self_predict_impl(X, clf, y, n_chunks, predict_proba):
 
     clf.fit(X_train, y2)    
     new_predictions = clf.predict_proba(X_test) if predict_proba else clf.predict(X_test)    
-    if new_predictions.shape[1] == 1:
+    if len(new_predictions.shape) > 1 and new_predictions.shape[1] == 1:
       new_predictions = new_predictions.T[1]
     if new_predictions.shape[0] == 1:      
       new_predictions = new_predictions.reshape(-1, 1)
-    predictions = new_predictions if iteration == 1 else np.vstack((predictions, new_predictions))
+    if iteration == 1:
+      predictions = new_predictions
+    elif predict_proba:
+      predictions = np.vstack((predictions, new_predictions))
+    else:
+      predictions = np.hstack((predictions, new_predictions))
   stop('self_predict completed')
   return predictions
 
