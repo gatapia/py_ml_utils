@@ -19,32 +19,40 @@ class Describe():
     self.cells = []  
 
   def show_classifier_performance(self, clf, X, y, use_proba=False):    
+    if type(X) is not pd.DataFrame: raise Exception('X must be a pandas.DataFrame')
+    if type(y) is not pd.Series: raise Exception('y must be a pandas.Series')
     predictions = X.self_predict_proba(clf, y) if use_proba else \
         X.self_predict(clf, y)
     self.show_prediction_comparison(predictions, y)        
 
-  def show_prediction_comparison(self, y_true, y_pred):    
-    if y_true.shape != y_pred.shape:
-      raise Exception('y_true and y_pred are not compatible shapes (must be same rows and same columns)')
-    
-    self._create_notebook(self.get_prediction_comparison_cells(y_true, y_pred), False)    
+  def show_prediction_comparison(self, y_true, y_pred):        
+    if type(y_true) is not pd.Series: raise Exception('y_true must be a pandas.Series')
+    if type(y_pred) is not pd.Series and type(y_pred) is not pd.DataFrame: raise Exception('y_pred must be a pandas.Series or pandas.DataFrame')
+    self._create_notebook(self.get_prediction_comparison_cells(y_true, y_pred), True)    
 
-  def get_prediction_comparison_cells(self, y_true, y_pred):    
+  def get_prediction_comparison_cells(self, y_true, y_pred): 
+    if len(y_true) != len(y_pred): raise Exception('y_true and y_pred are not compatible shapes (must be same rows and same columns)')    
+
     self.cells = []
     start('get_prediction_comparison_cells')
     dataset_name = '_get_prediction_comparison_cells_data'
     dump(dataset_name, (y_true, y_pred)) 
 
-    self.y_true = y_true
-    self.y_pred = y_pred
+    self.y_true = y_true.copy()
+    self.y_true.name = 'y_true'
+    self.y_pred = y_pred.copy()
+    self.y_pred.name = 'y_pred'
     self._do_global_imports(dataset_name, ['y_true', 'y_pred'])
-    self._do_target_description(self.y_true, False)
-    self._do_target_description(self.y_pred, False)
+    self._do_target_description(self.y_true, False, 'y_true')
+    self._do_target_description(self.y_pred, False, 'y_pred')
     self._do_target_comparison_charts()    
     stop('get_prediction_comparison_cells')    
+    return list(self.cells)
 
 
   def show_dataset(self, X, opt_y=None):    
+    if type(X) is not pd.DataFrame: raise Exception('X must be a pandas.DataFrame')
+    if opt_y is not None and type(opt_y) is not pd.Series: raise Exception('opt_y must be a pandas.Series')
     '''
     TODO: If we are evaluating results over years or location then
       we should plot data by this same fold. Maybe ensure also that
@@ -52,9 +60,12 @@ class Describe():
     '''        
     self.original_rows = X.shape[0]
     Xy = X.subsample(opt_y, 5e5)  
-    self.X = Xy if opt_y is None else Xy[0]
+    self.X = Xy.copy() if opt_y is None else Xy[0].copy()
     self.X_no_nan = self.X.copy().missing('na', 0)
-    self.y = None if opt_y is None else Xy[1]    
+    if opt_y is not None:
+      self.y = Xy[1].copy()
+      self.y.name = 'y'
+    else: self.y = None
     self.is_regression = self._type(self.y) == 'continuous'
 
     self._create_notebook(self.get_dataset_cells(), True)    
@@ -75,7 +86,7 @@ class Describe():
     # Do table of all columns x column with correlation values for
     #  all relationships
     self._do_column_summary_charts()
-    if self.y is not None: self._do_target_description('y', True)
+    if self.y is not None: self._do_target_description(self.y, True)
     self._do_all_columns_details()
     stop('done get_dataset_cells')
     return list(self.cells)
@@ -131,16 +142,23 @@ class Describe():
   #       Target Variable
   #############################################################################
 
-  def _do_target_description(self, target_var, show_pca_graphs):
+  def _do_target_description(self, target_var, show_pca_graphs, target_var_name='Target Variable'):
+    if len(target_var.shape) == 2 and target_var.shape[1] > 1:
+      for col_idx in range(target_var.shape[1]):
+        self._do_target_description_impl(target_var.ix[:, col_idx], show_pca_graphs, target_var_name + ' - ' + `col_idx`, target_var.name + '.ix[:,' + `col_idx` + ']')  
+    else: 
+      self._do_target_description_impl(target_var, show_pca_graphs, target_var_name, target_var.name)
+
+  def _do_target_description_impl(self, target_var, show_pca_graphs, target_var_name, target_var_identifier):
     target_type = self._type(target_var)
     uniques = pd.unique(target_var)
 
-    self._txt('\n\n<hr/>\n## Target variable')
+    self._txt('\n\n<hr/>\n## ' + target_var_name)
     
     self._name_value('Inferred type', target_type)
     self._name_value('Distinct values', len(uniques), True)
 
-    if target_type == 'continuous': self._continuous_charts(target_var)
+    if target_type == 'continuous': self._continuous_charts(target_var_identifier)
     elif target_type == 'binary' or target_type == 'multiclass': 
       self._categorical_charts(target_var)
       if show_pca_graphs:
@@ -163,23 +181,69 @@ class Describe():
 
 
   def _do_target_comparison_charts(self):
+    self._txt('<hr/>\n# Prediction Comparison', True)
     y_true_type = self._type(self.y_true)
     y_pred_type = self._type(self.y_pred)
+    y_true_classification = y_true_type == 'multiclass' or y_true_type == 'binary'
+    y_pred_classification = y_pred_type == 'multiclass' or y_pred_type == 'binary'
     if y_true_type == 'continuous' and y_pred_type == 'continuous':
       self._name_value('Pearson Cov:', self.y_true.cov(y_pred, method="pearson"))      
       self._name_value('Spearman Cov:', self.y_true.cov(y_pred, method="spearman"), True)      
       self._code('plt.scatter(y_true, y_pred, c=COLOURS, alpha=0.5).set_title("y_true vs y_pred")')
       self._code('bland_altman_plot(y_true, y_pred)')
-    if y_true_type == 'multiclass' and y_pred_type == 'continuous': 
-      # using predict proba      
-      self._code('matrix = metrics.confusion_matrix(y_true, y_pred > 0.5)')
-      self._code('plot_confusion_matrix(matrix)')
-      self._code('reliability_curve(y_true, y_pred)')
-    elif y_true_type == 'multiclass' and y_pred_type == 'multiclass':
-      self._code('matrix = metrics.confusion_matrix(y_true, y_pred)')
-      self._code('plot_confusion_matrix(matrix)')
-      self._code('reliability_curve(y_true, y_pred)')
+    elif y_true_classification and y_pred_type == 'continuous-multioutput': 
+      self._txt('##Confusion Matrices<br/>', True)
+      for col_idx in range(self.y_pred.shape[1]):
+        self._code(
+'''
+matrix = metrics.confusion_matrix(y_true == %d, y_pred.ix[:,%d] > 0.5)
+print 'Confusion Matrix Target Variable - %d'\n
+print_confusion_matrix(matrix, ['True', 'False'])
+plot_confusion_matrix(matrix)
+plt.show()
+''' % (col_idx, col_idx, col_idx))
+      self._flush_cell()
+      self._txt('##Reliability Diagrams<br/>', True)
+      self._code('f, axs = plt.subplots(%d, 2, figsize=(12, %d))\naxs = axs.reshape(-1)' % 
+        (int(math.ceil(self.y_pred.shape[1] / 2.0)), self.y_pred.shape[1]*4))
+      for col_idx in range(self.y_pred.shape[1]):        
+        self._code(
+'''
+y_score_bin_mean, empirical_prob_pos = reliability_curve((y_true==%d).values, y_pred.ix[:,%d].values, 200)
+axs[%d].scatter(y_score_bin_mean, empirical_prob_pos)
+axs[%d].set_title('Reliability Diagram - %d')
+axs[%d].set_xlabel('Predicted Probability')
+_ = axs[%d].set_ylabel('Empirical Probability')
+''' % (col_idx, col_idx, col_idx, col_idx, col_idx, col_idx, col_idx))
 
+    elif y_true_classification and y_pred_type == 'continuous': 
+      # using predict proba      
+      self._code(
+'''
+fig, axs = plt.subplots(1,2, figsize=(12, 8))
+matrix = metrics.confusion_matrix(y_true, y_pred > 0.5)
+_ = plot_confusion_matrix(matrix)
+y_score_bin_mean, empirical_prob_pos = reliability_curve(y_true.values, y_pred.values, 200)
+axs[0].scatter(y_score_bin_mean, empirical_prob_pos)
+axs[0].set_title('Reliability Diagram')
+axs[0].set_xlabel('Predicted Probability')
+_ = axs[0].set_ylabel('Empirical Probability')
+print_confusion_matrix(matrix, ['True', 'False'])
+''')
+    elif y_true_classification and y_pred_classification:
+      self._code(
+'''
+fig, axs = plt.subplots(1,2, figsize=(12, 8))
+matrix = metrics.confusion_matrix(y_true, y_pred)
+_ = plot_confusion_matrix(matrix)
+y_score_bin_mean, empirical_prob_pos = reliability_curve(y_true.values, y_pred.values, 200)
+axs[0].scatter(y_score_bin_mean, empirical_prob_pos)
+axs[0].set_title('Reliability Diagram')
+axs[0].set_xlabel('Predicted Probability')
+_ = axs[0].set_ylabel('Empirical Probability')
+print_confusion_matrix(matrix, ['True', 'False'])
+''')
+    else: raise Exception('Type combination not supported: y_true_type: ' + y_true_type + ' y_pred_type: ' + y_pred_type)
     self._flush_cell()
     self._txt('\n\n\n', True)
 
@@ -268,7 +332,7 @@ class Describe():
     
     if col_name.startswith('c_') or col_name.startswith('b_') \
         or col_name.startswith('i_'): self._categorical_charts(c)
-    elif col_name.startswith('n_'): self._continuous_charts(c)
+    elif col_name.startswith('n_'): self._continuous_charts('X[' + `c.name` + ']')
     self._flush_cell()
 
     if self.y is not None:
@@ -278,16 +342,15 @@ class Describe():
 
     self._txt('\n\n\n', True)
 
-  def _categorical_charts(self, series):
-    identifier = '_ = X["y"]' if series is self.y else '_ = X["' + series.name + '"]'
+  def _categorical_charts(self, s):
+    identifier = 'X["' + s.name + '"]' if 'X' in globals() and s.name in X.columns else s.name
     self._code('fig, axs = plt.subplots(1,1)')
-    self._code(identifier + '.value_counts().plot(kind="barh")')        
+    self._code('_ = ' + identifier + '.value_counts().plot(kind="barh")')        
     self._code('axs.set_ylabel("Value")')
     self._code('axs.set_xlabel("Count")')
     self._code('_ = axs.set_title("Field Values")')
 
-  def _continuous_charts(self, series):
-    identifier = 'X["y"]' if series is self.y else 'X["' + series.name + '"]'
+  def _continuous_charts(self, identifier):
     self._code([
       'fig, axs = plt.subplots(1,3, figsize=(12, 8))',
       identifier + '.hist(bins=30, ax=axs[0]).set_title("Distribution")',
@@ -299,9 +362,8 @@ class Describe():
     ])
 
   def _relationship(self, a, b):
-    identifier_a = 'X["' + a.name + '"]'    
-    identifier_b = 'X["y"]' if b is self.y else 'X["' + b.name + '"]'
-    identifier_b2 = 'y' if b is self.y else b.name
+    identifier_a = 'X["' + a.name + '"]' if 'X' in globals() and a.name in X.columns else a.name
+    identifier_b = 'X["' + b.name + '"]' if 'X' in globals() and b.name in X.columns else b.name
 
     type_a = self._type(a)
     type_b = self._type(b)
@@ -314,8 +376,8 @@ class Describe():
       
       if type_b == 'binary' or type_b == 'multiclass':
         self._code('fig, axs = plt.subplots(1,2)')         
-        self._code('_ = X[["' + a.name + '", "' + identifier_b2 + '"]].boxplot(by="' + identifier_b2 + '", ax=axs[0])')
-        self._code('_ = X.plot(kind="scatter", x="' + identifier_b2 + '", y="' + a.name +'", ax=axs[1])')      
+        self._code('_ = X[["' + a.name + '", "' + b.name + '"]].boxplot(by="' + b.name + '", ax=axs[0])')
+        self._code('_ = X.plot(kind="scatter", x="' + b.name + '", y="' + a.name +'", ax=axs[1])')      
         self._code('_ = X.hist(column="' + a.name + '", by="y", figsize=(12, 12))')
 
 
@@ -326,7 +388,7 @@ class Describe():
       
       if type_b == 'multiclass':
         self._code('fig, axs = plt.subplots(1,1)')         
-        self._code('X.boxplot(column="' + a.name + '", by="' + identifier_b2 + '", ax=axs)')
+        self._code('X.boxplot(column="' + a.name + '", by="' + b.name + '", ax=axs)')
 
     if type_a == 'binary':
       if type_b == 'continuous' :
@@ -412,7 +474,7 @@ class Describe():
     if data is None: return None
     return sklearn.utils.multiclass.type_of_target(data)
 
-  def _create_notebook(cells, start_notebook):
+  def _create_notebook(self, cells, start_notebook):
     nb = nbf.new_notebook()
     nb.cells = cells
     with open('dataset_description.ipynb', 'w') as f: 
