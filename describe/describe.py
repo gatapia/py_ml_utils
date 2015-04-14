@@ -14,6 +14,7 @@ class Describe():
 
   def __init__(self):    
     self._importance_row_limit = 50000
+    self._min_variance_threshold = 0.01
     self._code_lines = []
     self._text_lines = []      
     self.cells = []  
@@ -83,8 +84,9 @@ class Describe():
     self._do_header_markdown()    
     self._intialise_feature_scores()
     self._do_column_summary_table()
-    # Do table of all columns x column with correlation values for
-    #  all relationships
+    # TODO: Do table of all columns x column with correlation 
+    #   values for all relationships.
+    # TODO: Correlation matrix of all variables
     self._do_column_summary_charts()
     if self.y is not None: self._do_target_description(self.y, True)
     self._do_all_columns_details()
@@ -279,7 +281,9 @@ print_confusion_matrix(matrix, ['True', 'False'])
     ]
     if self.is_regression: cols.append(col_details[2])
     else: cols += [col_details[2], col_details[3]]
-    cols.append(col_details[-1])
+    variance = col_details[-1]
+    if variance < self._min_variance_threshold: cols.append('<b>' + self._pretty(col_details[-1]) + '</b>')
+    else: cols.append(col_details[-1])
     self._txt('<tr><td>' + '</td><td>'.join(map(self._pretty, cols)) + '</td></tr>')
 
   def _do_column_summary_charts(self):
