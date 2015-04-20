@@ -586,7 +586,11 @@ def __df_self_predict_impl(X, clf, y, n_chunks, method):
     X_test = X[begin:end]
     y2 = None if y is None else pd.concat((y[:begin], y[end:]), 0, ignore_index=True)    
 
-    clf.fit(X_train, y2)    
+    if X_train.shape[1] == 1: X_train = X_train.ix[:,0]
+    if X_test.shape[1] == 1: X_test = X_test.ix[:,0]
+
+    clf.fit(X_train, y2)        
+
     new_predictions = getattr(clf, method)(X_test)
     if len(new_predictions.shape) > 1 and new_predictions.shape[1] == 1:
       new_predictions = new_predictions.T[1]
