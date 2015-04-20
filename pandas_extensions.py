@@ -537,28 +537,39 @@ def _df_pca(self, n_components, whiten=False):
   return pd.DataFrame(columns=columns, data=new_X)
 
 def _df_predict(self, clf, y, X_test=None):    
-  reseed(clf)
-  X_train = self
-  if X_test is None and self.shape[0] > len(y):
-    X_test = self[len(y):]
-    X_train = self[:len(y)]
-  return clf.fit(X_train, y).predict(X_test)
+  return self._df_clf_method_impl(clf, y, X_test, 'predict')
 
 def _df_predict_proba(self, clf, y, X_test=None):    
+  return self._df_clf_method_impl(clf, y, X_test, 'predict_proba')
+
+def _df_transform(self, clf, y, X_test=None):    
+  return self._df_clf_method_impl(clf, y, X_test, 'transform')
+
+def _df_decision_function(self, clf, y, X_test=None):    
+  return self._df_clf_method_impl(clf, y, X_test, 'decision_function')
+
+def _df_clf_method_impl(self, clf, y, X_test=None, method='predict'):    
   reseed(clf)
   X_train = self
   if X_test is None and self.shape[0] > len(y):
     X_test = self[len(y):]
     X_train = self[:len(y)]
-  return clf.fit(X_train, y).predict_proba(X_test)
+  clf.fit(X_train, y)
+  return getattr(clf, method)(X_test)
 
 def _df_self_predict(self, clf, y, n_chunks=5):    
-  return __df_self_predict_impl(self, clf, y, n_chunks, False)
+  return __df_self_predict_impl(self, clf, y, n_chunks, 'predict')
 
 def _df_self_predict_proba(self, clf, y, n_chunks=5):    
-  return __df_self_predict_impl(self, clf, y, n_chunks, True)
+  return __df_self_predict_impl(self, clf, y, n_chunks, 'predict_proba')
 
-def __df_self_predict_impl(X, clf, y, n_chunks, predict_proba):    
+def _df_self_transform(self, clf, y, n_chunks=5):    
+  return __df_self_predict_impl(self, clf, y, n_chunks, 'transform')
+
+def _df_self_decision_function(self, clf, y, n_chunks=5):    
+  return __df_self_predict_impl(self, clf, y, n_chunks, 'decision_function')
+
+def __df_self_predict_impl(X, clf, y, n_chunks, method):    
   if y is not None and X.shape[0] != len(y): 
     raise Exception('self_predict should have enough y values to do full prediction.')
   start('self_predict with ' + `n_chunks` + ' starting')
@@ -576,14 +587,14 @@ def __df_self_predict_impl(X, clf, y, n_chunks, predict_proba):
     y2 = None if y is None else pd.concat((y[:begin], y[end:]), 0, ignore_index=True)    
 
     clf.fit(X_train, y2)    
-    new_predictions = clf.predict_proba(X_test) if predict_proba else clf.predict(X_test)    
+    new_predictions = getattr(clf, method)(X_test)
     if len(new_predictions.shape) > 1 and new_predictions.shape[1] == 1:
       new_predictions = new_predictions.T[1]
     if new_predictions.shape[0] == 1:      
       new_predictions = new_predictions.reshape(-1, 1)
     if iteration == 1:
       predictions = new_predictions
-    elif predict_proba:
+    elif method == 'predict_proba':
       predictions = np.vstack((predictions, new_predictions))
     else:
       predictions = np.hstack((predictions, new_predictions))
@@ -819,8 +830,12 @@ extend_df('pca', _df_pca)
 extend_df('noise_filter', _df_noise_filter)
 extend_df('predict', _df_predict)
 extend_df('predict_proba', _df_predict_proba)
+extend_df('transform', _df_transform)
+extend_df('decision_function', _df_decision_function)
 extend_df('self_predict', _df_self_predict)
 extend_df('self_predict_proba', _df_self_predict_proba)
+extend_df('self_transform', _df_self_transform)
+extend_df('self_decision_function', _df_self_decision_function)
 extend_df('save_csv', _df_save_csv)
 extend_df('to_vw', _df_to_vw)
 extend_df('to_libfm', _df_to_libfm)
