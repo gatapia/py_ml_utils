@@ -499,7 +499,6 @@ def _df_noise_filter(self, type, *args, **kargs):
 def _df_split(self, y, stratified=False, train_fraction=0.5):  
   train_size = int(self.shape[0] * train_fraction)
   test_size = int(self.shape[0] * (1.0-train_fraction))  
-  print 'train_size:', train_size, 'test_size:', test_size
   start('splitting train_size: ' + `train_size` + ' test_size: ' + `test_size`)
   if stratified:
     train_indexes, test_indexes = list(cross_validation.StratifiedShuffleSplit(y, 1, test_size, train_size, random_state=cfg['sys_seed']))[0]  
@@ -745,7 +744,7 @@ def __df_to_lines(df,
         new_line.append(line)
       
     lines = []  
-    for idx, row in _chunked_iterator(df):
+    for idx, row in enumerate(_chunked_iterator(df)):
       label = '1.0' if y is None or idx >= len(y) else str(float(y[idx]))
       if convert_zero_ys and label == '0.0': label = '-1.0'
       if weights is not None and idx < len(weights):      
@@ -788,6 +787,29 @@ def _df_to_libfm(self, out_file_or_y=None, y=None):
       output_categorical_value=True,
       tag_feature_sets=False)
 
+def _df_to_libffm(self, out_file_or_y=None, y=None):
+  out_file = out_file_or_y if type(out_file_or_y) is str else None  
+  if y is None and out_file_or_y is not None and out_file is None: 
+    y = out_file_or_y
+  lines = []    
+  outfile = None
+  if out_file is not None: outfile = get_write_file_stream(out_file)
+  categoricals = self.categoricals() + self.indexes() + self.binaries()
+  if len(categoricals) > 0: raise Exception('categoricals not currently supported')
+  numericals = self.numericals()
+  for idx, row in enumerate(_chunked_iterator(self)):
+    label = '0' if y is None or idx >= len(y) else str(int(y[idx]))
+    new_line = [label]     
+    for col_idx, c in enumerate(numericals):
+      cis = str(col_idx)
+      new_line.append(cis + ':0:' + `0 if row[c] == 0  else row[c]`)
+    line = ' '.join(new_line)
+    if outfile is not None: outfile.write(line + '\n')
+    else: lines.append(line)
+  if outfile:
+    outfile.close()
+    return None
+  else: return lines
 
 def _df_summarise(self, opt_y=None, filename='dataset_description', columns=None):
   from describe import describe
@@ -799,7 +821,7 @@ def _chunked_iterator(df, chunk_size=1000000):
     subset = df[start:start+chunk_size]
     start += chunk_size
     for r in subset.iterrows():
-      yield r    
+      yield r[1]
     if len(subset) < chunk_size: break
 
 # Extensions
@@ -845,6 +867,7 @@ extend_df('self_decision_function', _df_self_decision_function)
 extend_df('save_csv', _df_save_csv)
 extend_df('to_vw', _df_to_vw)
 extend_df('to_libfm', _df_to_libfm)
+extend_df('to_libffm', _df_to_libffm)
 extend_df('to_svmlight', _df_to_svmlight)
 extend_df('to_xgboost', _df_to_svmlight)
 extend_df('hashcode', _df_hashcode)
