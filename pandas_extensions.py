@@ -499,10 +499,12 @@ def _df_noise_filter(self, type, *args, **kargs):
 def _df_split(self, y, stratified=False, train_fraction=0.5):  
   train_size = int(self.shape[0] * train_fraction)
   test_size = int(self.shape[0] * (1.0-train_fraction))  
+  print 'train_size:', train_size, 'test_size:', test_size
   start('splitting train_size: ' + `train_size` + ' test_size: ' + `test_size`)
-  splitter = cross_validation.StratifiedShuffleSplit if stratified else \
-    cross_validation.ShuffleSplit
-  train_indexes, test_indexes = list(splitter(y, 1, test_size, train_size))[0]
+  if stratified:
+    train_indexes, test_indexes = list(cross_validation.StratifiedShuffleSplit(y, 1, test_size, train_size, random_state=cfg['sys_seed']))[0]  
+  else:
+    train_indexes, test_indexes = list(cross_validation.ShuffleSplit(len(y), 1, test_size, train_size, random_state=cfg['sys_seed']))[0]  
   new_set = (
     self.iloc[train_indexes], 
     y.iloc[train_indexes], 
@@ -537,23 +539,23 @@ def _df_pca(self, n_components, whiten=False):
   return pd.DataFrame(columns=columns, data=new_X)
 
 def _df_predict(self, clf, y, X_test=None):    
-  return self._df_clf_method_impl(clf, y, X_test, 'predict')
+  return __df_clf_method_impl(self, clf, y, X_test, 'predict')
 
 def _df_predict_proba(self, clf, y, X_test=None):    
-  return self._df_clf_method_impl(clf, y, X_test, 'predict_proba')
+  return __df_clf_method_impl(self, clf, y, X_test, 'predict_proba')
 
 def _df_transform(self, clf, y, X_test=None):    
-  return self._df_clf_method_impl(clf, y, X_test, 'transform')
+  return __df_clf_method_impl(self, clf, y, X_test, 'transform')
 
 def _df_decision_function(self, clf, y, X_test=None):    
-  return self._df_clf_method_impl(clf, y, X_test, 'decision_function')
+  return __df_clf_method_impl(self, clf, y, X_test, 'decision_function')
 
-def _df_clf_method_impl(self, clf, y, X_test=None, method='predict'):    
+def __df_clf_method_impl(X, clf, y, X_test, method):    
   reseed(clf)
-  X_train = self
-  if X_test is None and self.shape[0] > len(y):
-    X_test = self[len(y):]
-    X_train = self[:len(y)]
+  X_train = X
+  if X_test is None and X.shape[0] > len(y):
+    X_test = X[len(y):]
+    X_train = X[:len(y)]
   clf.fit(X_train, y)
   return getattr(clf, method)(X_test)
 
