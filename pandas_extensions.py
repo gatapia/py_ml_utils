@@ -554,7 +554,10 @@ def __df_clf_method_impl(X, clf, y, X_test, method):
   X_train = X
   if X_test is None and X.shape[0] > len(y):
     X_test = X[len(y):]
-    X_train = X[:len(y)]
+    X_train = X[:len(y)]    
+
+  if len(X_train.shape) == 2 and X_train.shape[1] == 1: X_train = X_train.ix[:,0]
+  if len(X_test.shape) == 2 and X_test.shape[1] == 1: X_test = X_test.ix[:,0]
   clf.fit(X_train, y)
   return getattr(clf, method)(X_test)
 
