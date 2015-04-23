@@ -14,7 +14,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       colsample_bytree=1,      
       l=0, alpha=0, lambda_bias=0, objective='reg:linear',
       eval_metric=None, seed=0, num_class=None,
-      max_delta_step=0
+      max_delta_step=0,early_stopping_rounds=None
       ):    
     assert booster in ['gbtree', 'gblinear']
     assert objective in ['reg:linear', 'reg:logistic', 
@@ -29,6 +29,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     self.ntree_limit = ntree_limit
     self.nthread = nthread 
     self.booster = booster
+    self.early_stopping_rounds = early_stopping_rounds
     # Parameter for Tree Booster
     self.eta=eta
     self.gamma=gamma
@@ -106,7 +107,10 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       param['num_class']= self.num_class
 
     watchlist  = [(X,'train')]    
-    self.bst = xgb.train(param, X, self.num_round, watchlist)
+    if self.early_stopping_rounds > 0:
+      self.bst = xgb.train(param, X, self.num_round, watchlist, early_stopping_rounds=self.early_stopping_rounds)
+    else:
+      self.bst = xgb.train(param, X, self.num_round, watchlist)
 
     return self
 
