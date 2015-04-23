@@ -428,7 +428,7 @@ def _df_append_right(self, df_or_s):
     self = self.to_sparse(fill_value=0)
   if type(df_or_s) is pd.Series: self[df_or_s.name] = df_or_s.values
   else: 
-    self = pd.concat((self, df_or_s), 1)
+    self = pd.concat((self, df_or_s), 1, ignore_index=True)
   stop('done appending to the right')
   return self
 
