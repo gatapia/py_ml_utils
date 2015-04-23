@@ -26,6 +26,8 @@ class LibFFMClassifier(ExeEstimator, sklearn.base.ClassifierMixin):
   '''
   def __init__(self, lambda_v=0, factor=4, iteration=15, eta=0.1, 
       nr_threads=1, quiet=False, normalize=None, no_rand=None):
+    ExeEstimator.__init__(self)
+    
     self.lambda_v = lambda_v
     self.factor = factor
     self.iteration = iteration
@@ -34,8 +36,7 @@ class LibFFMClassifier(ExeEstimator, sklearn.base.ClassifierMixin):
     self.quiet = quiet
     self.normalize = normalize
     self.no_rand = no_rand
-    self.model_file = None
-    self.tmpdir = 'tmpfiles'
+    self.model_file = None    
 
   def fit(self, X, y=None):
     if type(X) is str:

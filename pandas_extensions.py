@@ -717,7 +717,9 @@ def __df_to_lines(df,
     weights=None, 
     convert_zero_ys=True,
     output_categorical_value=True,
-    tag_feature_sets=True):    
+    tag_feature_sets=True,
+    col_index_start=0,
+    sort_feature_indexes=False):    
   columns_indexes = {}
   max_col = {'index':0}
   out_file = out_file_or_y if type(out_file_or_y) is str else None
@@ -729,7 +731,7 @@ def __df_to_lines(df,
     if name not in columns_indexes:
       columns_indexes[name] = max_col['index']
       max_col['index'] += 1
-    return str(columns_indexes[name])
+    return str(col_index_start + columns_indexes[name])
 
   def impl(outfile):
     def add_cols(new_line, columns, is_numerical):
@@ -755,12 +757,12 @@ def __df_to_lines(df,
         if w != 1: label += ' ' + `w`
         label += ' \'' + `idx`
       
-      new_line = [label]      
-      
+      new_line = []
       add_cols(new_line, df.numericals(), True)
       add_cols(new_line, df.categoricals() + df.indexes() + df.binaries(), False)
-
-      line = ' '.join(new_line)
+      if sort_feature_indexes:
+        new_line = sorted(new_line, key=lambda v: int(v.split(':')[0]))
+      line = ' '.join([label] + new_line)
   
       if outfile: outfile.write(line + '\n')
       else: lines.append(line)
@@ -782,7 +784,9 @@ def _df_to_svmlight(self, out_file_or_y=None, y=None):
   return __df_to_lines(self, out_file_or_y, y, None,
       convert_zero_ys=True,
       output_categorical_value=True,
-      tag_feature_sets=False)
+      tag_feature_sets=False,
+      col_index_start=1,
+      sort_feature_indexes=True)
 
 def _df_to_libfm(self, out_file_or_y=None, y=None):
   return __df_to_lines(self, out_file_or_y, y, None,
