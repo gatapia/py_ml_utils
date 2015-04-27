@@ -117,6 +117,10 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
   def predict(self, X): 
     X = self.build_matrix(X)
     return self.bst.predict(X)
+
+  def predict_tree(self, X): 
+    X = self.build_matrix(X)
+    return self.bst.predict(X, pred_leaf = True)
   
   def predict_proba(self, X): 
     X = self.build_matrix(X)

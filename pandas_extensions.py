@@ -428,7 +428,14 @@ def _df_append_right(self, df_or_s):
     self = self.to_sparse(fill_value=0)
   if type(df_or_s) is pd.Series: self[df_or_s.name] = df_or_s.values
   else: 
-    self = pd.concat((self, df_or_s), 1, ignore_index=True)
+    if type(df_or_s) is pd.DataFrame:
+      columns = df_or_s.columns
+      right = df_or_s.values
+    else:
+      columns = [`i` + '_2' for i in range(df_or_s.shape[1])]
+      right = df_or_s
+    self = pd.DataFrame(np.hstack((self.values, right)), 
+        columns=self.columns.tolist() + columns)
   stop('done appending to the right')
   return self
 
@@ -562,24 +569,48 @@ def __df_clf_method_impl(X, clf, y, X_test, method):
   return getattr(clf, method)(X_test)
 
 def _df_self_predict(self, clf, y, n_chunks=5):    
-  return __df_self_predict_impl(self, clf, y, n_chunks, 'predict')
+  return _df_self_predict_impl(self, clf, y, n_chunks, 'predict')
 
 def _df_self_predict_proba(self, clf, y, n_chunks=5):    
-  return __df_self_predict_impl(self, clf, y, n_chunks, 'predict_proba')
+  return _df_self_predict_impl(self, clf, y, n_chunks, 'predict_proba')
 
 def _df_self_transform(self, clf, y, n_chunks=5):    
-  return __df_self_predict_impl(self, clf, y, n_chunks, 'transform')
+  return _df_self_predict_impl(self, clf, y, n_chunks, 'transform')
 
 def _df_self_decision_function(self, clf, y, n_chunks=5):    
-  return __df_self_predict_impl(self, clf, y, n_chunks, 'decision_function')
+  return _df_self_predict_impl(self, clf, y, n_chunks, 'decision_function')
 
-def __df_self_predict_impl(X, clf, y, n_chunks, method):    
+def _df_self_predict_impl(X, clf, y, n_chunks, method):    
   if y is not None and X.shape[0] != len(y): 
     raise Exception('self_predict should have enough y values to do full prediction.')
   start('self_predict with ' + `n_chunks` + ' starting')
   reseed(clf)
-  chunk_size = int(math.ceil(X.shape[0] / float(n_chunks)))
+  
   predictions = []
+  iteration = 0
+  def op(X, y, X2):
+    clf.fit(X, yy)  
+    new_predictions = getattr(clf, method)(X_test)
+    if len(new_predictions.shape) > 1 and new_predictions.shape[1] == 1:
+      new_predictions = new_predictions.T[1]
+    if new_predictions.shape[0] == 1:      
+      new_predictions = new_predictions.reshape(-1, 1)
+    if iteration == 1:
+      predictions = new_predictions
+    elif method == 'predict_proba':
+      predictions = np.vstack((predictions, new_predictions))
+    else:
+      predictions = np.hstack((predictions, new_predictions))
+  
+  X._df_self_chunked_op(y, op, n_chunks)
+    
+  stop('self_predict completed')
+  return predictions
+
+def _df_self_chunked_op(self, y, op, n_chunks=5):    
+  X = self
+  chunk_size = int(math.ceil(X.shape[0] / float(n_chunks)))  
+  chunks = []
   iteration = 0
   while True:
     begin = iteration * chunk_size
@@ -592,23 +623,8 @@ def __df_self_predict_impl(X, clf, y, n_chunks, method):
 
     if X_train.shape[1] == 1: X_train = X_train.ix[:,0]
     if X_test.shape[1] == 1: X_test = X_test.ix[:,0]
-
-    clf.fit(X_train, y2)        
-
-    new_predictions = getattr(clf, method)(X_test)
-    if len(new_predictions.shape) > 1 and new_predictions.shape[1] == 1:
-      new_predictions = new_predictions.T[1]
-    if new_predictions.shape[0] == 1:      
-      new_predictions = new_predictions.reshape(-1, 1)
-    if iteration == 1:
-      predictions = new_predictions
-    elif method == 'predict_proba':
-      predictions = np.vstack((predictions, new_predictions))
-    else:
-      predictions = np.hstack((predictions, new_predictions))
-  stop('self_predict completed')
-  return predictions
-
+    chunks.append(op(X_train, y2, X_test))
+  return chunks
 
 def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):    
   X = self.copy()  
@@ -871,6 +887,7 @@ extend_df('self_predict', _df_self_predict)
 extend_df('self_predict_proba', _df_self_predict_proba)
 extend_df('self_transform', _df_self_transform)
 extend_df('self_decision_function', _df_self_decision_function)
+extend_df('self_chunked_op', _df_self_chunked_op)
 extend_df('save_csv', _df_save_csv)
 extend_df('to_vw', _df_to_vw)
 extend_df('to_libfm', _df_to_libfm)
