@@ -585,25 +585,18 @@ def _df_self_predict_impl(X, clf, y, n_chunks, method):
     raise Exception('self_predict should have enough y values to do full prediction.')
   start('self_predict with ' + `n_chunks` + ' starting')
   reseed(clf)
-  
-  predictions = []
-  iteration = 0
+      
   def op(X, y, X2):
-    clf.fit(X, yy)  
-    new_predictions = getattr(clf, method)(X_test)
+    clf.fit(X, y)  
+    new_predictions = getattr(clf, method)(X2)
     if len(new_predictions.shape) > 1 and new_predictions.shape[1] == 1:
       new_predictions = new_predictions.T[1]
     if new_predictions.shape[0] == 1:      
       new_predictions = new_predictions.reshape(-1, 1)
-    if iteration == 1:
-      predictions = new_predictions
-    elif method == 'predict_proba':
-      predictions = np.vstack((predictions, new_predictions))
-    else:
-      predictions = np.hstack((predictions, new_predictions))
+    return new_predictions    
   
-  X._df_self_chunked_op(y, op, n_chunks)
-    
+  chuks = _df_self_chunked_op(X, y, op, n_chunks)
+  predictions = np.vstack(chuks)
   stop('self_predict completed')
   return predictions
 
