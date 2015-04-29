@@ -112,6 +112,36 @@ def _df_to_indexes(self, drop_origianls=False, sparsify=False):
   stop('done indexing categoricals in data frame')  
   return self
 
+def _df_cats_to_count_ratios(self, y):
+  all_cats = self.categoricals() + self.indexes() + self.binaries()
+  renamed_cats = [c.replace('c_', 'n_') for c in all_cats]
+
+  w_counts = _df_cats_to_counts(self, y)
+  for orig_cat in renamed_cats:
+    cols = [c for c in w_counts.columns if c.startswith(orig_cat + '_y:')]
+    for c in cols:
+      w_counts[c] /= float(len(y))
+  return w_counts
+
+
+def _df_cats_to_counts(self, y):
+  start('converting categoricals to counts')
+  self['__y'] = y.values if hasattr(y, 'values') else y
+  unique_ys = y.unique()
+  unique_ys.sort()
+  all_cats = self.categoricals() + self.indexes() + self.binaries()
+  for c in all_cats:
+    piv = self[[c, '__y']].pivot_table(index=c, columns='__y', aggfunc=len, fill_value=0)
+    piv.columns = [c.replace('c_', 'n_') + '_y:' + str(y_val) for y_val in unique_ys]
+    self = self.merge(piv, 'left', left_on=c, right_index=True)  
+
+  self = self.remove(['__y'] + all_cats)
+  stop('done converting categoricals to counts')
+  return self
+
+def _df_cats_to_means(self, y):
+  raise Exception('not implemented')
+
 def _df_bin(self, n_bins=100, drop_origianls=False):
   start('binning data into ' + `n_bins` + ' bins')  
   for n in self.numericals():
@@ -129,6 +159,15 @@ def _df_combinations(self, group_size=2, columns=[], categoricals=False, indexes
   if dates: cols = cols + self.dates()
   if binaries: cols = cols + self.binaries()
   return list(itertools.combinations(cols, group_size))
+
+def _df_normalise(self, columns=None):
+  start('normalising data [0-1]')  
+  if columns is None: columns = self.numericals()
+  for c in columns:
+    self[c] -= self[c].min()
+    self[c] /= self[c].max()
+  stop('done normalising data')  
+  return self
 
 def _df_remove_nas(self, columns=None):      
   self.dropna(0, 'any', subset=columns, inplace=True)
@@ -859,6 +898,7 @@ extend_df('remove', _df_remove)
 extend_df('remove_nas', _df_remove_nas)
 extend_df('engineer', _df_engineer)
 extend_df('combinations', _df_combinations)
+extend_df('normalise', _df_normalise)
 extend_df('missing', _df_missing)
 extend_df('scale', _df_scale)
 extend_df('outliers', _df_outliers)
@@ -898,6 +938,9 @@ extend_df('trim_on_y', _df_trim_on_y)
 extend_df('nbytes', _df_nbytes)
 extend_df('compress', _df_compress)
 extend_df('summarise', _df_summarise)
+
+extend_df('cats_to_count_ratios', _df_cats_to_count_ratios)
+extend_df('cats_to_counts', _df_cats_to_counts)
 
 # Series Extensions  
 extend_s('one_hot_encode', _s_one_hot_encode)
