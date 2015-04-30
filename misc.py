@@ -209,7 +209,9 @@ def dump(file, data):
 def load(file, opt_fallback=None):
   full_file = 'data/pickles/' + file
   if not '.' in full_file: full_file += '.pickle'
-  if os.path.isfile(full_file): return joblib.load(full_file);
+  if os.path.isfile(full_file): 
+    if full_file.endswith('.npy'): return np.load(full_file)
+    else: return joblib.load(full_file);
   if opt_fallback is None: return None
   data = opt_fallback()
   dump(file, data)
