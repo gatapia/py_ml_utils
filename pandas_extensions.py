@@ -634,8 +634,15 @@ def _df_self_predict_impl(X, clf, y, n_chunks, method):
       new_predictions = new_predictions.reshape(-1, 1)
     return new_predictions    
   
-  chuks = _df_self_chunked_op(X, y, op, n_chunks)
-  predictions = np.vstack(chuks)
+  chunks = _df_self_chunked_op(X, y, op, n_chunks)
+  # TODO: Check this, does not work with isotonic transform
+  '''
+  for i, c in enumerate(chunks):
+    if c.shape[1] == 1: chunks[i] = c[:, 0]
+    print 'i:', i, 'c:', chunks[i].shape  
+  predictions = np.vstack(chunks)
+  '''  
+  predictions = np.concatenate(chunks)  
   stop('self_predict completed')
   return predictions
 
