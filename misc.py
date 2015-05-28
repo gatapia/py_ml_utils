@@ -15,7 +15,8 @@ cfg = {
   'sys_seed':0,
   'debug':True,
   'scoring': None,
-  'indent': 0
+  'indent': 0,
+  'cv_n_jobs': -1
 }
 
 random.seed(cfg['sys_seed'])
