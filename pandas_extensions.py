@@ -449,7 +449,7 @@ def _is_sparse(o):
     type(o) is pd.sparse.series.SparseSeries
 
 def _df_append_right(self, df_or_s):  
-  start('appending to the right.  note, this is a destructuve operation')
+  start('appending to the right.  note, this is a destructive operation')
   if (type(df_or_s) is sparse.coo.coo_matrix):
     self_sparse = None
     for c in self.columns:
@@ -468,7 +468,7 @@ def _df_append_right(self, df_or_s):
   if type(df_or_s) is pd.Series: self[df_or_s.name] = df_or_s.values
   else: 
     if type(df_or_s) is pd.DataFrame:
-      columns = df_or_s.columns
+      columns = df_or_s.columns.tolist()
       right = df_or_s.values
     else:
       columns = [`i` + '_2' for i in range(df_or_s.shape[1])]
