@@ -49,11 +49,12 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     self.num_class = num_class
 
   def build_matrix(self, X, opt_y=None):
+    if type(X) is xgb.DMatrix: return X
     if hasattr(X, 'values'): X = X.values
     if opt_y is not None and hasattr(opt_y, 'values'): opt_y = opt_y.values
     return X if hasattr(X, 'handle') else xgb.DMatrix(X, opt_y, missing=np.nan)
 
-  def cv(self, X, y): 
+  def cv(self, X, y, cv=3): 
     X = self.build_matrix(X, y)
     param = {
       'silent': 1 if self.silent else 0, 
@@ -77,7 +78,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
       'seed': self.seed,
       'num_class': self.num_class,
     }    
-    results = xgb.cv(param, X, self.num_round, 3)
+    results = xgb.cv(param, X, self.num_round, cv)
     return results
 
   def fit(self, X, y):    
