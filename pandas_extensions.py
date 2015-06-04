@@ -53,6 +53,10 @@ def _s_to_indexes(self):
   return pd.Series(lbls, index=self.index, \
       dtype=_get_optimal_numeric_type('int', 0, len(lbls) + 1))
 
+
+def _s_append_bottom(self, s):  
+  return pd.concat([self, s], ignore_index=True)
+
 '''
 DataFrame Extensions
 '''
@@ -479,7 +483,7 @@ def _df_append_right(self, df_or_s):
   return self
 
 def _df_append_bottom(self, df):  
-  debug('warning: DataFrame.append_bottom always returns a new DataFrame')
+  # debug('warning: DataFrame.append_bottom always returns a new DataFrame')
   return pd.concat([self, df], ignore_index=True)
 
 def _create_df_from_templage(template, data, index=None):
@@ -957,6 +961,7 @@ extend_s('sigma_limits', _s_sigma_limits)
 extend_s('s_compress', _s_compress)
 extend_s('hashcode', _s_hashcode)
 extend_s('to_indexes', _s_to_indexes)
+extend_s('append_bottom', _s_append_bottom)
 
 # Aliases
 extend_s('catout', _s_categorical_outliers)
