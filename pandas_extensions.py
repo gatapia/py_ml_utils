@@ -676,12 +676,12 @@ def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):
   y = X['__tmpy']
   return (X.drop(['__tmpy'], 1), y)
 
-def _df_save_csv(self, file):   
+def _df_save_csv(self, file, header=True):   
   if file.endswith('.pickle'): 
     dump(file, self)
     return self
   if file.endswith('.gz'): file = gzip.open(file, "wb")
-  self.to_csv(file, index=False)  
+  self.to_csv(file, index=False, header=header)  
   return self
 
 def _df_nbytes(self):    
