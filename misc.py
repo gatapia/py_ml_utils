@@ -291,5 +291,18 @@ def to_index(df_or_series, columns=[], drop_originals=False, inplace=False):
       gc.collect()
   return df_or_series
 
+def optimise(predictions, y, scorer):
+  def scorer_func(weights):
+    means = np.average(predictions, axis=0, weights=weights)
+    return -scorer(y, means)  
+
+  starting_values = [0.5]*len(predictions)
+  cons = ({'type':'eq','fun':lambda w: 1-sum(w)})
+  bounds = [(0,1)]*len(predictions)
+  res = scipy.optimize.minimize(scorer_func, starting_values, 
+      method='Nelder-Mead', bounds=bounds, constraints=cons)
+  dbg('Ensamble Score: {best_score}'.format(best_score=res['fun']))
+  dbg('Best Weights: {weights}'.format(weights=res['x']))
+
 def dbg(*args):
   if cfg['debug']: print args

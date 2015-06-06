@@ -7,7 +7,7 @@ from pandas_extensions import *
 
 _libfm_default_path = 'utils/lib/libfm'
 
-class _LibFM(sklearn.base.BaseEstimator):
+class _LibFM(ExeEstimator):
   def __init__(self,
          executable=_libfm_default_path,
          dim='1,1,8',
@@ -21,7 +21,6 @@ class _LibFM(sklearn.base.BaseEstimator):
     assert method in ['sgd', 'sgda', 'als', 'mcmc']
     assert task in ['r', 'c']
 
-    self.tmpdir = 'tmpfiles'
     self.executable = executable
     self.dim = dim
     self.init_stdev = init_stdev
@@ -56,17 +55,15 @@ class _LibFM(sklearn.base.BaseEstimator):
       X = pd.DataFrame(X, columns=self.columns)
     if type(X) is pd.DataFrame: X = X.to_libfm() 
 
-    train_file = self.save_tmp_file(self.training_instances, True)
-    test_file = self.save_tmp_file(X, False)
+    train_file = self.save_tmp_file(self.training_instances, True, '_libfm')
+    test_file = self.save_tmp_file(X, False, '_libfm')
     self.start_predicting(train_file, test_file)
-    self.close_process()
+    self.close_process(self.libfm_process)
     os.remove(train_file)
     os.remove(test_file)
     
-    predictions = np.asarray(list(self.read_predictions()))    
+    predictions = np.asarray(list(self.read_predictions(self.prediction_file)))    
     return np.vstack([1 - predictions, predictions]).T
-
-
 
   def get_command(self, train_file, test_file, predictions_file):
     assert train_file and os.path.isfile(train_file)
@@ -86,50 +83,11 @@ class _LibFM(sklearn.base.BaseEstimator):
     return ' '.join(args)
 
 
-  def save_tmp_file(self, instances, training=True):    
-    f = self.tmpfile('_tmp_' + ('training' if training else 'testing') + '_file.libfm')
-    with open(f, 'wb') as fs: fs.write('\n'.join(instances))    
-    return f
-
-  def tmpfile(self, suffix):
-    _, f = tempfile.mkstemp(dir=self.tmpdir, suffix=suffix)
-    os.close(_)
-    return self.tmpdir + '/' + f.split('\\')[-1]
-
-  def close_process(self):
-    assert self.libfm_process
-
-    if self.libfm_process.wait() != 0:
-      raise Exception("libfm_process %d (%s) exited abnormally with return code %d" % \
-        (self.libfm_process.pid, self.libfm_process.command, self.libfm_process.returncode))
-
   def start_predicting(self, training_file, testing_file):
     self.prediction_file = self.tmpfile('libfm.prediction')    
 
     command = self.get_command(training_file, testing_file, self.prediction_file)
     self.libfm_process = self.make_subprocess(command)      
-
-  def read_predictions(self):
-    lines = []
-    with open(self.prediction_file) as f:
-        lines=map(float, map(lambda l: l.split('#')[0], 
-            f.readlines()))
-    os.remove(self.prediction_file)
-    return lines
-
-  def make_subprocess(self, command):    
-    stdout = open('nul', 'w')
-    stderr = sys.stderr
-
-    print 'running command: "%s"' % str(command)
-    commands = shlex.split(str(command))
-    result = subprocess.Popen(commands, 
-        stdout=stdout, stderr=stderr, 
-        close_fds=sys.platform != "win32", 
-        universal_newlines=True, cwd='.')
-    result.command = command
-    return result
-
 
 
 class LibFMRegressor(sklearn.base.RegressorMixin, _LibFM):

@@ -67,6 +67,8 @@ class ftrl_proximal(object):
           # one-hot encode interactions with hash trick
           yield abs(hash(str(x[i]) + '_' + str(x[j]))) % D
 
+  def predict_proba(self, x): return self.predict(x)
+  
   def predict(self, x):
     ''' Get probability estimation on x
 
