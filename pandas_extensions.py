@@ -19,7 +19,7 @@ from misc import *
 from ast_parser import *
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.decomposition import PCA
-from sklearn import utils, cross_validation
+from sklearn import utils, cross_validation, manifold
 from scipy import sparse
 import itertools, random, gzip
 from scipy.ndimage.filters import *
@@ -587,6 +587,22 @@ def _df_pca(self, n_components, whiten=False):
   columns = map(lambda i: 'n_pca_' + `i`, range(n_components))
   return pd.DataFrame(columns=columns, data=new_X)
 
+def _df_tsne(self, n_components):  
+  new_X = manifold.TSNE(n_components).fit_transform(self)
+  columns = map(lambda i: 'n_tsne_' + `i`, range(n_components))
+  return pd.DataFrame(columns=columns, data=new_X)
+
+def _df_kmeans(self, k):  
+  new_X = cluster.KMeans(k).fit_transform(self)
+  columns = map(lambda i: 'n_kmeans_' + `i`, range(k))
+  return pd.DataFrame(columns=columns, data=new_X)
+
+def _df_append_fit_transformer(self, fit_transformer):  
+  new_X = fit_transformer.fit_transform(self)
+  columns = map(lambda i: 'n_new_col_' + `i`, range(new_X.shape[1]))
+  new_df = pd.DataFrame(columns=columns, data=new_X)
+  return self.copy().append_right(new_df)
+
 def _df_predict(self, clf, y, X_test=None):    
   return __df_clf_method_impl(self, clf, y, X_test, 'predict')
 
@@ -922,6 +938,9 @@ extend_df('split', _df_split)
 extend_df('cv', _df_cv)
 extend_df('cv_ohe', _df_cv_ohe)
 extend_df('pca', _df_pca)
+extend_df('tsne', _df_tsne)
+extend_df('kmeans', _df_kmeans)
+extend_df('append_fit_transformer', _df_append_fit_transformer)
 extend_df('noise_filter', _df_noise_filter)
 extend_df('predict', _df_predict)
 extend_df('predict_proba', _df_predict_proba)
