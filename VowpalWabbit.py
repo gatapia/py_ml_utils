@@ -95,8 +95,9 @@ class _VW(sklearn.base.BaseEstimator):
     if type(X) is np.ndarray: 
       if self.columns is None: raise Exception('VowpalWabbit requires columns be set')      
       X = pd.DataFrame(X, columns=self.columns)
-    if type(X) is pd.DataFrame: X = X.to_vw(y)    
-
+    if type(X) is pd.DataFrame: 
+      print 'converting to vw:', X.shape, 'y:', y.shape
+      X = X.to_vw(y)        
     self.vw_ = VW(
       logger=self.logger,
       vw=self.vw,
@@ -141,6 +142,7 @@ class _VW(sklearn.base.BaseEstimator):
     return self
 
   def predict(self, X):    
+    print 'vw.predict'
     if type(X) is np.ndarray: 
       if self.columns is None: raise Exception('VowpalWabbit requires columns be set')      
       X = pd.DataFrame(X, columns=self.columns)
@@ -151,6 +153,7 @@ class _VW(sklearn.base.BaseEstimator):
     return np.asarray(list(raw))
 
   def predict_proba(self, X):    
+    print 'vw.predict_proba'
     if type(X) is np.ndarray: 
       if self.columns is None: raise Exception('VowpalWabbit requires columns be set')      
       X = pd.DataFrame(X, columns=self.columns)
@@ -158,7 +161,10 @@ class _VW(sklearn.base.BaseEstimator):
 
     self.vw_.predicting(X)
     preds = list(self.vw_.read_predictions_())
-    predictions = np.asarray(map(lambda p: 1 / (1 + math.exp(-p)), preds))
+    def sig(p):
+      if p < -100: return 0
+      return 1 / (1 + math.exp(-p))
+    predictions = np.asarray(map(sig, preds))
     return np.vstack([1 - predictions, predictions]).T
 
 class VowpalWabbitRegressor(sklearn.base.RegressorMixin, _VW):

@@ -626,48 +626,39 @@ def _df_self_decision_function(self, clf, y, n_chunks=5):
 def _df_self_predict_impl(X, clf, y, n_chunks, method):    
   if y is not None and X.shape[0] != len(y): 
     raise Exception('self_predict should have enough y values to do full prediction.')
-  start('self_predict with ' + `n_chunks` + ' starting')
+  start('self_' + method +' with ' + `n_chunks` + ' chunks starting')
   reseed(clf)
       
   def op(X, y, X2):
     clf.fit(X, y)  
     new_predictions = getattr(clf, method)(X2)
     if len(new_predictions.shape) > 1 and new_predictions.shape[1] == 1:
-      new_predictions = new_predictions.T[1]
+      new_predictions = new_predictions.T[1]      
     if new_predictions.shape[0] == 1:      
       new_predictions = new_predictions.reshape(-1, 1)
     return new_predictions    
   
-  chunks = _df_self_chunked_op(X, y, op, n_chunks)
-  # TODO: Check this, does not work with isotonic transform
-  '''
-  for i, c in enumerate(chunks):
-    if c.shape[1] == 1: chunks[i] = c[:, 0]
-    print 'i:', i, 'c:', chunks[i].shape  
-  predictions = np.vstack(chunks)
-  '''  
-  predictions = np.concatenate(chunks)  
+  predictions = _df_self_chunked_op(X, y, op, n_chunks)
   stop('self_predict completed')
-  return predictions
+  return predictions.values
 
 def _df_self_chunked_op(self, y, op, n_chunks=5):    
+  if y is not None and hasattr(y, 'values'): y = y.values
   X = self
   chunk_size = int(math.ceil(X.shape[0] / float(n_chunks)))  
-  chunks = []
-  iteration = 0
-  while True:
-    begin = iteration * chunk_size
-    iteration += 1
-    if begin >= X.shape[0]: break
-    end = begin + chunk_size
-    X_train = X[:begin].append_bottom(X[end:])
-    X_test = X[begin:end]
-    y2 = None if y is None else pd.concat((y[:begin], y[end:]), 0, ignore_index=True)    
-
-    if X_train.shape[1] == 1: X_train = X_train.ix[:,0]
-    if X_test.shape[1] == 1: X_test = X_test.ix[:,0]
-    chunks.append(op(X_train, y2, X_test))
-  return chunks
+  cv = cross_validation.KFold(len(y), n_chunks, shuffle=True, 
+      random_state=cfg['sys_seed'])
+  indexes=None
+  chunks=None
+  for train_index, test_index in cv:
+    X_train = X.ix[train_index]
+    y_train = y[train_index]
+    X_test = X.ix[test_index]
+    predictions = op(X_train, y_train, X_test)
+    indexes = test_index if indexes is None else np.concatenate((indexes, test_index))
+    chunks = predictions if chunks is None else np.concatenate((chunks, predictions))
+  df = pd.DataFrame(data=chunks, index=indexes)
+  return df.sort()  
 
 def _df_trim_on_y(self, y, sigma_or_min_y, max_y=None):    
   X = self.copy()  
@@ -785,6 +776,7 @@ def __df_to_lines(df,
   
   if y is None and out_file_or_y is not None and out_file is None: 
     y = out_file_or_y
+  if y is not None and hasattr(y, 'values'): y = y.values
 
   def get_col_index(name):
     if name not in columns_indexes:
