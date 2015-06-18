@@ -6,7 +6,6 @@ from IPython.nbformat import v4 as nbf
 from IPython import html
 from subprocess import call
 
-
 class Describe():
   #############################################################################
   #       Public Interface
@@ -81,8 +80,8 @@ class Describe():
     dump(dataset_name, (data_x, self.y)) 
 
     self._do_global_imports(dataset_name, ['X', 'y'])    
-    self._do_header_markdown()    
-    self._intialise_feature_scores()
+    self._do_header_markdown()      
+    self._intialise_feature_basic_details()
     self._do_column_summary_table()
     # TODO: Do table of all columns x column with correlation 
     #   values for all relationships.
@@ -127,10 +126,12 @@ class Describe():
     if self.X.shape[0] > 5e5: self._name_value('Using subsample of', '50,000 rows')
     self._flush_cell()
 
-  def _intialise_feature_scores(self):
+  def _intialise_feature_basic_details(self):
     self.importances = self._get_column_importances()    
     self.variances = self.X.var().values
-    if self.is_regression:
+    if self.y is None:
+      self.col_details = zip(self.X.columns, self.importances, self.variances)
+    elif self.is_regression:
       self.f_scores = self._get_column_f_regression_scores()    
       self.col_details = zip(self.X.columns, self.importances, self.f_scores, self.variances)
     else:
@@ -287,13 +288,19 @@ print_confusion_matrix(matrix, ['True', 'False'])
     self._txt('<tr><td>' + '</td><td>'.join(map(self._pretty, cols)) + '</td></tr>')
 
   def _do_column_summary_charts(self):
-    self._txt('<hr/>\n#Top 5 Column Interaction', True)
-    top_5 = map(lambda c: c[0], self.col_details[:5])
-    self._code('top_5 = ' + str(top_5))
-    self._code('_ = pd.tools.plotting.scatter_matrix(X[top_5], alpha=0.2, figsize=(12, 12), diagonal="kde")', True)
+    numericals = self.X.numericals()
+    self._txt('<hr/>\n#Top ' + `max(5, len(numericals))` + ' Column Interaction', True)
+    valid_col_details = filter(lambda c: c[0] in numericals, self.col_details)
+    top_X = map(lambda c: c[0], valid_col_details[:5])
+    print 'numericals:', numericals,'top_X:', top_X, 'valid_col_details:', valid_col_details
+    self._code([
+      'top_X = ' + str(top_X),      
+      '_ = pd.tools.plotting.scatter_matrix(X[top_X], alpha=0.2, figsize=(12, 12), diagonal="kde")'
+    ], True)    
 
     self._txt('<hr/>\n#PCA Explained Variable Ratios', True)
     self._code(['X2 = X.copy().missing("na", 0)',
+        'X2 = X2[X2.numericals()]'
         'ratios = decomposition.PCA(X2.shape[1]).fit(X2).explained_variance_ratio_',
         'df = pd.DataFrame({"variance": ratios})',
         '_ = df.plot(kind="bar", figsize=(12, 10))'], True)
@@ -405,7 +412,8 @@ print_confusion_matrix(matrix, ['True', 'False'])
   #############################################################################
 
   def _get_column_importances(self):
-    start('_get_column_importances')
+    if self.y is None: return np.ones(self.X.shape[0])
+    start('_get_column_importances')    
     rf = ensemble.RandomForestRegressor(50) if self.is_regression else ensemble.RandomForestClassifier(50)    
     rf.fit(self.X_no_nan[:self._importance_row_limit], self.y[:self._importance_row_limit])
     stop('done _get_column_importances, num feats: ' + `len(rf.feature_importances_)`)

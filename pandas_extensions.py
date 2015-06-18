@@ -887,7 +887,7 @@ def _df_to_libffm(self, out_file_or_y=None, y=None):
 
 def _df_summarise(self, opt_y=None, filename='dataset_description', columns=None):
   from describe import describe
-  describe.Describe(self, opt_y).show()  
+  describe.Describe().show_dataset(self, opt_y)  
 
 def _chunked_iterator(df, chunk_size=1000000):
   start = 0
