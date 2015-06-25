@@ -19,7 +19,7 @@ from misc import *
 from ast_parser import *
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.decomposition import PCA
-from sklearn import utils, cross_validation, manifold
+from sklearn import utils, cross_validation, manifold, cluster
 from scipy import sparse
 import itertools, random, gzip
 from scipy.ndimage.filters import *
@@ -96,7 +96,7 @@ def _df_one_hot_encode(self, dtype=np.float):
     categorical_df.drop(c, axis=1, inplace=True)
     gc.collect()
   
-  matrix = ohe_sparse if not others else sparse.hstack((ohe_sparse, others_df))
+  matrix = ohe_sparse if len(others) == 0 else sparse.hstack((ohe_sparse, others_df))
   stop('done one_hot_encoding')
   return matrix.tocsr()
 
@@ -593,12 +593,10 @@ def _df_tsne(self, n_components):
   return pd.DataFrame(columns=columns, data=new_X)
 
 def _df_kmeans(self, k):  
-  new_X = cluster.KMeans(k).fit_transform(self)
-  columns = map(lambda i: 'n_kmeans_' + `i`, range(k))
-  return pd.DataFrame(columns=columns, data=new_X)
+  return pd.Series(cluster.KMeans(k).fit_predict(self))
 
-def _df_append_fit_transformer(self, fit_transformer):  
-  new_X = fit_transformer.fit_transform(self)
+def _df_append_fit_transformer(self, fit_transformer, method='fit_transform'):  
+  new_X = getattr(fit_transformer, method)(self)
   columns = map(lambda i: 'n_new_col_' + `i`, range(new_X.shape[1]))
   new_df = pd.DataFrame(columns=columns, data=new_X)
   return self.copy().append_right(new_df)

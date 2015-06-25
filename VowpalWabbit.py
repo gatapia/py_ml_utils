@@ -96,7 +96,6 @@ class _VW(sklearn.base.BaseEstimator):
       if self.columns is None: raise Exception('VowpalWabbit requires columns be set')      
       X = pd.DataFrame(X, columns=self.columns)
     if type(X) is pd.DataFrame: 
-      print 'converting to vw:', X.shape, 'y:', y.shape
       X = X.to_vw(y)        
     self.vw_ = VW(
       logger=self.logger,
@@ -142,7 +141,6 @@ class _VW(sklearn.base.BaseEstimator):
     return self
 
   def predict(self, X):    
-    print 'vw.predict'
     if type(X) is np.ndarray: 
       if self.columns is None: raise Exception('VowpalWabbit requires columns be set')      
       X = pd.DataFrame(X, columns=self.columns)
@@ -153,7 +151,6 @@ class _VW(sklearn.base.BaseEstimator):
     return np.asarray(list(raw))
 
   def predict_proba(self, X):    
-    print 'vw.predict_proba'
     if type(X) is np.ndarray: 
       if self.columns is None: raise Exception('VowpalWabbit requires columns be set')      
       X = pd.DataFrame(X, columns=self.columns)

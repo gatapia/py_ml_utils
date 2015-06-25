@@ -6,7 +6,7 @@ import scipy as scipy
 import cPickle as pickle
 from collections import Counter
 import gzip, time, math, datetime, random, os, gc, logging
-from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
+from sklearn import preprocessing, grid_search, utils, metrics, cross_validation, isotonic
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
 from sklearn.externals import joblib
@@ -303,6 +303,33 @@ def optimise(predictions, y, scorer):
       method='Nelder-Mead', bounds=bounds, constraints=cons)
   dbg('Ensamble Score: {best_score}'.format(best_score=res['fun']))
   dbg('Best Weights: {weights}'.format(weights=res['x']))
+
+def calibrate(y_train, y_true, y_test=None, method='platt'):    
+  if method == 'platt':
+    clf = linear_model.LogisticRegression()
+    if y_test is None:
+      return pd.DataFrame(y_train).self_predict_proba(clf, y_true)
+    else:
+      return pd.DataFrame(y_train).predict_proba(clf, y_true, y_test)      
+  elif method == 'isotonic':
+    clf = isotonic.IsotonicRegression(out_of_bounds='clip')    
+    if len(y_train.shape) == 2 and y_train.shape[1] > 1:
+      all_preds = []
+      for target in range(y_train.shape[1]):
+        y_train_target = pd.DataFrame(y_train[:,target])        
+        y_true_target = (y_true == target).astype(int)
+        if y_test is None:
+          preds = y_train_target.self_transform(clf, y_true_target)
+        else:
+          y_test_target = y_test[:,target]
+          preds = y_train_target.transform(clf, y_true_target, y_test_target)
+        all_preds.append(preds)
+      return np.asarray(all_preds).T
+    else:
+      if y_test is None:
+        return pd.DataFrame(y_train).self_transform(clf, y_true)
+      else:
+        return pd.DataFrame(y_train).transform(clf, y_true, y_test)
 
 def dbg(*args):
   if cfg['debug']: print args
