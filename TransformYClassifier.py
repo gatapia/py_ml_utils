@@ -5,7 +5,9 @@ import pandas as pd
 import math
 
 class TransformYClassifier(BaseEstimator, ClassifierMixin):
-  def __init__(self, base_classifier, transformation, transform_on_fit=True, anti_transform_on_predict=True):    
+  def __init__(self, base_classifier, 
+      transformation, transform_on_fit=True, 
+      anti_transform_on_predict=True):    
     self.base_classifier = base_classifier
     self.transformation = transformation
     self.shift_val = 0
