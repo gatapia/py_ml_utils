@@ -119,24 +119,26 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
   return (scores, sems)
 
 
-def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=0.1, quiet=False, scoring=None, stratified=False, fit_params=None, reseed_classifier=True, n_jobs=-1):
+def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False, 
+      scoring=None, stratified=False, n_jobs=-1):
   t0 = time.time()
-  if reseed_classifier: reseed(clf)
+  reseed(clf)
   
   if n_samples is None: n_samples = len(y)
   elif type(n_samples) is float: n_samples = int(n_samples)
+  if scoring is None: scoring = cfg['scoring']
+  if test_size is None: test_size = 1./n_iter
   
   try:
     if (n_samples > X.shape[0]): n_samples = X.shape[0]
   except: pass
   cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed']) \
     if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
-
   if n_jobs == -1 and cfg['cv_n_jobs'] > 0: n_jobs = cfg['cv_n_jobs']
 
   test_scores = cross_validation.cross_val_score(
-      clf, X, y, cv=cv, scoring=scoring or cfg['scoring'], 
-      fit_params=fit_params, n_jobs=n_jobs)
+      clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs)
+  print 'test_scores:', test_scores
   if not(quiet): 
     dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
