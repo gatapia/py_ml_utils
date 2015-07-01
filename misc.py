@@ -44,6 +44,11 @@ def stop(msg):
     datetime.timedelta(seconds=time.time() - t0)))
   t0 = time.time()
 
+def seed(seed):
+  cfg['sys_seed'] = seed
+  random.seed(cfg['sys_seed'])
+  np.random.seed(cfg['sys_seed']) 
+  
 def reseed(clf):
   clf.random_state = cfg['sys_seed']
   random.seed(cfg['sys_seed'])

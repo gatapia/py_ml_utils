@@ -638,8 +638,7 @@ def _df_self_decision_function(self, clf, y, n_chunks=5):
   return _df_self_predict_impl(self, clf, y, n_chunks, 'decision_function')
 
 def _df_self_predict_impl(X, clf, y, n_chunks, method):    
-  if y is not None and X.shape[0] != len(y): 
-    raise Exception('self_predict should have enough y values to do full prediction.')
+  if y is not None and X.shape[0] != len(y): X = X[:len(y)]
   start('self_' + method +' with ' + `n_chunks` + ' chunks starting')
   reseed(clf)
       
@@ -887,6 +886,15 @@ def _df_summarise(self, opt_y=None, filename='dataset_description', columns=None
   from describe import describe
   describe.Describe().show_dataset(self, opt_y)  
 
+def _df_importances(self, clf, y):
+  clf.fit(self[:len(y)], y)
+  if hasattr(clf, 'feature_importances_'): imps = clf.feature_importances_ 
+  else: imps = map(abs, clf.coef_[0])
+  top_importances_indexes = np.argsort(imps)[::-1]
+  top_importances_values = np.array(imps)[top_importances_indexes]
+  top_importances_features = self.columns[top_importances_indexes]
+  return zip(top_importances_features, top_importances_values)
+
 def _chunked_iterator(df, chunk_size=1000000):
   start = 0
   while True:
@@ -948,6 +956,7 @@ extend_df('to_libffm', _df_to_libffm)
 extend_df('to_svmlight', _df_to_svmlight)
 extend_df('to_xgboost', _df_to_svmlight)
 extend_df('hashcode', _df_hashcode)
+extend_df('importances', _df_importances)
 
 extend_df('categoricals', _df_categoricals)
 extend_df('indexes', _df_indexes)
