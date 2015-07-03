@@ -10,6 +10,7 @@ from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
 from sklearn.externals import joblib
+from xgboost import XGBClassifier, XGBRegressor
 
 cfg = {
   'sys_seed':0,
@@ -141,6 +142,18 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   if not(quiet): 
     dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
+
+def test_classifier_vals(prop, vals, clf, X, y, higher_better=False):
+  results = []
+  for v in vals:      
+    target_clf = clf.base_classifier if hasattr(clf, 'base_classifier') else clf
+    setattr(target_clf, prop, v)    
+    score = do_cv(clf, X, y)
+    results.append({'prop': prop, 'v':v, 'score': score})  
+  sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=higher_better)
+  best = {'prop': prop, 'value': sorted_results[0]['v'], 'score': sorted_results[0]['score']}
+  print '\n\n\n\n', best
+  return sorted_results
 
 def split(X, y, test_split=0.1):
   X, y = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
