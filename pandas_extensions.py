@@ -67,6 +67,29 @@ def _df_numericals(self): return filter(lambda c: c.startswith('n_'), self.colum
 def _df_binaries(self): return filter(lambda c: c.startswith('b_'), self.columns)
 def _df_dates(self): return filter(lambda c: c.startswith('d_'), self.columns)
 
+def _df_infer_col_names(self):
+  start('infering column names')
+  def _get_prefix(c):
+    name = c.name
+    dtype = str(c.dtype)
+    if len(c.unique()) == 2: return 'b_'
+    if dtype.startswith('float') or dtype.startswith('int'): return 'n_'
+    if dtype.startswith('date'): return 'd_'
+    return 'c_'
+
+  new_cols = []
+  for i in range(self.shape[1]):
+    col_name = _get_prefix(self.ix[:,i]) + self.columns[i]
+    orig_col_name = col_name
+    idx = 1
+    while col_name in new_cols:
+      col_name = orig_col_name + '_' + `idx`
+      idx += 1
+    new_cols.append(col_name)
+  self.columns = new_cols  
+  start('done infering column names')
+  return self
+
 def _df_one_hot_encode(self, dtype=np.float):  
   if self.categoricals(): self.to_indexes(drop_origianls=True)    
 
@@ -102,7 +125,7 @@ def _df_one_hot_encode(self, dtype=np.float):
 
 def _df_to_indexes(self, drop_origianls=False, sparsify=False):
   start('indexing categoricals in data frame. Note: NA gets turned into max index (255, 65535, etc)')  
-  for c in self.categoricals():
+  for c in self.categoricals() + self.binaries():
     col = 'i_' + c
     cat = pd.Categorical.from_array(self[c])
     lbls = cat.codes if hasattr(cat, 'codes') else cat.labels    
@@ -152,6 +175,16 @@ def _df_bin(self, n_bins=100, drop_origianls=False):
     self['c_binned_' + n] = pd.Series(pd.cut(self[n], n_bins), index=self[n].index)
     if drop_origianls: self.drop(n, 1, inplace=True)
   stop('done binning data into ' + `n_bins` + ' bins')  
+  return self
+
+def _df_group_rare(self, columns=None, limit=30):
+  start('grouping rare categorical columns, limit: ' + `limit`)  
+  if columns is None: columns = self.categoricals()
+  for c in columns:
+    vcs = self[c].value_counts()
+    rare = vcs[vcs < limit].keys()  
+    self.loc[self[c].isin(rare), c] = 'rare'
+  start('done grouping rare categorical')  
   return self
 
 def _df_combinations(self, group_size=2, columns=[], categoricals=False, indexes=False,
@@ -315,7 +348,7 @@ def _df_scale(self, columns=[], min_max=None):
   stop('scaling data frame')
   return self
 
-def _df_missing(self, categorical_fill='none', numerical_fill='none'):  
+def _df_missing(self, categorical_fill='none', numerical_fill='none', binary_fill='none'):  
   start('replacing missing data categorical[' + `categorical_fill` + '] numerical[' + `numerical_fill` + ']')
   
   # Do numerical constants on whole DF for performance
@@ -332,11 +365,14 @@ def _df_missing(self, categorical_fill='none', numerical_fill='none'):
   # Get list of columns still left to fill
   categoricals_to_fill = []
   numericals_to_fill = []
+  binaries_to_fill = []
   if categorical_fill != 'none': categoricals_to_fill += self.categoricals() + self.indexes()
   if numerical_fill != 'none': numericals_to_fill += self.numericals()
+  if binary_fill != 'none': binaries_to_fill += self.binaries()
 
   # Prepare a dictionary of column -> fill values
   to_fill = {}
+  for c in binaries_to_fill: to_fill[c] = _get_col_aggregate(self[c], binary_fill)
   for c in categoricals_to_fill: to_fill[c] = _get_col_aggregate(self[c], categorical_fill)
   for c in numericals_to_fill: 
     to_fill[c] = _get_col_aggregate(self[c], numerical_fill)
@@ -659,14 +695,13 @@ def _df_self_chunked_op(self, y, op, n_chunks=5):
   if y is not None and hasattr(y, 'values'): y = y.values
   X = self
   chunk_size = int(math.ceil(X.shape[0] / float(n_chunks)))  
-  cv = cross_validation.KFold(len(y), n_chunks, shuffle=True, 
-      random_state=cfg['sys_seed'])
+  cv = cross_validation.KFold(len(y), n_chunks, shuffle=True, random_state=cfg['sys_seed'])
   indexes=None
   chunks=None
   for train_index, test_index in cv:
-    X_train = X.ix[train_index]
+    X_train = X.iloc[train_index]
     y_train = y[train_index]
-    X_test = X.ix[test_index]
+    X_test = X.iloc[test_index]
     predictions = op(X_train, y_train, X_test)
     indexes = test_index if indexes is None else np.concatenate((indexes, test_index))
     chunks = predictions if chunks is None else np.concatenate((chunks, predictions))
@@ -970,6 +1005,8 @@ extend_df('summarise', _df_summarise)
 
 extend_df('cats_to_count_ratios', _df_cats_to_count_ratios)
 extend_df('cats_to_counts', _df_cats_to_counts)
+extend_df('infer_col_names', _df_infer_col_names)
+extend_df('group_rare', _df_group_rare)
 
 # Series Extensions  
 extend_s('one_hot_encode', _s_one_hot_encode)

@@ -138,7 +138,6 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
 
   test_scores = cross_validation.cross_val_score(
       clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs)
-  print 'test_scores:', test_scores
   if not(quiet): 
     dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
