@@ -60,7 +60,7 @@ all_scores = []
 cached_classifiers = None
 
 def test_all_classifiers(X, y, classifiers=None, scoring=None, 
-    ignore=[], use_proba=False):
+    ignore=[], classification=None, use_proba=False, classifier_transform=None):
   global all_scores, cached_classifiers
   all_scores = []
   if classifiers is None: 
@@ -73,14 +73,22 @@ def test_all_classifiers(X, y, classifiers=None, scoring=None,
     print 'got ' + `len(classifiers)` + ' classifiers'
 
   for classifier in classifiers:    
-    if classifier.__name__ in ignore: continue
+    if classifier.__name__ in ignore: continue    
     try:
+      print 'testing classifier:', classifier.__name__
       t0 = time.time()
       clf = classifier()
+      if classification == True and not isinstance(clf, sklearn.base.ClassifierMixin): 
+        print 'is classification and classifier is not a ClassifierMixin'
+        continue
+      if classification == False and not isinstance(clf, sklearn.base.RegressorMixin): 
+        print 'is NOT classification and classifier is not a RegressorMixin'
+        continue
       if hasattr(clf, 'n_estimators'): clf.n_estimators = 200
       if use_proba and not hasattr(clf, 'predict_proba'):
         func = 'decision_function' if hasattr(clf, 'decision_function') else 'predict'
         clf = OverridePredictFunctionClassifier(clf, func)      
+      if classifier_transform is not None: clf = classifier_transform(clf)
         
       score, sem = do_cv(clf, X.copy(), y, len(y), n_iter=3, scoring=scoring, quiet=True)
       took = (time.time() - t0) / 60.

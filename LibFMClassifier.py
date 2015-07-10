@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import math
 from pandas_extensions import * 
+from ExeEstimator import *
 
 _libfm_default_path = 'utils/lib/libfm'
 
@@ -18,6 +19,7 @@ class _LibFM(ExeEstimator):
          regular=None,         
          task='c', 
          columns=None):
+    ExeEstimator.__init__(self)
     assert method in ['sgd', 'sgda', 'als', 'mcmc']
     assert task in ['r', 'c']
 
@@ -46,23 +48,19 @@ class _LibFM(ExeEstimator):
     if type(X) is np.ndarray: 
       if self.columns is None: raise Exception('LibFM requires columns be set')      
       X = pd.DataFrame(X, columns=self.columns)
-    if type(X) is pd.DataFrame: X = X.to_libfm()    
-    return self.predict_proba(X)
-
-  def predict_proba(self, X):   
-    if type(X) is np.ndarray: 
-      if self.columns is None: raise Exception('LibFM requires columns be set')      
-      X = pd.DataFrame(X, columns=self.columns)
     if type(X) is pd.DataFrame: X = X.to_libfm() 
 
-    train_file = self.save_tmp_file(self.training_instances, True, '_libfm')
-    test_file = self.save_tmp_file(X, False, '_libfm')
+    train_file = self.save_tmp_file(self.training_instances, '_libfm', True)
+    test_file = self.save_tmp_file(X, '_libfm', False)
     self.start_predicting(train_file, test_file)
     self.close_process(self.libfm_process)
     os.remove(train_file)
     os.remove(test_file)
     
-    predictions = np.asarray(list(self.read_predictions(self.prediction_file)))    
+    return np.asarray(list(self.read_predictions(self.prediction_file)))    
+
+  def predict_proba(self, X):   
+    predictions = self.predict(X)
     return np.vstack([1 - predictions, predictions]).T
 
   def get_command(self, train_file, test_file, predictions_file):

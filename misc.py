@@ -125,7 +125,7 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   t0 = time.time()
   reseed(clf)
   
-  if n_samples is None: n_samples = len(y)
+  if n_samples is None: n_samples = len(X)
   elif type(n_samples) is float: n_samples = int(n_samples)
   if scoring is None: scoring = cfg['scoring']
   if test_size is None: test_size = 1./n_iter

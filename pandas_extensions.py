@@ -57,6 +57,17 @@ def _s_to_indexes(self):
 def _s_append_bottom(self, s):  
   return pd.concat([self, s], ignore_index=True)
 
+def _s_missing(self, fill='none'):  
+  start('replacing series missing data fill[' + `fill` + ']')
+  
+  val = _get_col_aggregate(self, fill)  
+  self.fillna(val, inplace=True)
+  if self.name.startswith('n_'): 
+    self.replace([np.inf, -np.inf], val, inplace=True)  
+
+  stop('replacing series missing data')
+  return self
+
 '''
 DataFrame Extensions
 '''
@@ -79,7 +90,7 @@ def _df_infer_col_names(self):
 
   new_cols = []
   for i in range(self.shape[1]):
-    col_name = _get_prefix(self.ix[:,i]) + self.columns[i]
+    col_name = self.columns[i] if self.columns[i][1] == '_' else _get_prefix(self.ix[:,i]) + self.columns[i]
     orig_col_name = col_name
     idx = 1
     while col_name in new_cols:
@@ -229,6 +240,7 @@ def _df_remove(self, columns=[], categoricals=False, numericals=False,
       'dates binaries should be set to True or columns array passed')
 
   debug('removing ' + `len(cols)` + ' columns from data frame')
+  cols = [c for c in cols if c in self.columns]
   self.drop(cols, 1, inplace=True)
   return self
 
@@ -661,41 +673,41 @@ def __df_clf_method_impl(X, clf, y, X_test, method):
   clf.fit(X_train, y)
   return getattr(clf, method)(X_test)
 
-def _df_self_predict(self, clf, y, n_chunks=5):    
-  return _df_self_predict_impl(self, clf, y, n_chunks, 'predict')
+def _df_self_predict(self, clf, y, cv=5):    
+  return _df_self_predict_impl(self, clf, y, cv, 'predict')
 
-def _df_self_predict_proba(self, clf, y, n_chunks=5):    
-  return _df_self_predict_impl(self, clf, y, n_chunks, 'predict_proba')
+def _df_self_predict_proba(self, clf, y, cv=5):    
+  return _df_self_predict_impl(self, clf, y, cv, 'predict_proba')
 
-def _df_self_transform(self, clf, y, n_chunks=5):    
-  return _df_self_predict_impl(self, clf, y, n_chunks, 'transform')
+def _df_self_transform(self, clf, y, cv=5):    
+  return _df_self_predict_impl(self, clf, y, cv, 'transform')
 
-def _df_self_decision_function(self, clf, y, n_chunks=5):    
-  return _df_self_predict_impl(self, clf, y, n_chunks, 'decision_function')
+def _df_self_decision_function(self, clf, y, cv=5):    
+  return _df_self_predict_impl(self, clf, y, cv, 'decision_function')
 
-def _df_self_predict_impl(X, clf, y, n_chunks, method):    
+def _df_self_predict_impl(X, clf, y, cv, method):    
   if y is not None and X.shape[0] != len(y): X = X[:len(y)]
-  start('self_' + method +' with ' + `n_chunks` + ' chunks starting')
+  start('self_' + method +' with ' + `cv` + ' chunks starting')
   reseed(clf)
       
   def op(X, y, X2):
     clf.fit(X, y)  
     new_predictions = getattr(clf, method)(X2)
-    if len(new_predictions.shape) > 1 and new_predictions.shape[1] == 1:
-      new_predictions = new_predictions.T[1]      
+    #if len(new_predictions.shape) > 1 and new_predictions.shape[1] == 1:
+    #  new_predictions = new_predictions.T[0] 
     if new_predictions.shape[0] == 1:      
       new_predictions = new_predictions.reshape(-1, 1)
     return new_predictions    
   
-  predictions = _df_self_chunked_op(X, y, op, n_chunks)
+  predictions = _df_self_chunked_op(X, y, op, cv)
   stop('self_predict completed')
   return predictions.values
 
-def _df_self_chunked_op(self, y, op, n_chunks=5):    
+def _df_self_chunked_op(self, y, op, cv=5):    
   if y is not None and hasattr(y, 'values'): y = y.values
   X = self
-  chunk_size = int(math.ceil(X.shape[0] / float(n_chunks)))  
-  cv = cross_validation.KFold(len(y), n_chunks, shuffle=True, random_state=cfg['sys_seed'])
+  if cv is None: cv = 5
+  if type(cv) is int: cv = cross_validation.KFold(len(y), cv, shuffle=True, random_state=cfg['sys_seed'])
   indexes=None
   chunks=None
   for train_index, test_index in cv:
@@ -842,7 +854,8 @@ def __df_to_lines(df,
         if not is_numerical:
           name = c + '_' + str(val)
           if output_categorical_value: line = get_col_index(name) + ':1'
-          else: line = get_col_index(name)
+          else: 
+            line = get_col_index(name)
         else:           
           line = get_col_index(c) + ':' + str(val)
         new_line.append(line)
@@ -1010,6 +1023,7 @@ extend_df('group_rare', _df_group_rare)
 
 # Series Extensions  
 extend_s('one_hot_encode', _s_one_hot_encode)
+extend_s('missing', _s_missing)
 extend_s('bin', _s_bin)
 extend_s('categorical_outliers', _s_categorical_outliers)
 extend_s('sigma_limits', _s_sigma_limits)
