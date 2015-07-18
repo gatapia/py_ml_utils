@@ -46,13 +46,9 @@ def _s_sigma_limits(self, sigma):
   return (m - delta, m + delta)
 
 def _s_to_indexes(self):
-  c = self.name
-  col = 'i_' + c
   cat = pd.Categorical.from_array(self)
   lbls = cat.codes if hasattr(cat, 'codes') else cat.labels    
-  return pd.Series(lbls, index=self.index, \
-      dtype=_get_optimal_numeric_type('int', 0, len(lbls) + 1))
-
+  return pd.Series(lbls, index=self.index, dtype=_get_optimal_numeric_type('int', 0, len(lbls) + 1))
 
 def _s_append_bottom(self, s):  
   return pd.concat([self, s], ignore_index=True)
@@ -67,6 +63,62 @@ def _s_missing(self, fill='none'):
 
   stop('replacing series missing data')
   return self
+
+def _s_scale(self, min_max=None):  
+  s = self
+  if min_max:
+    s -= s.min()  
+    s /= s.max()
+    s *= (min_max[1] - min_max[0])
+    s += min_max[0]
+  else:
+    s -= s.mean()
+    s /= s.std()
+
+  return s
+
+def _s_is_similar(self, other):
+  shortest = float(min(len(self), len(other)))
+  self, other = self[:int(shortest)], other[:int(shortest)]  
+  name = self.name
+
+  if name.startswith('d_'): 
+    print 'date similarity comparison not implemented'
+    return True
+  if name.startswith('c_') or name.startswith('b_'): self, other = self.to_indexes(), other.to_indexes()
+
+  def _comp(v1, v2, prefix):
+    v1, v2 = abs(v1), abs(v2)
+    if v2 > v1: v1, v2 = v2, v1
+    dissimilarity = (v1 - v2) / float(v1)
+    if dissimilarity > .1:
+      print name, ':', prefix, 'below threshold [', v1, '], [', v2, '], dissimilarity[', dissimilarity, ']'
+      return False
+    return True
+
+  if not _comp(np.sum(np.isfinite(self)), np.sum(np.isfinite(other)), 'null/inf'): return False
+
+  if name.startswith('n_'):
+    self, other = self.scale(), other.scale()
+    rng, rng2 = self.max() - self.min(), other.max() - other.min()
+    if not _comp(rng, rng2, 'range'): return False
+    if not _comp(self.min(), other.min(), 'min'): return False
+    if not _comp(self.max(), other.max(), 'min'): return False
+    # if not _comp(self.kurtosis(), other.kurtosis(), 'kurtosis'): return False
+  elif name.startswith('c_') or name.startswith('i_') or name.startswith('b_'): 
+    vcs, vcs2 = self.value_counts(), other.value_counts()
+    for val in vcs.keys():
+      c = vcs[val]
+      if c < shortest * .05: continue
+      if val not in vcs2:
+        print name, 'categorical value:', val, 'not in second dataset'
+        return False
+      c2 = vcs2[val]
+      if not _comp(c, c2, 'categorical value: ' + str(val)): return False
+  else:
+    print name, ': is not supported'
+    return False
+  return True
 
 '''
 DataFrame Extensions
@@ -340,23 +392,9 @@ def _df_engineer(self, name, columns=None, quiet=False):
   
 def _df_scale(self, columns=[], min_max=None):  
   start('scaling data frame')
-  # If columns is not meant to be specified
-  if min_max == None and len(columns) == 2:
-    strtype = str(type(columns[0]))
-    if strtype.startswith('int') or strtype.startswith('float'):
-      min_max, columns = columns, []
-
   cols = columns if columns else self.numericals()
   for c in cols:
-    if min_max:
-      self[c] -= self[c].min()  
-      self[c] /= self[c].max()
-      self[c] *= (min_max[1] - min_max[0])
-      self[c] += min_max[0]
-    else:
-      self[c] -= self[c].mean()
-      self[c] /= self[c].std()
-    gc.collect()
+    self[c] = self[c].scale(min_max)
   stop('scaling data frame')
   return self
 
@@ -943,6 +981,19 @@ def _df_importances(self, clf, y):
   top_importances_features = self.columns[top_importances_indexes]
   return zip(top_importances_features, top_importances_values)
 
+def _df_is_similar(self, other):
+  in_X = self.columns - other.columns
+  if len(in_X) > 0:
+    print 'columns found in main dataset not in second: ', in_X
+    return False
+  in_X2 = other.columns - self.columns
+
+  if len(in_X) > 0:
+    print 'columns found in second dataset not in main: ', in_X2
+    return False
+  
+  return np.all([is_similar_s(self[c], other[c]) for c in self.columns])
+
 def _chunked_iterator(df, chunk_size=1000000):
   start = 0
   while True:
@@ -1020,8 +1071,9 @@ extend_df('cats_to_count_ratios', _df_cats_to_count_ratios)
 extend_df('cats_to_counts', _df_cats_to_counts)
 extend_df('infer_col_names', _df_infer_col_names)
 extend_df('group_rare', _df_group_rare)
+extend_df('is_similar', _df_is_similar)
 
-# Series Extensions  
+# Series Extensions   
 extend_s('one_hot_encode', _s_one_hot_encode)
 extend_s('missing', _s_missing)
 extend_s('bin', _s_bin)
@@ -1031,6 +1083,8 @@ extend_s('s_compress', _s_compress)
 extend_s('hashcode', _s_hashcode)
 extend_s('to_indexes', _s_to_indexes)
 extend_s('append_bottom', _s_append_bottom)
+extend_s('scale', _s_scale)
+extend_s('is_similar', _s_is_similar)
 
 # Aliases
 extend_s('catout', _s_categorical_outliers)

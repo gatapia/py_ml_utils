@@ -37,7 +37,7 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
     if not self.transform_on_fit: return self._do_transformation_impl(y)
     if not self.anti_transform_on_predict: return y
 
-    elif self.transformation.startswith('log'): return np.power(math.e, y) - self.shift_val
+    elif self.transformation.startswith('log'): return np.exp(y) - self.shift_val
     elif self.transformation == 'arcsinh': return np.sinh(y)
     else: raise Exception('Not Supported: ' + self.transformation)
 
