@@ -268,11 +268,25 @@ def read_data(file):
     return data
 
 def read_df(file, nrows=None):
-  if file.endswith('.pickle'): return load(file)
-  
-  compression = 'gzip' if file.endswith('.gz') else None
-  nrows = None if nrows == None else int(nrows)
-  return pd.read_csv(file, compression=compression, nrows=nrows);
+  t0 = time.time()
+  if file.endswith('.pickle'): 
+    df = load(file)
+  else:
+
+    sep = '\t' if '.tsv' in file else None
+    if file.endswith('.7z'):
+      import libarchive
+   
+      with libarchive.reader(file) as reader:
+        df = pd.read_csv(reader, nrows=nrows, sep=sep);
+    else:
+      
+      compression = 'gzip' if file.endswith('.gz') else None
+      nrows = None if nrows == None else int(nrows)  
+      df = pd.read_csv(file, compression=compression, nrows=nrows, sep=sep);
+  dbg('data frame [' + file + '] read in ' + 
+      str(datetime.timedelta(seconds=time.time() - t0)) + ' shape: ' + str(df.shape))
+  return df
 
 def read_lines(file, ignore_header=False):
   with open(file) as f:
