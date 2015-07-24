@@ -24,7 +24,10 @@ def _hashcode(X, opt_y):
 def save_reusable_ftrl_csv(tmpdir, X, columns=None, opt_y=None):
   filename = 'reusable_' + str(abs(_hashcode(X, opt_y))) + 'csv.gz'
   filename = tmpdir + '/' + filename
-  if os.path.isfile(filename): return filename
+  if os.path.isfile(filename): 
+    print 'reusing past file:', filename
+    return filename
+  print 'creating new ftrl compatible file:', filename
   return save_ftrl_csv(filename, X, columns, opt_y)
 
 def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
@@ -46,6 +49,7 @@ def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
 class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, column_names, alpha=0.15, beta=1.1, L1=1.1, L2=1.1, bits=23,  
                 n_epochs=1,holdout=100,interaction=False, 
+                dropout=0.8,
                 sparse=False, seed=0, verbose=True, 
                 ftrl_default_path = 'utils/lib/tingrtu_ftrl.py',
                 leave_out_day=None):    
@@ -57,6 +61,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     self.interaction = interaction 
     self.bits = bits
     self.holdout = holdout
+    self.dropout = dropout
     self.n_epochs = n_epochs
     self.sparse=sparse
     self.seed=seed    
@@ -102,6 +107,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
       ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
       ' --bits ' + `self.bits` + \
       ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` + \
+      ' --dropout ' + `self.dropout` + \
       ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names)
 
@@ -126,6 +132,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
       ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
       ' --bits ' + `self.bits` + \
       ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` + \
+      ' --dropout ' + `self.dropout` + \
       ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names) + ' -p ' + predictions_file
     if self.interaction: cmd += ' --interactions'

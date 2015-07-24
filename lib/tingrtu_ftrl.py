@@ -237,6 +237,7 @@ Perform training and prediction based on FTRL Optimal algorithm, with dropout ad
   parser.add_argument('--bits', default = 23, type = int)
   parser.add_argument('--n_epochs', default = 1, type = int)
   parser.add_argument('--holdout', default = 100, type = int)
+  parser.add_argument('--seed', default = 0, type = int)
   parser.add_argument("--interactions", action = "store_true")
   parser.add_argument("--sparse", action = "store_true")
   parser.add_argument("-v", '--verbose', default = 3, type = int)
@@ -358,13 +359,13 @@ def main_fast_dropout():
   learner = None
     
   if args.action in ["train", "train_predict"]:
-    random.seed(0)
+    random.seed(args.seed)
     learner = train_learner(args.train, args)
     if args.outmodel != None:
       write_learner(learner, args.outmodel, args)
       
   if args.action in ["predict", "train_predict"]:
-    random.seed(0)
+    random.seed(args.seed)
     if learner == None:
       learner = load_learner(args.inmodel)
     predict_learner(learner, args.test, args.predictions, args)

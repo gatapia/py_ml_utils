@@ -21,7 +21,7 @@ class ftrl_proximal(object):
   '''
 
   def __init__(self, alpha, beta, L1, L2, D, 
-         interaction=False, leave_out_day=None):
+         interaction=False):
     # parameters
     self.alpha = alpha
     self.beta = beta
@@ -31,8 +31,6 @@ class ftrl_proximal(object):
     # feature related parameters
     self.D = D
     self.interaction = interaction
-    # This is specific for a project, should make generic.
-    self.leave_out_day = str(leave_out_day)
 
     # model
     # n: squared sum of past gradients
@@ -157,7 +155,7 @@ def logloss(p, y):
   p = max(min(p, 1. - 10e-15), 10e-15)
   return -log(p) if y == 1. else -log(1. - p)
 
-def data(f_train, D, columns, leave_out_day):
+def data(f_train, D, columns):
   ''' GENERATOR: Apply hash-trick to the original csv row
            and for simplicity, we one-hot-encode everything
 
@@ -178,9 +176,6 @@ def data(f_train, D, columns, leave_out_day):
       if row['y'] == '1':
         y = 1.
       del row['y']
-
-    if row['i_c_day'] == leave_out_day: # TODO remove block to make generic
-      continue
 
     # build x
     x = []
@@ -231,7 +226,6 @@ Perform training and prediction based on FTRL Optimal algorithm, with dropout ad
   parser.add_argument('--bits', default=20, type=int)
   parser.add_argument('--n_epochs', default=1, type=int)
   parser.add_argument('--holdout', default=None, type=int)
-  parser.add_argument('--leave_out_day', default=None, type=str)
   parser.add_argument("--interactions", action="store_true")
   parser.add_argument("-v", '--verbose', default=3, type=int)
   parser.add_argument("-c", '--columns', default='', type=str)
@@ -278,7 +272,7 @@ def train_learner(train, args):
     count = 0
     if train != "/dev/stdin": f_train.seek(0,0)
 
-    for t, x, y in data(f_train, D, args.columns, args.leave_out_day):
+    for t, x, y in data(f_train, D, args.columns):
       #  t: just a instance counter
       #  x: features
       #  y: label (click)
@@ -317,7 +311,7 @@ def predict_learner(learner, test, predictions_file, args):
   if test[-3:] == ".gz": f_test = gzip.open(test, "rb")
   else: f_test = open(test, "r")
 
-  for t, x, y in data(f_test, D, args.columns, args.leave_out_day):
+  for t, x, y in data(f_test, D, args.columns):
     predictions.append('%.5f' % learner.predict(x))  
   f_test.close()
 
