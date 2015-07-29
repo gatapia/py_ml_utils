@@ -10,16 +10,25 @@ class ExeEstimator(sklearn.base.BaseEstimator):
     self.tmpdir = 'tmpfiles'
     if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
 
-
   def save_tmp_file(self, instances, suffix, training=True):    
     f = self.tmpfile('_tmp_' + ('training' if training else 'testing') + '_' + suffix)
     with open(f, 'wb') as fs: fs.write('\n'.join(instances))    
     return f
 
-  def tmpfile(self, suffix):
-    _, f = tempfile.mkstemp(dir=self.tmpdir, suffix=suffix)
-    os.close(_)
-    return self.tmpdir + '/' + f.split('\\')[-1]
+  def save_reusable(self, suffix, converter, X=None, opt_y=None):
+    tmp_file = self.tmpfile(suffix, X, opt_y)        
+    if not os.path.isfile(tmp_file): getattr(X, converter)(tmp_file, opt_y)
+    return tmp_file
+
+  def tmpfile(self, suffix, opt_X=None, opt_y=None):
+    if opt_X is None:
+      _, f = tempfile.mkstemp(dir=self.tmpdir, suffix=suffix)
+      os.close(_)
+    else:
+      f = opt_X.hashcode(opt_y)
+      if f < 0: f = str(abs(f) + 17)
+      else: f = str(f)
+    return self.tmpdir + '/' + f.split('\\')[-1] + suffix
 
   def close_process(self, running_process):
     assert running_process

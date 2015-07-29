@@ -853,16 +853,20 @@ def _df_compress(self, aggresiveness=0, sparsify=False):
   return self
 
 def _s_hashcode(self):
-  hashcode = hash(self.name)
-  hashcode = hashcode * 17 + self.index.values.sum()
-  hashcode = hashcode * 31 + hash(''.join(map(str, self[0:min(3, self.shape[0])].values)))
-  return hashcode
+  index = tuple(self.index)
+  values = tuple(tuple(x) for x in self.values)
+  item = tuple([index, values])
+  return hash(item)
 
-def _df_hashcode(self):
-  hashcode = self.index.values.sum()
-  hashcode = hashcode * 17 + hash(''.join(self.columns.values))
-  hashcode = hashcode * 31 + hash(''.join(map(str, self[0:min(3, self.shape[0])].values)))
-  return hashcode
+def _df_hashcode(self, opt_y=None):
+  if opt_y is not None: self['_tmpy_'] = opt_y
+  index = tuple(self.index)
+  columns = tuple(self.columns)
+  values = tuple(tuple(x) for x in self.values)
+  item = tuple([index, columns, values])
+  hash_val = hash(item)
+  if opt_y is not None: self.remove('_tmpy_')
+  return hash_val
 
 def __df_to_lines(df, 
     out_file_or_y=None, 

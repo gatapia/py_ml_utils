@@ -6,11 +6,9 @@ import math
 from pandas_extensions import * 
 from ExeEstimator import *
 
-_libfm_default_path = 'utils/lib/libfm'
-
 class _LibFM(ExeEstimator):
   def __init__(self,
-         executable=_libfm_default_path,
+         executable='utils/lib/libfm',
          dim='1,1,8',
          init_stdev=0.1,
          iter=100,
@@ -36,28 +34,23 @@ class _LibFM(ExeEstimator):
 
 
   def fit(self, X, y=None):    
-    if type(X) is np.ndarray: 
-      if self.columns is None: raise Exception('LibFM requires columns be set')      
-      X = pd.DataFrame(X, columns=self.columns)
-    if type(X) is pd.DataFrame: X = X.to_libfm(y)    
-
-    self.training_instances = X
+    if type(X) is str: self.train_file = X
+    else: 
+      if not hasattr(X, 'values'): X = pd.DataFrame(X, columns=self.columns)
+      self.train_file = self.save_reusable('_libfm_train', 'to_libfm', X, y)
     return self
 
   def predict(self, X):    
-    if type(X) is np.ndarray: 
-      if self.columns is None: raise Exception('LibFM requires columns be set')      
-      X = pd.DataFrame(X, columns=self.columns)
-    if type(X) is pd.DataFrame: X = X.to_libfm() 
+    if type(X) is str: test_file = X
+    else: 
+      if not hasattr(X, 'values'): X = pd.DataFrame(X, columns=self.columns)
+      test_file = self.save_reusable('_libfm_test', 'to_libfm', X)
 
-    train_file = self.save_tmp_file(self.training_instances, '_libfm', True)
-    test_file = self.save_tmp_file(X, '_libfm', False)
-    self.start_predicting(train_file, test_file)
+    self.start_predicting(self.train_file, test_file)
     self.close_process(self.libfm_process)
-    os.remove(train_file)
-    os.remove(test_file)
     
-    return np.asarray(list(self.read_predictions(self.prediction_file)))    
+    raw_preds = self.read_predictions(self.prediction_file)
+    return np.asarray(list(raw_preds))    
 
   def predict_proba(self, X):   
     predictions = self.predict(X)

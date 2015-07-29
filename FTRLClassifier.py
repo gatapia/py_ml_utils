@@ -5,24 +5,8 @@ sys.path.append('lib')
 import xgboost as xgb
 from pandas_extensions import *
 
-def _hashcode(X, opt_y):
-  hashcode = 0
-  if type(X) is not pd.DataFrame: 
-    hashcode = hash(X.shape)
-    hashcode = hashcode * 17 + hash(''.join(map(str, X[0:min(3, X.shape[0])])))
-  else:
-    hashcode = X.hashcode()
-
-  if opt_y is not None: 
-    if type(opt_y) is not pd.Series: 
-      hashcode = hashcode * 17 + hash(str(len(opt_y)))
-      hashcode = hashcode * 31 + hash(''.join(map(str, opt_y[0:min(3, opt_y.shape[0])])))
-    else:
-      hashcode = hashcode * 31 + opt_y.hashcode()
-  return hashcode
-
 def save_reusable_ftrl_csv(tmpdir, X, columns=None, opt_y=None):
-  filename = 'reusable_' + str(abs(_hashcode(X, opt_y))) + 'csv.gz'
+  filename = 'reusable_' + str(abs(X.hashcode(opt_y))) + 'csv.gz'
   filename = tmpdir + '/' + filename
   if os.path.isfile(filename): 
     print 'reusing past file:', filename
