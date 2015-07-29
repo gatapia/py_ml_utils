@@ -649,13 +649,13 @@ def _df_split(self, y, stratified=False, train_fraction=0.5):
   stop('splitting done')
   return new_set
 
-def _df_cv(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1):  
-  return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring, n_jobs)
+def _df_cv(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):  
+  return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring, n_jobs, fit_params)
 
-def _df_cv_ohe(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1):  
-  return _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring, n_jobs)
+def _df_cv_ohe(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):  
+  return _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring, n_jobs, fit_params)
 
-def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1):  
+def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):  
   if hasattr(y, 'values'): y = y.values
   if n_samples is None: n_samples = len(y)
   else: n_samples = min(n_samples, len(y), X.shape[0])
@@ -664,7 +664,7 @@ def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1):
     scoring = 'roc_auc'
   start('starting ' + `n_iter` + ' fold cross validation (' + 
       `n_samples` + ' samples) w/ metric: ' + `scoring or cfg['scoring']`)
-  cv = do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True, n_jobs=n_jobs)
+  cv = do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True, n_jobs=n_jobs, fit_params=fit_params)
   stop('done cross validation:\n  [CV]: ' + ("{0:.5f} (+/-{1:.5f})").format(cv[0], cv[1]))  
   return cv
 

@@ -121,7 +121,7 @@ def do_n_sample_search(clf, X, y, n_samples_arr):
 
 
 def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False, 
-      scoring=None, stratified=False, n_jobs=-1):
+      scoring=None, stratified=False, n_jobs=-1, fit_params=None):
   t0 = time.time()
   reseed(clf)
   
@@ -138,7 +138,8 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   if n_jobs == -1 and cfg['cv_n_jobs'] > 0: n_jobs = cfg['cv_n_jobs']
 
   test_scores = cross_validation.cross_val_score(
-      clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs)
+      clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs, 
+      fit_params=fit_params)
   if not(quiet): 
     dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
