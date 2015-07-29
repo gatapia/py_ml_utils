@@ -51,7 +51,6 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
   def fit(self, X, y):
     """X can either be a dataset or a list of datasets"""
     if not(isinstance(X, list)): 
-      print 'X is a single dataset'
       X = list(itertools.repeat(X, len(self.models)))
     if not(isinstance(y, list)): 
       y = list(itertools.repeat(y, len(self.models)))
@@ -59,10 +58,14 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       m.fit(X[i], y[i])
     return self
 
+  def predict_proba(self, X):
+    classone_probs = self.predict(X)
+    classzero_probs = 1.0 - classone_probs
+    return np.vstack((classzero_probs, classone_probs)).transpose()
+
   def predict(self, X):
     """X can either be a dataset or a list of datasets"""
     if not(isinstance(X, list)): 
-      print 'X is a single dataset'
       X = list(itertools.repeat(X, len(self.models)))
 
     all_preds = []
@@ -83,7 +86,7 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
       if (self.voter == 'majority'): predictions[i] = stats.mode(i_preds)[0]
       elif (self.voter == 'mean'): 
         if self.weights is not None: predictions[i] = np.average(i_preds, 0, weights)
-        else: predictions[i] = np.mean(i_preds)
+        else: predictions[i] = np.mean(i_preds, 0)
       elif (self.voter == 'max'): predictions[i] = np.max(i_preds)
       elif (self.voter == 'min'): predictions[i] = np.min(i_preds)
       elif (self.voter == 'median'): predictions[i] = np.median(i_preds)

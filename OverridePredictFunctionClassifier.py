@@ -1,6 +1,7 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn import preprocessing
 import numpy as np
+import math
 
 class OverridePredictFunctionClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, base_classifier, predict_function):        
@@ -23,7 +24,12 @@ class OverridePredictFunctionClassifier(BaseEstimator, ClassifierMixin):
       df = self.base_classifier.decision_function(X)
       return preprocessing.MinMaxScaler().fit_transform(df)
     elif self.predict_function == 'predict':
-      return self.base_classifier.predict(X)
+      preds = self.base_classifier.predict(X)
+      def sig(p):
+        if p < -100: return 0
+        return 1 / (1 + math.exp(-p))
+      predictions = np.asarray(map(sig, preds))
+      return np.vstack([1 - predictions, predictions]).T
     else:
       return self.base_classifier.predict_proba(X)
   
