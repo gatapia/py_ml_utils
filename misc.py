@@ -343,7 +343,7 @@ def calibrate(y_train, y_true, y_test=None, method='platt'):
     from sklearn import linear_model
     clf = linear_model.LogisticRegression()
     if y_test is None:
-      return pd.DataFrame(y_train).self_predict_proba(clf, y_true)
+      return pd.DataFrame({'train': y_train, 'const': np.ones(len(y_train))}).self_predict_proba(clf, y_true)
     else:
       return pd.DataFrame(y_train).predict_proba(clf, y_true, y_test)      
   elif method == 'isotonic':    
