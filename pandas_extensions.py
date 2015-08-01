@@ -83,7 +83,7 @@ def _s_is_similar(self, other):
   name = self.name
 
   if name.startswith('d_'): 
-    print 'date similarity comparison not implemented'
+    dbg('date similarity comparison not implemented')
     return True
   if name.startswith('c_') or name.startswith('b_'): self, other = self.to_indexes(), other.to_indexes()
 
@@ -92,7 +92,7 @@ def _s_is_similar(self, other):
     if v2 > v1: v1, v2 = v2, v1
     dissimilarity = (v1 - v2) / float(v1)
     if dissimilarity > .1:
-      print name, ':', prefix, 'below threshold [', v1, '], [', v2, '], dissimilarity[', dissimilarity, ']'
+      dbg(name, ':', prefix, 'below threshold [', v1, '], [', v2, '], dissimilarity[', dissimilarity, ']')
       return False
     return True
 
@@ -111,12 +111,12 @@ def _s_is_similar(self, other):
       c = vcs[val]
       if c < shortest * .05: continue
       if val not in vcs2:
-        print name, 'categorical value:', val, 'not in second dataset'
+        dbg(name, 'categorical value:', val, 'not in second dataset')
         return False
       c2 = vcs2[val]
       if not _comp(c, c2, 'categorical value: ' + str(val)): return False
   else:
-    print name, ': is not supported'
+    dbg(name, ': is not supported')
     return False
   return True
 
@@ -358,6 +358,10 @@ def _df_engineer(self, name, columns=None, quiet=False):
     cols = columns if columns else self.numericals()
     for n in cols: self.engineer('pow(' + n + ', ' + args[0] + ')', quiet=True)
     return self
+  elif len(args) == 1 and func == 'round':
+    cols = columns if columns else self.numericals()
+    for n in cols: self.engineer('round(' + n + ', ' + args[0] + ')', quiet=True)
+    return self
   elif len(args) == 0 and func == 'lg':
     cols = columns if columns else self.numericals()
     for n in cols: self.engineer('lg(' + n + ')', quiet=True)    
@@ -368,6 +372,8 @@ def _df_engineer(self, name, columns=None, quiet=False):
     return self
   elif func == 'pow': 
     self[new_name] = np.power(self[args[0]], int(args[1]))
+  elif func == 'round': 
+    self[new_name] = self[args[0]].round(int(args[1]))
   elif func == 'lg': 
     self[new_name] = np.log(self[args[0]])
   elif func == 'sqrt': 
@@ -522,7 +528,7 @@ def _s_compress(self, aggresiveness=0, sparsify=False):
     else:
       raise Exception(self.name + ' expected "int" or "float" type got: ', str(self.dtype))
   else : 
-    print self.name + ' is not supported, ignored during compression'
+    dbg(self.name + ' is not supported, ignored during compression')
   return self
 
 def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):      
@@ -993,12 +999,12 @@ def _df_importances(self, clf, y):
 def _df_is_similar(self, other):
   in_X = self.columns - other.columns
   if len(in_X) > 0:
-    print 'columns found in main dataset not in second: ', in_X
+    dbg('columns found in main dataset not in second: ', in_X)
     return False
   in_X2 = other.columns - self.columns
 
   if len(in_X) > 0:
-    print 'columns found in second dataset not in main: ', in_X2
+    dbg('columns found in second dataset not in main: ', in_X2)
     return False
   
   return np.all([is_similar_s(self[c], other[c]) for c in self.columns])

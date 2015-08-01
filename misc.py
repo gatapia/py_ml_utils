@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 sys.path.append('utils/lib')
 import numpy as np
@@ -140,8 +141,7 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   test_scores = cross_validation.cross_val_score(
       clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs, 
       fit_params=fit_params)
-  if not(quiet): 
-    dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
+  if not(quiet): dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
 
 def test_classifier_vals(prop, vals, clf, X, y, higher_better=False):
@@ -153,7 +153,7 @@ def test_classifier_vals(prop, vals, clf, X, y, higher_better=False):
     results.append({'prop': prop, 'v':v, 'score': score})  
   sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=higher_better)
   best = {'prop': prop, 'value': sorted_results[0]['v'], 'score': sorted_results[0]['score']}
-  print '\n\n\n\n', best
+  dbg('\n\n\n\n', best)
   return sorted_results
 
 def split(X, y, test_split=0.1):
@@ -165,12 +165,12 @@ def split(X, y, test_split=0.1):
 
 def proba_scores(y_true, y_preds, scoring=metrics.roc_auc_score):
   for i, y_pred in enumerate(y_preds):
-    print 'classifier [%d]: %.4f' % (i+1, scoring(y_true, y_pred))
+    dbg('classifier [%d]: %.4f' % (i+1, scoring(y_true, y_pred)))
 
-  print 'mean: %.4f' % (scoring(y_true, np.mean(y_preds, axis=0)))
-  print 'max: %.4f' % (scoring(y_true, np.max(y_preds, axis=0)))
-  print 'min: %.4f' % (scoring(y_true, np.min(y_preds, axis=0)))
-  print 'median: %.4f' % (scoring(y_true, np.median(y_preds, axis=0)))
+  dbg('mean: %.4f' % (scoring(y_true, np.mean(y_preds, axis=0))))
+  dbg('max: %.4f' % (scoring(y_true, np.max(y_preds, axis=0))))
+  dbg('min: %.4f' % (scoring(y_true, np.min(y_preds, axis=0))))
+  dbg('median: %.4f' % (scoring(y_true, np.median(y_preds, axis=0))))
 
 def score(clf, X, y, test_split=0.1, auc=False):
   X, y, test_X, test_y = split(X, y, test_split)
@@ -367,5 +367,5 @@ def calibrate(y_train, y_true, y_test=None, method='platt'):
         res = pd.DataFrame(y_train).transform(clf, y_true, y_test)
       return np.nan_to_num(res)
 
-def dbg(*args):
-  if cfg['debug']: print args
+def dbg(*args): 
+  if cfg['debug']: print(*args)
