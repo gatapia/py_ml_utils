@@ -251,14 +251,15 @@ def _df_group_rare(self, columns=None, limit=30):
   return self
 
 def _df_combinations(self, group_size=2, columns=[], categoricals=False, indexes=False,
-    numericals=False, dates=False, binaries=False):
+    numericals=False, dates=False, binaries=False, permutations=False):
   cols = list(columns)
   if categoricals: cols = cols + self.categoricals()
   if indexes: cols = cols + self.indexes()
   if numericals: cols = cols + self.numericals()
   if dates: cols = cols + self.dates()
   if binaries: cols = cols + self.binaries()
-  return list(itertools.combinations(cols, group_size))
+  op = itertools.permutations if permutations else itertools.combinations
+  return list(op(cols, group_size))
 
 def _df_normalise(self, columns=None):
   start('normalising data [0-1]')  
@@ -331,9 +332,14 @@ def _df_engineer(self, name, columns=None, quiet=False):
       self.engineer(func_to_string(a))
 
   if not quiet: debug('engineering feature: ' + name)
-  if len(args) == 0 and (func == 'avg' or func == 'mult' or func == 'concat'):    
+  if len(args) == 0 and (func == 'avg' or func == 'mult' or func == 'add' or func == 'concat'):    
     combs = list(itertools.combinations(columns, 2)) if columns \
-      else self.combinations(categoricals=func=='concat', indexes=func=='concat', numericals=func=='mult' or func=='avg')    
+      else self.combinations(categoricals=func=='concat', indexes=func=='concat', numericals=func in ['mult', 'avg', 'add'])    
+    for c1, c2 in combs: self.engineer(func + '(' + c1 + ',' + c2 + ')', quiet=True)
+    return self
+  if len(args) == 0 and (func == 'div' or func == 'subtract'):
+    combs = list(itertools.combinations(columns, 2, permutations=True)) if columns \
+      else self.combinations(numericals=True, permutations=True)    
     for c1, c2 in combs: self.engineer(func + '(' + c1 + ',' + c2 + ')', quiet=True)
     return self
   elif func == 'concat': 
@@ -342,12 +348,18 @@ def _df_engineer(self, name, columns=None, quiet=False):
       self[new_name] = self[args[0]].astype(str) + self[args[1]].astype(str)
     if len(args) == 3: 
       self[new_name] = self[args[0]].astype(str) + self[args[1]].astype(str) + self[args[2]].astype(str)
-  elif func  == 'mult':     
+  elif func  == 'mult' or func  == 'add':     
     if len(args) < 2 or len(args) > 3: raise Exception(name + ' only supports 2 or 3 columns')
+    s1, s2 = self[args[0]], self[args[1]]
     if len(args) == 2: 
-      self[new_name] = self[args[0]] * self[args[1]]
+      self[new_name] = s1 * s2 if func == 'mult' else s1 + s2
     if len(args) == 3: 
-      self[new_name] = self[args[0]] * self[args[1]] * self[args[2]]
+      s3 = self[args[2]]
+      self[new_name] = s1 * s2 * s3 if func == 'mult' else s1 + s2 + s3
+  elif func  == 'div' or func  == 'subtract':     
+    if len(args) != 2: raise Exception(name + ' only supports 2 columns')
+    s1, s2 = self[args[0]].astype(float), self[args[1]].astype(float)
+    self[new_name] = s1 / s2 if func == 'div' else s1 - s2    
   elif func  == 'avg':     
     if len(args) < 2 or len(args) > 3: raise Exception(name + ' only supports 2 or 3 columns')
     if len(args) == 2: 
