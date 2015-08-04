@@ -699,6 +699,24 @@ def _df_tsne(self, n_components):
 def _df_kmeans(self, k):  
   return pd.Series(cluster.KMeans(k).fit_predict(self))
 
+def _df_tree_features(self, tree_ensemble, y):
+  def _make_tree_bins(clf, X):
+    nd_mat = None
+    X32 = np.array(X).astype(np.float32)
+    for i, tt in enumerate(clf.estimators_):
+      tt = tt.tree_ if hasattr(tt, 'tree_') else tt[0].tree_
+      nds = tt.apply(X32)
+      if i == 0:  nd_mat = nds.reshape(len(nds), 1)        
+      else: nd_mat = np.hstack((nd_mat, nds.reshape(len(nds), 1)))
+    return nd_mat
+
+  def op(X, y, X2): 
+    return _make_tree_bins(tree_ensemble.fit(X, y), X2)
+
+  tree_features = self.self_chunked_op(y, op)
+  tree_features.columns = ['i_c_tree_feature_' + `i+1` for i in range(tree_features.shape[1])]  
+  return tree_features
+
 def _df_append_fit_transformer(self, fit_transformer, method='fit_transform'):  
   new_X = getattr(fit_transformer, method)(self)
   columns = map(lambda i: 'n_new_col_' + `i`, range(new_X.shape[1]))
@@ -1079,6 +1097,7 @@ extend_df('cv_ohe', _df_cv_ohe)
 extend_df('pca', _df_pca)
 extend_df('tsne', _df_tsne)
 extend_df('kmeans', _df_kmeans)
+extend_df('tree_features', _df_tree_features)
 extend_df('append_fit_transformer', _df_append_fit_transformer)
 extend_df('noise_filter', _df_noise_filter)
 extend_df('predict', _df_predict)
