@@ -768,7 +768,8 @@ def _df_self_chunked_op(self, y, op, cv=5):
   if y is not None and hasattr(y, 'values'): y = y.values
   X = self
   if cv is None: cv = 5
-  if type(cv) is int: cv = cross_validation.KFold(len(y), cv, shuffle=True, random_state=cfg['sys_seed'])
+                          # cross_validation.KFold(len(y), cv, shuffle=True, random_state=cfg['sys_seed'])
+  if type(cv) is int: cv = cross_validation.StratifiedKFold(y, cv, shuffle=True, random_state=cfg['sys_seed'])
   indexes=None
   chunks=None
   for train_index, test_index in cv:
@@ -1021,6 +1022,20 @@ def _df_is_similar(self, other):
   
   return np.all([is_similar_s(self[c], other[c]) for c in self.columns])
 
+def _df_numerical_stats(self, columns=None):
+  X2 = self[columns if columns is not None else self.numericals()]
+  self['n_min'] = X2.min(1)
+  self['n_max'] = X2.max(1)
+  self['n_kurt'] = X2.kurt(1)
+  self['n_mad'] = X2.mad(1)
+  self['n_mean'] = X2.mean(1)
+  self['n_median'] = X2.median(1)
+  self['n_sem'] = X2.sem(1)
+  self['n_std'] = X2.std(1)
+  self['n_sum'] = X2.sum(1)
+  return self
+
+
 def _chunked_iterator(df, chunk_size=1000000):
   start = 0
   while True:
@@ -1099,7 +1114,7 @@ extend_df('cats_to_counts', _df_cats_to_counts)
 extend_df('infer_col_names', _df_infer_col_names)
 extend_df('group_rare', _df_group_rare)
 extend_df('is_similar', _df_is_similar)
-
+extend_df('numerical_stats', _df_numerical_stats)
 # Series Extensions   
 extend_s('one_hot_encode', _s_one_hot_encode)
 extend_s('missing', _s_missing)

@@ -3,8 +3,9 @@ import numpy as np
 import sys
 sys.path.append('utils')
 from misc import *
+from FileEnsembler import *
 
-class GreedyFileEnsembler(BaseEstimator, TransformerMixin):  
+class GreedyFileEnsembler(FileEnsembler):  
   def __init__(self, scorer, min_epochs=10, replacement=True):
     self.scorer = scorer
     self.min_epochs = min_epochs

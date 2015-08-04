@@ -144,14 +144,14 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   if not(quiet): dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
 
-def test_classifier_vals(prop, vals, clf, X, y, higher_better=False):
+def test_classifier_vals(prop, vals, clf, X, y):
   results = []
   for v in vals:      
     target_clf = clf.base_classifier if hasattr(clf, 'base_classifier') else clf
     setattr(target_clf, prop, v)    
     score = do_cv(clf, X, y)
     results.append({'prop': prop, 'v':v, 'score': score})  
-  sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=higher_better)
+  sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=True)
   best = {'prop': prop, 'value': sorted_results[0]['v'], 'score': sorted_results[0]['score']}
   dbg('\n\n\n\n', best)
   return sorted_results
