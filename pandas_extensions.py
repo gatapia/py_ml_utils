@@ -693,7 +693,7 @@ def _df_pca(self, n_components, whiten=False):
   return pd.DataFrame(columns=columns, data=new_X)
 
 def _df_tsne(self, n_components):  
-  new_X = manifold.TSNE(n_components).fit_transform(self)
+  new_X = manifold.TSNE(n_components, method='barnes_hut').fit_transform(self)
   columns = map(lambda i: 'n_tsne_' + `i`, range(n_components))
   return pd.DataFrame(columns=columns, data=new_X)
 
