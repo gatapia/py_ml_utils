@@ -23,6 +23,7 @@ from sklearn import utils, cross_validation, manifold, cluster
 from scipy import sparse
 import itertools, random, gzip
 from scipy.ndimage.filters import *
+from smote import * 
 
 '''
 Series Extensions
@@ -1053,6 +1054,20 @@ def _df_numerical_stats(self, columns=None):
   self['n_sum'] = X2.sum(1)
   return self
 
+def _df_smote(self, y, percentage_multiplier, n_neighbors):
+  seed(0)
+  vcs = y.value_counts(dropna=False)
+  if len(vcs) != 2: raise Exception('DataFrame.smote only works on binary classifiers')
+  min_value = vcs.argmin()
+  minorities = self[y == min_value]
+
+  new_minorities = SMOTE(minorities.values, percentage_multiplier, n_neighbors)
+  new_len = self.shape[0] + new_minorities.shape[0]
+  y2 = pd.Series(np.append(y.values, np.array([min_value] * len(new_minorities))), index=np.arange(new_len))
+  minorities_df = pd.DataFrame(new_minorities, columns=self.columns)
+  new_df = self.copy().append_bottom(minorities_df)
+  new_df.index = np.arange(new_len)
+  return (new_df, y2)
 
 def _chunked_iterator(df, chunk_size=1000000):
   start = 0
@@ -1134,6 +1149,8 @@ extend_df('infer_col_names', _df_infer_col_names)
 extend_df('group_rare', _df_group_rare)
 extend_df('is_similar', _df_is_similar)
 extend_df('numerical_stats', _df_numerical_stats)
+extend_df('smote', _df_smote)
+
 # Series Extensions   
 extend_s('one_hot_encode', _s_one_hot_encode)
 extend_s('missing', _s_missing)

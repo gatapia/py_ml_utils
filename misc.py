@@ -52,7 +52,7 @@ def seed(seed):
   np.random.seed(cfg['sys_seed']) 
   
 def reseed(clf):
-  clf.random_state = cfg['sys_seed']
+  if clf is not None: clf.random_state = cfg['sys_seed']
   random.seed(cfg['sys_seed'])
   np.random.seed(cfg['sys_seed']) 
   return clf
