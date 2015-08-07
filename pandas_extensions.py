@@ -333,12 +333,12 @@ def _df_engineer(self, name, columns=None, quiet=False):
 
   if not quiet: debug('engineering feature: ' + name)
   if len(args) == 0 and (func == 'avg' or func == 'mult' or func == 'add' or func == 'concat'):    
-    combs = list(itertools.combinations(columns, 2)) if columns \
+    combs = list(itertools.combinations(columns, 2)) if columns is not None \
       else self.combinations(categoricals=func=='concat', indexes=func=='concat', numericals=func in ['mult', 'avg', 'add'])    
     for c1, c2 in combs: self.engineer(func + '(' + c1 + ',' + c2 + ')', quiet=True)
     return self
   if len(args) == 0 and (func == 'div' or func == 'subtract'):
-    combs = list(itertools.combinations(columns, 2, permutations=True)) if columns \
+    combs = list(itertools.combinations(columns, 2, permutations=True)) if columns is not None \
       else self.combinations(numericals=True, permutations=True)    
     for c1, c2 in combs: self.engineer(func + '(' + c1 + ',' + c2 + ')', quiet=True)
     return self
@@ -367,19 +367,19 @@ def _df_engineer(self, name, columns=None, quiet=False):
     if len(args) == 3: 
       self[new_name] = (self[args[0]] + self[args[1]] + self[args[2]]) / 3
   elif len(args) == 1 and func == 'pow':
-    cols = columns if columns else self.numericals()
+    cols = columns if columns is not None else self.numericals()
     for n in cols: self.engineer('pow(' + n + ', ' + args[0] + ')', quiet=True)
     return self
   elif len(args) == 1 and func == 'round':
-    cols = columns if columns else self.numericals()
+    cols = columns if columns is not None else self.numericals()
     for n in cols: self.engineer('round(' + n + ', ' + args[0] + ')', quiet=True)
     return self
   elif len(args) == 0 and func == 'lg':
-    cols = columns if columns else self.numericals()
+    cols = columns if columns is not None else self.numericals()
     for n in cols: self.engineer('lg(' + n + ')', quiet=True)    
     return self
   elif len(args) == 0 and func == 'sqrt':
-    cols = columns if columns else self.numericals()
+    cols = columns if columns is not None else self.numericals()
     for n in cols: self.engineer('sqrt(' + n + ')', quiet=True)    
     return self
   elif func == 'pow': 
@@ -392,7 +392,7 @@ def _df_engineer(self, name, columns=None, quiet=False):
     self[new_name] = np.sqrt(self[args[0]])
   elif func.startswith('rolling_'):
     if len(args) == 1:
-      cols = columns if columns else self.numericals()
+      cols = columns if columns is not None else self.numericals()
       for n in cols: self.engineer(func + '(' + n + ', ' + args[0] + ')', quiet=True)
       return self
     else:      
@@ -410,7 +410,7 @@ def _df_engineer(self, name, columns=None, quiet=False):
   
 def _df_scale(self, columns=[], min_max=None):  
   start('scaling data frame')
-  cols = columns if columns else self.numericals()
+  cols = columns if columns is not None else self.numericals()
   for c in cols:
     self[c] = self[c].scale(min_max)
   stop('scaling data frame')
@@ -673,7 +673,7 @@ def _df_cv(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_
 def _df_cv_ohe(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):  
   return _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring, n_jobs, fit_params)
 
-def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):  
+def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):    
   if hasattr(y, 'values'): y = y.values
   if n_samples is None: n_samples = len(y)
   else: n_samples = min(n_samples, len(y), X.shape[0])
