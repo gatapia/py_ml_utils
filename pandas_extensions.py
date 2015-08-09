@@ -1054,11 +1054,11 @@ def _df_numerical_stats(self, columns=None):
   self['n_sum'] = X2.sum(1)
   return self
 
-def _df_smote(self, y, percentage_multiplier, n_neighbors):
+def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
   seed(0)
   vcs = y.value_counts(dropna=False)
   if len(vcs) != 2: raise Exception('DataFrame.smote only works on binary classifiers')
-  min_value = vcs.argmin()
+  min_value = opt_target if opt_target is not None else vcs.argmin()
   minorities = self[y == min_value]
 
   new_minorities = SMOTE(minorities.values, percentage_multiplier, n_neighbors)

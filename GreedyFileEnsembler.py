@@ -6,10 +6,11 @@ from misc import *
 from FileEnsembler import *
 
 class GreedyFileEnsembler(FileEnsembler):  
-  def __init__(self, scorer, min_epochs=10, replacement=True):
+  def __init__(self, scorer, min_epochs=10, replacement=True, max_replacements=0):
     self.scorer = scorer
     self.min_epochs = min_epochs
     self.replacement = replacement
+    self.max_replacements = max_replacements    
     self.indexes = []
 
   def _get_files(self, files):
@@ -37,6 +38,7 @@ class GreedyFileEnsembler(FileEnsembler):
       epoch_index = -1
       for idx, arr in enumerate(arrays):
         if not self.replacement and idx in self.indexes: continue
+        if self.replacement and self.max_replacements > 0 and self.indexes.count(idx) >= self.max_replacements: continue
         idx_ensemble = ensemble[:] + [arr]
         score = self.scorer(y, np.mean(ensemble, 0))
         if score > epoch_score:
