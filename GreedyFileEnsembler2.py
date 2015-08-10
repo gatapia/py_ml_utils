@@ -20,10 +20,8 @@ class GreedyFileEnsembler2(FileEnsembler):
     if hasattr(files, '__call__'): return files()
     first = files[0]
     if type(first) is str: 
-      print 'files:', files
       loaded = [load(f) for f in files]
       if loaded[0] is None: raise Exception('could not load files')
-      print 'loaded:', len(loaded)
       return loaded
     return files
 
@@ -43,41 +41,40 @@ class GreedyFileEnsembler2(FileEnsembler):
     for epoch in range(self.current_epoch + 1, self.min_epochs):
       self.current_epoch = epoch
 
-      epoch_improved = False
       epoch_score = -999
       epoch_index = -1
       for idx, arr in enumerate(self.arrays):
         if not self.replacement and idx in self.indexes: continue
         if self.replacement and self.max_replacements > 0 and self.indexes.count(idx) >= self.max_replacements: continue
-        idx_ensemble = self.ensemble[:] + [arr]
-        score = self.scorer(self.y, np.mean(self.ensemble, 0))
+
+        idx_ensemble = self.ensemble[:] + [arr]        
+        preds = np.mean(idx_ensemble, 0)
+        score = self.scorer(self.y, preds)
         if score > epoch_score:
           epoch_score = score
           epoch_index = idx
 
-          if score > self.max_score:
-            epoch_improved = True
-            self.ensemble = idx_ensemble
-            self.indexes.append(idx)
-            self.max_score = score
-            print 'epoch:', epoch, 'found improved score:', self.max_score, 'index:', idx, 'ensemble size:', len(self.ensemble)
-            
-            if epoch >= 10 and score > self.best_score:
-              self.best_score = self.max_score
-              self.best_min_epochs = epoch + 1
-              print 'new total best score found'
-      
-      if not epoch_improved:                
-        self.ensemble = self.ensemble[:] + [self.arrays[epoch_index]]
-        score = self.scorer(self.y, np.mean(self.ensemble, 0))
+      if epoch_score > self.max_score:
         self.indexes.append(epoch_index)
-        self.max_score = score   
+        self.ensemble.append(self.arrays[epoch_index])        
+        self.max_score = epoch_score
+        print 'epoch:', epoch, 'found improved score:', self.max_score, 'index:', idx, 'ensemble size:', len(self.ensemble)
+        
+        if epoch >= 10 and score > self.best_score:
+          self.best_score = self.max_score
+          self.best_min_epochs = epoch + 1
+          print 'new total best score found'
+      else:
+        if epoch_index >= 0:                
+          self.ensemble.append(self.arrays[epoch_index])
+          self.indexes.append(epoch_index)
+          self.max_score = self.scorer(self.y, np.mean(self.ensemble, 0))
         print 'no improvement found after ', epoch, 'min_epochs, picking best:', self.max_score, 'index:', epoch_index     
     
     print 'fit done indexes selected: ', self.indexes, 'self.max_score:', self.max_score
     return self
 
   def transform(self, test_files):
-    self.arrays = self._get_files(test_files)
-    self.ensemble = [self.arrays[i] for i in self.indexes]
-    return np.mean(self.ensemble, 0)
+    test_arrays = self._get_files(test_files)
+    test_ensemble = [test_arrays[i] for i in self.indexes]
+    return np.mean(test_ensemble, 0)
