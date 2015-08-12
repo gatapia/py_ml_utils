@@ -379,6 +379,10 @@ def _df_engineer(self, name, columns=None, quiet=False):
     cols = columns if columns is not None else self.numericals()
     for n in cols: self.engineer('lg(' + n + ')', quiet=True)    
     return self
+  elif len(args) == 0 and func == 'safe_lg':
+    cols = columns if columns is not None else self.numericals()
+    for n in cols: self.engineer('safe_lg(' + n + ')', quiet=True)    
+    return self
   elif len(args) == 0 and func == 'sqrt':
     cols = columns if columns is not None else self.numericals()
     for n in cols: self.engineer('sqrt(' + n + ')', quiet=True)    
@@ -389,6 +393,8 @@ def _df_engineer(self, name, columns=None, quiet=False):
     self[new_name] = self[args[0]].round(int(args[1]))
   elif func == 'lg': 
     self[new_name] = np.log(self[args[0]])
+  elif func == 'safe_lg': 
+    self[new_name] = np.log(self[args[0]] + 1 - self[args[0]].min())
   elif func == 'sqrt': 
     self[new_name] = np.sqrt(self[args[0]])
   elif func.startswith('rolling_'):
