@@ -544,6 +544,22 @@ def _s_compress(self, aggresiveness=0, sparsify=False):
     dbg(self.name + ' is not supported, ignored during compression')
   return self
 
+def _s_hashcode(self):
+  index = tuple(self.index)
+  values = tuple(tuple(x) for x in self.values)
+  item = tuple([index, values])
+  return hash(item)
+
+def _s_to_ratio(self, y, positive_class=None):
+  classes = y.unique()
+  if len(classes) != 2: raise Exception('only binary target is supported')
+  if positive_class is None: positive_class = classes[0]
+  for val in self.unique():
+    this_y = y[self == val]    
+    ratio = len(this_y[this_y == positive_class]) / float(len(this_y))
+    self[self==val] = ratio
+  return self
+
 def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):      
   start('binning categorical outliers, min_size: ' + `min_size`)
 
@@ -890,12 +906,6 @@ def _df_compress(self, aggresiveness=0, sparsify=False):
         _format_bytes(diff_bytes), diff_bytes * 100.0 / original_bytes))
   return self
 
-def _s_hashcode(self):
-  index = tuple(self.index)
-  values = tuple(tuple(x) for x in self.values)
-  item = tuple([index, values])
-  return hash(item)
-
 def _df_hashcode(self, opt_y=None):
   if opt_y is not None: self['_tmpy_'] = opt_y
   index = tuple(self.index)
@@ -1071,6 +1081,13 @@ def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
   new_df.index = np.arange(new_len)
   return (new_df, y2)
 
+def _df_to_ratio(self, y, positive_class=None):
+  start('converting all categoricals to ratios')
+  for c in self.categoricals() + self.indexes() + self.binaries():
+    self[c].to_ratio(y, positive_class)
+  stop('done converting all categoricals to ratios')
+  return self
+
 def _chunked_iterator(df, chunk_size=1000000):
   start = 0
   while True:
@@ -1152,6 +1169,7 @@ extend_df('group_rare', _df_group_rare)
 extend_df('is_similar', _df_is_similar)
 extend_df('numerical_stats', _df_numerical_stats)
 extend_df('smote', _df_smote)
+extend_df('to_ratio', _df_to_ratio)
 
 # Series Extensions   
 extend_s('one_hot_encode', _s_one_hot_encode)
@@ -1165,6 +1183,7 @@ extend_s('to_indexes', _s_to_indexes)
 extend_s('append_bottom', _s_append_bottom)
 extend_s('scale', _s_scale)
 extend_s('is_similar', _s_is_similar)
+extend_s('to_ratio', _s_to_ratio)
 
 # Aliases
 extend_s('catout', _s_categorical_outliers)
