@@ -995,6 +995,8 @@ def _df_to_libffm(self, out_file_or_y=None, y=None):
   out_file = out_file_or_y if type(out_file_or_y) is str else None  
   if y is None and out_file_or_y is not None and out_file is None: 
     y = out_file_or_y
+  if hasattr(y, 'values'): y = y.values
+  
   lines = []    
   outfile = None
   if out_file is not None: outfile = get_write_file_stream(out_file)
