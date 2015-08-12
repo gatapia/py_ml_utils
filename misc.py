@@ -11,7 +11,7 @@ from sklearn import preprocessing, grid_search, utils, metrics, cross_validation
 from scipy.stats import sem 
 from scipy.stats.mstats import mode
 from sklearn.externals import joblib
-from xgboost import XGBClassifier, XGBRegressor
+from xgb import XGBClassifier, XGBRegressor
 
 cfg = {
   'sys_seed':0,
