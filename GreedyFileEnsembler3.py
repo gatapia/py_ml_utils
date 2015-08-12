@@ -45,7 +45,7 @@ class GreedyFileEnsembler3(FileEnsembler):
         if not self.replacement and idx in self.indexes: 
           epoch_scores.append(-1)
           continue
-        if self.replacement and self.max_replacements > 0 and 
+        if self.replacement and self.max_replacements > 0 and \
             self.indexes.count(idx) >= self.max_replacements: 
           epoch_scores.append(-1)
           continue
@@ -72,7 +72,10 @@ class GreedyFileEnsembler3(FileEnsembler):
           self.ensemble.append(self.arrays[epoch_index])
           self.indexes.append(epoch_index)
           self.max_score = self.scorer(self.y, np.mean(self.ensemble, 0))
-        print 'no improvement found after ', epoch, 'min_epochs, picking best:', self.max_score, 'index:', epoch_index     
+          print 'no improvement found after ', epoch, 'min_epochs, picking best:', self.max_score, 'index:', epoch_index     
+        else:
+          print 'no possible improvement found, exiting early'
+          break
     
     print 'fit done indexes selected: ', self.indexes, 'self.max_score:', self.max_score
     return self
