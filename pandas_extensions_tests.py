@@ -141,7 +141,7 @@ class T(unittest.TestCase):
   def test_scale(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})
-    df.scale()
+    df.scale()    
     np.testing.assert_array_equal(df.values, 
       np.array([
         ['a', 'd', -1, -1, -1],
@@ -163,7 +163,7 @@ class T(unittest.TestCase):
   def test_scale_with_min_max(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
-    df.scale([], (0., 2.))
+    df.scale(min_max=(0., 2.))
     np.testing.assert_array_equal(df.values, 
       np.array([
         ['a', 'd', 0, 0, 0],
@@ -173,7 +173,7 @@ class T(unittest.TestCase):
 
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
-    df.scale([], (10., 20.))
+    df.scale(min_max=(10., 20.))
     np.testing.assert_array_equal(df.values, 
       np.array([
         ['a', 'd', 10, 10, 10],
@@ -360,6 +360,7 @@ class T(unittest.TestCase):
   def test_shuffle(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'n_1': [1, 2, 3, 4, 5, 6, 7]})
     y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])
+    cfg['sys_seed'] = 0
     df2, y2 = df.shuffle(y)
     
     # Originals did not change
@@ -473,9 +474,9 @@ class T(unittest.TestCase):
     with open(file) as f: lines = f.readlines()
     os.remove(file)
     np.testing.assert_array_equal([
-      '-1.0 0:0.23 1:0.25 2:1\n',
-      '1.0 0:0.18 1:0.15 3:1\n',
-      '-1.0 0:0.53 1:0.32 4:1\n',
+      '-1.0 1:0.23 2:0.25 3:1\n',
+      '1.0 1:0.18 2:0.15 4:1\n',
+      '-1.0 1:0.53 2:0.32 5:1\n',
       ], lines)
 
   def test_save_csv(self):

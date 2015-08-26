@@ -415,7 +415,7 @@ def _df_engineer(self, name, columns=None, quiet=False):
 
   return self
   
-def _df_scale(self, columns=[], min_max=None):  
+def _df_scale(self, columns=None, min_max=None):  
   start('scaling data frame')
   cols = columns if columns is not None else self.numericals()
   for c in cols:
@@ -638,15 +638,15 @@ def _df_subsample(self, y=None, size=0.5):
   start('done, subsample data frame')
   return result
 
-def _df_shuffle(self, y=None):  
-  start('shuffling data frame')
+def _df_shuffle(self, y=None):    
+  start('shuffling data frame')  
   df = self.copy()  
   if y is not None: 
     df = df[:y.shape[0]]
     df['__tmpy'] = y    
 
   index = list(df.index)
-  random.seed(cfg['sys_seed'])
+  reseed(None)
   random.shuffle(index)
   df = df.ix[index]
   df.reset_index(inplace=True, drop=True)

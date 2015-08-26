@@ -144,10 +144,11 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   if not(quiet): dbg('%s took: %.2fm' % (mean_score(test_scores), (time.time() - t0)/60))
   return (np.mean(test_scores), sem(test_scores))
 
-def test_classifier_vals(prop, vals, clf, X, y):
+def score_classifier_vals(prop, vals, clf, X, y):
   results = []
   for v in vals:      
     target_clf = clf.base_classifier if hasattr(clf, 'base_classifier') else clf
+    target_clf = base.clone(target_clf)
     setattr(target_clf, prop, v)    
     score = do_cv(clf, X, y)
     results.append({'prop': prop, 'v':v, 'score': score})  
@@ -202,11 +203,11 @@ def show_score(y_true, y_pred):
   dbg('Accuracy: ', accuracy, '\n\nMatrix:\n', matrix, '\n\nReport\n', report)
   return accuracy
 
-def do_gs(clf, X, y, params, n_samples=1000, n_iter=3, 
+def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3, 
     n_jobs=-2, scoring=None, fit_params=None, 
     random_iterations=None):
   start('starting grid search')
-  if type(n_samples) is float: n_samples = int(n_samples)
+  if type(n_samples) is float: n_samples = int(len(y) * n_samples)
   reseed(clf)
   cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, random_state=cfg['sys_seed'])
   if random_iterations is None:
@@ -274,7 +275,7 @@ def read_df(file, nrows=None):
     df = load(file)
   else:
 
-    sep = '\t' if '.tsv' in file else None
+    sep = '\t' if '.tsv' in file else ','
     if file.endswith('.7z'):
       import libarchive
    

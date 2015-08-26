@@ -3,10 +3,10 @@ import numpy as np
 from misc import * 
 from sklearn import linear_model
 
-class TestMisc(unittest.TestCase):
+class T(unittest.TestCase):
 
   def test_mean_score(self):
-    self.assertEqual('2.000 (+/-0.577)', mean_score([1., 2., 3.]))
+    self.assertEqual('2.00000 (+/-0.57735)', mean_score([1., 2., 3.]))
 
   def test_scale(self):
     arr = np.linspace(10, 100, 5)
@@ -32,7 +32,8 @@ class TestMisc(unittest.TestCase):
     c = linear_model.LinearRegression()
     X = np.matrix('1. 1. 1. 1;2. 2. 2. 2;3. 3. 3. 3.')
     y = np.matrix('1. ;2. ;3.')
-    cv = do_gs(c, X, y, {})
+    gs = do_gs(c, X, y, {'normalize': [True, False]}, n_jobs=1)
+    self.assertEqual(gs.best_params_, {'normalize': False})
 
   def test_one_hot_encode(self):
     df = pd.DataFrame({'col0': [1.1, 1.2, 1.3, 1.4, 1.5], 'col1':[1, 2, 3, 3, 1], 'col2': ['a', 'b', 'c', 'd', 'e']})
@@ -59,12 +60,6 @@ class TestMisc(unittest.TestCase):
 
   def test_read_data_gzip(self):
     pass
-
-  def test_inv_hyp_sine(self):
-    arr = np.array([1.1, 1.2, 1.3, 1.4, 1.5])
-    trans = np.arcsinh([1.1, 1.2, 1.3, 1.4, 1.5])
-    arr2 = np.sinh(trans)
-    np.testing.assert_array_equal(arr, arr2)    
 
 if __name__ == '__main__':
   unittest.main()
