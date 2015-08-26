@@ -1,8 +1,6 @@
-import unittest
-import pandas as pd
-import numpy as np
+import unittest, sklearn
+import pandas as pd, numpy as np
 from pandas_extensions import *
-from sklearn import linear_model, preprocessing
 
 class T(unittest.TestCase):
   
@@ -335,9 +333,9 @@ class T(unittest.TestCase):
 
   def test_append_right_with_sparse(self):
     df1 = pd.DataFrame({'c':[1, 2, 3]})
-    arr1 = sparse.coo_matrix([[4], [5], [6]])
+    arr1 = scipy.sparse.coo_matrix([[4], [5], [6]])
     arr2 = df1.append_right(arr1)
-    self.assertTrue(type(arr2) is sparse.coo.coo_matrix)
+    self.assertTrue(type(arr2) is scipy.sparse.coo.coo_matrix)
     arr2 = arr2.toarray()
     np.testing.assert_array_equal([[1, 4], [2, 5], [3, 6]], arr2)
 
@@ -360,7 +358,7 @@ class T(unittest.TestCase):
   def test_shuffle(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'n_1': [1, 2, 3, 4, 5, 6, 7]})
     y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])
-    cfg['sys_seed'] = 0
+    misc.cfg['sys_seed'] = 0
     df2, y2 = df.shuffle(y)
     
     # Originals did not change
@@ -384,14 +382,14 @@ class T(unittest.TestCase):
   def test_cv(self):
     df = pd.DataFrame({'n_1': [1, 2, 3, 4, 5, 6, 7]})
     y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])        
-    df.cv(linear_model.LinearRegression(), y)
+    df.cv(sklearn.linear_model.LinearRegression(), y)
 
   def test_cv_ohe(self):
     df = pd.DataFrame({
       'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'] * 10,  
       'n_1': [1, 2, 3, 4, 5, 6, 7] * 10})
     y = pd.Series([1, 0, 0, 1, 1, 0, 1] * 10)        
-    df.cv_ohe(linear_model.LogisticRegression(), y)
+    df.cv_ohe(sklearn.linear_model.LogisticRegression(), y)
 
   def test_pca(self):
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, 2],
@@ -493,7 +491,7 @@ class T(unittest.TestCase):
     df = pd.DataFrame({'col_1': range(rows), 'col_2': range(rows), 'col_3': range(rows)})    
     def impl(file):
       df.save_csv(file)      
-      df2 = read_df(file)
+      df2 = misc.read_df(file)
       os.remove(file)    
       self.assertEquals(rows, df2.shape[0])
     impl('test.csv.gz')

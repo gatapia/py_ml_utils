@@ -1,16 +1,8 @@
 from __future__ import print_function
-import sys
+import sys, gzip, time, datetime, random, os, logging, gc, \
+    sklearn, scipy
 sys.path.append('utils/lib')
-import numpy as np
-import pandas as pd
-import scipy as scipy
-import cPickle as pickle
-from collections import Counter
-import gzip, time, math, datetime, random, os, gc, logging
-from sklearn import preprocessing, grid_search, utils, metrics, cross_validation, isotonic, linear_model
-from scipy.stats import sem 
-from scipy.stats.mstats import mode
-from sklearn.externals import joblib
+import numpy as np, pandas as pd
 from xgb import XGBClassifier, XGBRegressor
 
 def debug(msg): 
@@ -54,16 +46,16 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   try:
     if (n_samples > X.shape[0]): n_samples = X.shape[0]
   except: pass
-  cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed']) \
-    if not(stratified) else cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
+  cv = sklearn.cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed']) \
+    if not(stratified) else sklearn.cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
   if n_jobs == -1 and cfg['cv_n_jobs'] > 0: n_jobs = cfg['cv_n_jobs']
 
-  test_scores = cross_validation.cross_val_score(
+  test_scores = sklearn.cross_validation.cross_val_score(
       clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs, 
       fit_params=fit_params)
-  score_desc = ("{0:.5f} (+/-{1:.5f})").format(np.mean(test_scores), sem(test_scores))
+  score_desc = ("{0:.5f} (+/-{1:.5f})").format(np.mean(test_scores), scipy.stats.sem(test_scores))
   stop('done CV %s' % score_desc, 'cv')
-  return (np.mean(test_scores), sem(test_scores))
+  return (np.mean(test_scores), scipy.stats.sem(test_scores))
 
 def score_classifier_vals(prop, vals, clf, X, y):
   results = []
@@ -84,15 +76,15 @@ def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3,
   start('starting grid search')
   if type(n_samples) is float: n_samples = int(len(y) * n_samples)
   reseed(clf)
-  cv = cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, random_state=cfg['sys_seed'])
+  cv = sklearn.cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, random_state=cfg['sys_seed'])
   if random_iterations is None:
-    gs = grid_search.GridSearchCV(clf, params, cv=cv, 
+    gs = sklearn.grid_search.GridSearchCV(clf, params, cv=cv, 
       n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
   else:
-    gs = grid_search.RandomizedSearchCV(clf, params, random_iterations, cv=cv, 
+    gs = sklearn.grid_search.RandomizedSearchCV(clf, params, random_iterations, cv=cv, 
       n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], 
       fit_params=fit_params, refit=False)
-  X2, y2 = utils.shuffle(X, y, random_state=cfg['sys_seed'])  
+  X2, y2 = sklearn.utils.shuffle(X, y, random_state=cfg['sys_seed'])  
   gs.fit(X2[:n_samples], y2[:n_samples])
   stop('done grid search')
   dbg(gs.best_params_, gs.best_score_)  
@@ -101,14 +93,14 @@ def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3,
 def dump(file, data):  
   if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
   if not '.' in file: file += '.pickle'
-  joblib.dump(data, 'data/pickles/' + file);  
+  sklearn.external.joblib.dump(data, 'data/pickles/' + file);  
 
 def load(file, opt_fallback=None):
   full_file = 'data/pickles/' + file
   if not '.' in full_file: full_file += '.pickle'
   if os.path.isfile(full_file): 
     if full_file.endswith('.npy'): return np.load(full_file)
-    else: return joblib.load(full_file);
+    else: return sklearn.external.joblib.load(full_file);
   if opt_fallback is None: return None
   data = opt_fallback()
   dump(file, data)
@@ -154,15 +146,14 @@ def optimise(predictions, y, scorer):
   dbg('Best Weights: {weights}'.format(weights=res['x']))
 
 def calibrate(y_train, y_true, y_test=None, method='platt'):      
-  if method == 'platt':
-    from sklearn import linear_model
-    clf = linear_model.LogisticRegression()
+  if method == 'platt':    
+    clf = sklearn.linear_model.LogisticRegression()
     if y_test is None:
       return pd.DataFrame({'train': y_train, 'const': np.ones(len(y_train))}).self_predict_proba(clf, y_true)
     else:
       return pd.DataFrame(y_train).predict_proba(clf, y_true, y_test)      
   elif method == 'isotonic':    
-    clf = isotonic.IsotonicRegression(out_of_bounds='clip')    
+    clf = sklearn.isotonic.IsotonicRegression(out_of_bounds='clip')    
     if len(y_train.shape) == 2 and y_train.shape[1] > 1:            
       all_preds = []
       for target in range(y_train.shape[1]):

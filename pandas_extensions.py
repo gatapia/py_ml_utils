@@ -5,36 +5,22 @@ i_ = categoricals as indexes
 n_ = numerical
 b_ = binary
 d_ = date
-
-TODO:
-- Time series computations 
-  see: http://pandas.pydata.org/pandas-docs/stable/computation.html
-- Assume all methods destructive
-- Try pandas vs numpy sparse arrays
 '''
 
-import pandas as pd
-import numpy as np
-from misc import *
-from ast_parser import *
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.decomposition import PCA
-from sklearn import utils, cross_validation, manifold, cluster
-from scipy import sparse
-import itertools, random, gzip
-from scipy.ndimage.filters import *
-from smote import * 
+import pandas as pd, numpy as np
+import itertools, random, gzip, gc, math, ast_parser, \
+    scipy, smote, misc, os, sklearn
 
 '''
 Series Extensions
 '''
 def _s_one_hot_encode(self):
-  start('one_hot_encoding column')  
+  misc.start('one_hot_encoding column')  
 
   arr = self.values
-  col_ohe = OneHotEncoder().fit_transform(arr.reshape((len(arr), 1)))
+  col_ohe = sklearn.preprocessing.OneHotEncoder().fit_transform(arr.reshape((len(arr), 1)))
 
-  stop('done one_hot_encoding column converted to ' + 
+  misc.stop('done one_hot_encoding column converted to ' + 
       `col_ohe.shape[1]` + ' columns')  
   return col_ohe
 
@@ -55,14 +41,14 @@ def _s_append_bottom(self, s):
   return pd.concat([self, s], ignore_index=True)
 
 def _s_missing(self, fill='none'):  
-  start('replacing series missing data fill[' + `fill` + ']')
+  misc.start('replacing series missing data fill[' + `fill` + ']')
   
   val = _get_col_aggregate(self, fill)  
   self.fillna(val, inplace=True)
   if self.name.startswith('n_'): 
     self.replace([np.inf, -np.inf], val, inplace=True)  
 
-  stop('replacing series missing data')
+  misc.stop('replacing series missing data')
   return self
 
 def _s_scale(self, min_max=None):  
@@ -132,7 +118,7 @@ def _df_binaries(self): return filter(lambda c: c.startswith('b_'), self.columns
 def _df_dates(self): return filter(lambda c: c.startswith('d_'), self.columns)
 
 def _df_infer_col_names(self):
-  start('infering column names')
+  misc.start('infering column names')
   def _get_prefix(c):
     name = c.name
     dtype = str(c.dtype)
@@ -151,23 +137,23 @@ def _df_infer_col_names(self):
       idx += 1
     new_cols.append(col_name)
   self.columns = new_cols  
-  start('done infering column names')
+  misc.start('done infering column names')
   return self
 
 def _df_one_hot_encode(self, dtype=np.float):  
   if self.categoricals(): self.to_indexes(drop_origianls=True)    
 
-  start('one_hot_encoding data frame with ' + `self.shape[1]` + \
+  misc.start('one_hot_encoding data frame with ' + `self.shape[1]` + \
     ' columns. \n\tNOTE: this resturns a sparse array and empties' + \
     ' the initial array.')  
 
-  debug('separating categoricals from others')
+  misc.debug('separating categoricals from others')
   indexes = self.indexes()
   if not indexes: return self
   others = filter(lambda c: not c in indexes, self.columns)
 
   categorical_df = self[indexes]    
-  others_df = sparse.coo_matrix(self[others].values)
+  others_df = scipy.sparse.coo_matrix(self[others].values)
 
   # Destroy original as it now just takes up memory
   self.drop(self.columns, 1, inplace=True) 
@@ -175,20 +161,20 @@ def _df_one_hot_encode(self, dtype=np.float):
 
   ohe_sparse = None
   for i, c in enumerate(indexes):
-    debug('one hot encoding column: ' + `c`)
-    col_ohe = OneHotEncoder(categorical_features=[0], dtype=dtype).\
+    misc.debug('one hot encoding column: ' + `c`)
+    col_ohe = sklearn.preprocessing.OneHotEncoder(categorical_features=[0], dtype=dtype).\
       fit_transform(categorical_df[[c]])
     if ohe_sparse == None: ohe_sparse = col_ohe
-    else: ohe_sparse = sparse.hstack((ohe_sparse, col_ohe))
+    else: ohe_sparse = scipy.sparse.hstack((ohe_sparse, col_ohe))
     categorical_df.drop(c, axis=1, inplace=True)
     gc.collect()
   
-  matrix = ohe_sparse if len(others) == 0 else sparse.hstack((ohe_sparse, others_df))
-  stop('done one_hot_encoding')
+  matrix = ohe_sparse if len(others) == 0 else scipy.sparse.hstack((ohe_sparse, others_df))
+  misc.stop('done one_hot_encoding')
   return matrix.tocsr()
 
 def _df_to_indexes(self, drop_origianls=False, sparsify=False):
-  start('indexing categoricals in data frame. Note: NA gets turned into max index (255, 65535, etc)')  
+  misc.start('indexing categoricals in data frame. Note: NA gets turned into max index (255, 65535, etc)')  
   for c in self.categoricals() + self.binaries():
     col = 'i_' + c
     cat = pd.Categorical.from_array(self[c])
@@ -200,7 +186,7 @@ def _df_to_indexes(self, drop_origianls=False, sparsify=False):
     if len(modes) > 0: mode = modes.iget(0)
     self[col] = s.to_sparse(fill_value=int(mode)) if sparsify else s
     if drop_origianls: self.drop(c, 1, inplace=True)
-  stop('done indexing categoricals in data frame')  
+  misc.stop('done indexing categoricals in data frame')  
   return self
 
 def _df_cats_to_count_ratios(self, y):
@@ -216,7 +202,7 @@ def _df_cats_to_count_ratios(self, y):
 
 
 def _df_cats_to_counts(self, y):
-  start('converting categoricals to counts')
+  misc.start('converting categoricals to counts')
   self['__y'] = y.values if hasattr(y, 'values') else y
   unique_ys = y.unique()
   unique_ys.sort()
@@ -227,28 +213,28 @@ def _df_cats_to_counts(self, y):
     self = self.merge(piv, 'left', left_on=c, right_index=True)  
 
   self = self.remove(['__y'] + all_cats)
-  stop('done converting categoricals to counts')
+  misc.stop('done converting categoricals to counts')
   return self
 
 def _df_cats_to_means(self, y):
   raise Exception('not implemented')
 
 def _df_bin(self, n_bins=100, drop_origianls=False):
-  start('binning data into ' + `n_bins` + ' bins')  
+  misc.start('binning data into ' + `n_bins` + ' bins')  
   for n in self.numericals():
     self['c_binned_' + n] = pd.Series(pd.cut(self[n], n_bins), index=self[n].index)
     if drop_origianls: self.drop(n, 1, inplace=True)
-  stop('done binning data into ' + `n_bins` + ' bins')  
+  misc.stop('done binning data into ' + `n_bins` + ' bins')  
   return self
 
 def _df_group_rare(self, columns=None, limit=30):
-  start('grouping rare categorical columns, limit: ' + `limit`)  
+  misc.start('grouping rare categorical columns, limit: ' + `limit`)  
   if columns is None: columns = self.categoricals()
   for c in columns:
     vcs = self[c].value_counts()
     rare = vcs[vcs < limit].keys()  
     self.loc[self[c].isin(rare), c] = 'rare'
-  start('done grouping rare categorical')  
+  misc.start('done grouping rare categorical')  
   return self
 
 def _df_combinations(self, group_size=2, columns=[], categoricals=False, indexes=False,
@@ -263,12 +249,12 @@ def _df_combinations(self, group_size=2, columns=[], categoricals=False, indexes
   return list(op(cols, group_size))
 
 def _df_normalise(self, columns=None):
-  start('normalising data [0-1]')  
+  misc.start('normalising data [0-1]')  
   if columns is None: columns = self.numericals()
   for c in columns:
     self[c] -= self[c].min()
     self[c] /= self[c].max()
-  stop('done normalising data')  
+  misc.stop('done normalising data')  
   return self
 
 def _df_remove_nas(self, columns=None):      
@@ -293,7 +279,7 @@ def _df_remove(self, columns=[], categoricals=False, numericals=False,
     raise Exception('At least one of categoricals, numericals, ' +
       'dates binaries should be set to True or columns array passed')
 
-  debug('removing ' + `len(cols)` + ' columns from data frame')
+  misc.debug('removing ' + `len(cols)` + ' columns from data frame')
   cols = [c for c in cols if c in self.columns]
   self.drop(cols, 1, inplace=True)
   return self
@@ -319,7 +305,7 @@ def _df_engineer(self, name, columns=None, quiet=False):
     suffix = func_to_string(c)
     return suffix if suffix.startswith(prefix) else prefix + suffix
   
-  c = explain(name)[0]
+  c = ast_parser.explain(name)[0]
   func = c.func if not type(c) is str else None
   args = c.args if not type(c) is str else None
 
@@ -332,7 +318,7 @@ def _df_engineer(self, name, columns=None, quiet=False):
       args[i] = get_new_col_name(a)
       self.engineer(func_to_string(a))
 
-  if not quiet: debug('engineering feature: ' + name)
+  if not quiet: misc.debug('engineering feature: ' + name)
   if len(args) == 0 and (func == 'avg' or func == 'mult' or func == 'add' or func == 'concat'):    
     combs = list(itertools.combinations(columns, 2)) if columns is not None \
       else self.combinations(categoricals=func=='concat', indexes=func=='concat', numericals=func in ['mult', 'avg', 'add'])    
@@ -416,15 +402,15 @@ def _df_engineer(self, name, columns=None, quiet=False):
   return self
   
 def _df_scale(self, columns=None, min_max=None):  
-  start('scaling data frame')
+  misc.start('scaling data frame')
   cols = columns if columns is not None else self.numericals()
   for c in cols:
     self[c] = self[c].scale(min_max)
-  stop('scaling data frame')
+  misc.stop('scaling data frame')
   return self
 
 def _df_missing(self, categorical_fill='none', numerical_fill='none', binary_fill='none'):  
-  start('replacing missing data categorical[' + `categorical_fill` + '] numerical[' + `numerical_fill` + ']')
+  misc.start('replacing missing data categorical[' + `categorical_fill` + '] numerical[' + `numerical_fill` + ']')
   
   # Do numerical constants on whole DF for performance
   if type(numerical_fill) != str:
@@ -456,7 +442,7 @@ def _df_missing(self, categorical_fill='none', numerical_fill='none', binary_fil
   # Do fill in one step for performance
   if to_fill: self.fillna(value=to_fill, inplace=True)
 
-  stop('done replacing missing data')
+  misc.stop('done replacing missing data')
   return self
 
 def _get_col_aggregate(col, mode):
@@ -474,13 +460,13 @@ def _get_col_aggregate(col, mode):
   return mode
 
 def _df_outliers(self, stds=3):  
-  start('restraining outliers, standard deviations: ' + `stds`)
+  misc.start('restraining outliers, standard deviations: ' + `stds`)
   for n in self.numericals(): 
     col = self[n]
     mean, offset = col.mean(), stds * col.std()
     min, max = mean - offset, mean + offset
     self[n] = col.clip(min, max)
-  stop('done restraining outliers')
+  misc.stop('done restraining outliers')
   return self
 
 def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):     
@@ -490,7 +476,7 @@ def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):
   vc = col.value_counts()
   under = vc[vc <= threshold]    
   if under.shape[0] > 0: 
-    debug('column [' + col.name + '] threshold[' + `threshold` + '] fill[' + `fill` + '] num of rows[' + `len(under.index)` + ']')
+    misc.debug('column [' + col.name + '] threshold[' + `threshold` + '] fill[' + `fill` + '] num of rows[' + `len(under.index)` + ']')
     col[col.isin(under.index)] = fill
   return col
 
@@ -567,12 +553,12 @@ def _s_to_ratio(self, y, positive_class=None):
   return self
 
 def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):      
-  start('binning categorical outliers, min_size: ' + `min_size`)
+  misc.start('binning categorical outliers, min_size: ' + `min_size`)
 
   for c in self.categoricals() + self.indexes():     
     self[c] = self[c].categorical_outliers(min_size, fill_mode)
 
-  stop('done binning categorical outliers')
+  misc.stop('done binning categorical outliers')
   return self
 
 def _is_sparse(o):
@@ -580,21 +566,21 @@ def _is_sparse(o):
     type(o) is pd.sparse.series.SparseSeries
 
 def _df_append_right(self, df_or_s):  
-  start('appending to the right.  note, this is a destructive operation')
-  if (type(df_or_s) is sparse.coo.coo_matrix):
+  misc.start('appending to the right.  note, this is a destructive operation')
+  if (type(df_or_s) is scipy.sparse.coo.coo_matrix):
     self_sparse = None
     for c in self.columns:
-      debug('\tappending column: ' + c)
-      c_coo = sparse.coo_matrix(self[[c]])
+      misc.debug('\tappending column: ' + c)
+      c_coo = scipy.sparse.coo_matrix(self[[c]])
       self.drop([c], 1, inplace=True)
       gc.collect()
       if self_sparse == None: self_sparse = c_coo
-      else: self_sparse = sparse.hstack((self_sparse, c_coo)) 
-    self_sparse = sparse.hstack((self_sparse, df_or_s))
-    stop('done appending to the right')
+      else: self_sparse = scipy.sparse.hstack((self_sparse, c_coo)) 
+    self_sparse = scipy.sparse.hstack((self_sparse, df_or_s))
+    misc.stop('done appending to the right')
     return self_sparse
   elif _is_sparse(df_or_s) and not _is_sparse(self):
-    debug('converting data frame to a sparse frame')
+    misc.debug('converting data frame to a sparse frame')
     self = self.to_sparse(fill_value=0)
   if type(df_or_s) is pd.Series: self[df_or_s.name] = df_or_s.values
   else: 
@@ -606,11 +592,11 @@ def _df_append_right(self, df_or_s):
       right = df_or_s
     self = pd.DataFrame(np.hstack((self.values, right)), 
         columns=self.columns.tolist() + columns)
-  stop('done appending to the right')
+  misc.stop('done appending to the right')
   return self
 
 def _df_append_bottom(self, df):  
-  # debug('warning: DataFrame.append_bottom always returns a new DataFrame')
+  # misc.debug('warning: DataFrame.append_bottom always returns a new DataFrame')
   return pd.concat([self, df], ignore_index=True)
 
 def _create_df_from_templage(template, data, index=None):
@@ -631,22 +617,22 @@ def _df_subsample(self, y=None, size=0.5):
     size = int(size)
   if self.shape[0] <= size: return self if y is None else (self, y) # unchanged    
 
-  start('subsample data frame')
+  misc.start('subsample data frame')
   df = self.copy().shuffle(y)
   
   result = df[:size] if y is None else df[0][:size], df[1][:size]  
-  start('done, subsample data frame')
+  misc.start('done, subsample data frame')
   return result
 
 def _df_shuffle(self, y=None):    
-  start('shuffling data frame')  
+  misc.start('shuffling data frame')  
   df = self.copy()  
   if y is not None: 
     df = df[:y.shape[0]]
     df['__tmpy'] = y    
 
   index = list(df.index)
-  reseed(None)
+  misc.reseed(None)
   random.shuffle(index)
   df = df.ix[index]
   df.reset_index(inplace=True, drop=True)
@@ -657,11 +643,11 @@ def _df_shuffle(self, y=None):
     df.remove(['__tmpy'])
     result = (df, y)
 
-  start('done, shuffling data frame')
+  misc.start('done, shuffling data frame')
   return result
 
 def _df_noise_filter(self, type, *args, **kargs):  
-  start('filtering data frame')
+  misc.start('filtering data frame')
   
   filter = gaussian_filter1d if type == 'gaussian' \
     else maximum_filter1d if type == 'maximum' \
@@ -676,18 +662,18 @@ def _df_noise_filter(self, type, *args, **kargs):
 def _df_split(self, y, stratified=False, train_fraction=0.5):  
   train_size = int(self.shape[0] * train_fraction)
   test_size = int(self.shape[0] * (1.0-train_fraction))  
-  start('splitting train_size: ' + `train_size` + ' test_size: ' + `test_size`)
+  misc.start('splitting train_size: ' + `train_size` + ' test_size: ' + `test_size`)
   if stratified:
-    train_indexes, test_indexes = list(cross_validation.StratifiedShuffleSplit(y, 1, test_size, train_size, random_state=cfg['sys_seed']))[0]  
+    train_indexes, test_indexes = list(cross_validation.StratifiedShuffleSplit(y, 1, test_size, train_size, random_state=misc.cfg['sys_seed']))[0]  
   else:
-    train_indexes, test_indexes = list(cross_validation.ShuffleSplit(len(y), 1, test_size, train_size, random_state=cfg['sys_seed']))[0]  
+    train_indexes, test_indexes = list(cross_validation.ShuffleSplit(len(y), 1, test_size, train_size, random_state=misc.cfg['sys_seed']))[0]  
   new_set = (
     self.iloc[train_indexes], 
     y.iloc[train_indexes], 
     self.iloc[test_indexes], 
     y.iloc[test_indexes]
   )
-  stop('splitting done')
+  misc.stop('splitting done')
   return new_set
 
 def _df_cv(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):  
@@ -701,26 +687,26 @@ def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, f
   if n_samples is None: n_samples = len(y)
   else: n_samples = min(n_samples, len(y), X.shape[0])
   if len(y) < X.shape[0]: X = X[:len(y)]
-  if utils.multiclass.type_of_target(y) == 'binary' and not (scoring or cfg['scoring']): 
+  if sklearn.utils.multiclass.type_of_target(y) == 'binary' and not (scoring or misc.cfg['scoring']): 
     scoring = 'roc_auc'
-  start('starting ' + `n_iter` + ' fold cross validation (' + 
-      `n_samples` + ' samples) w/ metric: ' + `scoring or cfg['scoring']`)
-  cv = do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True, n_jobs=n_jobs, fit_params=fit_params)
-  stop('done cross validation:\n  [CV]: ' + ("{0:.5f} (+/-{1:.5f})").format(cv[0], cv[1]))  
+  misc.start('starting ' + `n_iter` + ' fold cross validation (' + 
+      `n_samples` + ' samples) w/ metric: ' + `scoring or misc.cfg['scoring']`)
+  cv = misc.do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True, n_jobs=n_jobs, fit_params=fit_params)
+  misc.stop('done cross validation:\n  [CV]: ' + ("{0:.5f} (+/-{1:.5f})").format(cv[0], cv[1]))  
   return cv
 
 def _df_pca(self, n_components, whiten=False):  
-  new_X = PCA(n_components, whiten=whiten).fit_transform(self)
+  new_X = sklearn.decomposition.PCA(n_components, whiten=whiten).fit_transform(self)
   columns = map(lambda i: 'n_pca_' + `i`, range(n_components))
   return pd.DataFrame(columns=columns, data=new_X)
 
 def _df_tsne(self, n_components):  
-  new_X = manifold.TSNE(n_components, method='barnes_hut').fit_transform(self)
+  new_X = sklearn.manifold.TSNE(n_components, method='barnes_hut').fit_transform(self)
   columns = map(lambda i: 'n_tsne_' + `i`, range(n_components))
   return pd.DataFrame(columns=columns, data=new_X)
 
 def _df_kmeans(self, k):  
-  return pd.Series(cluster.KMeans(k).fit_predict(self))
+  return pd.Series(sklearn.cluster.KMeans(k).fit_predict(self))
 
 def _df_tree_features(self, tree_ensemble, y):
   def _make_tree_bins(clf, X):
@@ -759,7 +745,7 @@ def _df_decision_function(self, clf, y, X_test=None):
   return __df_clf_method_impl(self, clf, y, X_test, 'decision_function')
 
 def __df_clf_method_impl(X, clf, y, X_test, method):    
-  reseed(clf)
+  misc.reseed(clf)
   X_train = X
   if X_test is None and X.shape[0] > len(y):
     X_test = X[len(y):]
@@ -784,8 +770,8 @@ def _df_self_decision_function(self, clf, y, cv=5):
 
 def _df_self_predict_impl(X, clf, y, cv, method):    
   if y is not None and X.shape[0] != len(y): X = X[:len(y)]
-  start('self_' + method +' with ' + `cv` + ' chunks starting')
-  reseed(clf)
+  misc.start('self_' + method +' with ' + `cv` + ' chunks starting')
+  misc.reseed(clf)
       
   def op(X, y, X2):
     if len(X.shape) == 2 and X.shape[1] == 1: 
@@ -802,15 +788,15 @@ def _df_self_predict_impl(X, clf, y, cv, method):
     return new_predictions    
   
   predictions = _df_self_chunked_op(X, y, op, cv)
-  stop('self_predict completed')
+  misc.stop('self_predict completed')
   return predictions.values
 
 def _df_self_chunked_op(self, y, op, cv=5):    
   if y is not None and hasattr(y, 'values'): y = y.values
   X = self
   if cv is None: cv = 5
-                          # cross_validation.KFold(len(y), cv, shuffle=True, random_state=cfg['sys_seed'])
-  if type(cv) is int: cv = cross_validation.StratifiedKFold(y, cv, shuffle=True, random_state=cfg['sys_seed'])
+                          # cross_validation.KFold(len(y), cv, shuffle=True, random_state=misc.cfg['sys_seed'])
+  if type(cv) is int: cv = cross_validation.StratifiedKFold(y, cv, shuffle=True, random_state=misc.cfg['sys_seed'])
   indexes=None
   chunks=None
   for train_index, test_index in cv:
@@ -890,7 +876,7 @@ def _get_optimal_numeric_type(dtype, min, max, aggresiveness=0):
     if aggresiveness == 2: return 'float16'  
 
 def _df_compress(self, aggresiveness=0, sparsify=False):  
-  start('compressing dataset with ' + `len(self.columns)` + ' columns')    
+  misc.start('compressing dataset with ' + `len(self.columns)` + ' columns')    
 
   def _format_bytes(num):
       for x in ['bytes','KB','MB','GB']:
@@ -907,7 +893,7 @@ def _df_compress(self, aggresiveness=0, sparsify=False):
   for idx, c in enumerate(self.columns): self[c] = self[c].s_compress(aggresiveness, sparsify)
   new_bytes = self.nbytes()
   diff_bytes = original_bytes - new_bytes
-  stop('original: %s new: %s improvement: %s percentage: %.2f%%' % 
+  misc.stop('original: %s new: %s improvement: %s percentage: %.2f%%' % 
     (_format_bytes(original_bytes), _format_bytes(new_bytes), 
         _format_bytes(diff_bytes), diff_bytes * 100.0 / original_bytes))
   return self
@@ -1079,7 +1065,7 @@ def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
   min_value = opt_target if opt_target is not None else vcs.argmin()
   minorities = self[y == min_value]
 
-  new_minorities = SMOTE(minorities.values, percentage_multiplier, n_neighbors)
+  new_minorities = smote.SMOTE(minorities.values, percentage_multiplier, n_neighbors)
   new_len = self.shape[0] + new_minorities.shape[0]
   y2 = pd.Series(np.append(y.values, np.array([min_value] * len(new_minorities))), index=np.arange(new_len))
   minorities_df = pd.DataFrame(new_minorities, columns=self.columns)
@@ -1088,10 +1074,10 @@ def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
   return (new_df, y2)
 
 def _df_to_ratio(self, y, positive_class=None):
-  start('converting all categoricals to ratios')
+  misc.start('converting all categoricals to ratios')
   for c in self.categoricals() + self.indexes() + self.binaries():
     self[c].to_ratio(y, positive_class)
-  stop('done converting all categoricals to ratios')
+  misc.stop('done converting all categoricals to ratios')
   return self
 
 def _chunked_iterator(df, chunk_size=1000000):
@@ -1109,12 +1095,12 @@ def _get_write_file_stream(file):
 # Extensions
 def _extend_df(name, function):
   df = pd.DataFrame({})
-  if not 'pd_extensions' in cfg and hasattr(df, name): raise Exception ('DataFrame already has a ' + name + ' method')
+  if not 'pd_extensions' in misc.cfg and hasattr(df, name): raise Exception ('DataFrame already has a ' + name + ' method')
   setattr(pd.DataFrame, name, function)
 
 def _extend_s(name, function):
   s = pd.Series([])
-  if not 'pd_extensions' in cfg and hasattr(s, name): raise Exception ('Series already has a ' + name + ' method')
+  if not 'pd_extensions' in misc.cfg and hasattr(s, name): raise Exception ('Series already has a ' + name + ' method')
   setattr(pd.Series, name, function)
 
 # Data Frame Extensions  
@@ -1207,4 +1193,4 @@ _extend_df('eng', _df_engineer)
 _extend_df('nas', _df_missing)
 _extend_df('catout', _df_categorical_outliers)
 
-if not 'pd_extensions' in cfg: cfg['pd_extensions'] = True
+if not 'pd_extensions' in misc.cfg: misc.cfg['pd_extensions'] = True
