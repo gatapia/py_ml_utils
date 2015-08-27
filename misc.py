@@ -1,7 +1,9 @@
 from __future__ import print_function
 import sys, gzip, time, datetime, random, os, logging, gc, \
-    sklearn, scipy
+    scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
+    sklearn.utils
 sys.path.append('utils/lib')
+sys.path.append('lib')
 import numpy as np, pandas as pd
 from xgb import XGBClassifier, XGBRegressor
 

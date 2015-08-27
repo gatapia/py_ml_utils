@@ -9,7 +9,7 @@ d_ = date
 
 import pandas as pd, numpy as np
 import itertools, random, gzip, gc, math, ast_parser, \
-    scipy, smote, misc, os, sklearn
+    scipy, smote, misc, os, sklearn, sys, datetime
 
 '''
 Series Extensions
@@ -28,6 +28,10 @@ def _s_bin(self, n_bins=100):
   return pd.Series(pd.cut(self, n_bins), index=self.index)
 
 def _s_sigma_limits(self, sigma):
+  '''
+  returns the minimum and maximum values in the series between the
+  specified sigma.  This can be used to truncate outliers.
+  '''
   delta = float(sigma) * self.std()
   m = self.mean()
   return (m - delta, m + delta)
@@ -38,6 +42,7 @@ def _s_to_indexes(self):
   return pd.Series(lbls, index=self.index, dtype=_get_optimal_numeric_type('int', 0, len(lbls) + 1))
 
 def _s_append_bottom(self, s):  
+  if type(s) is not pd.Series: s = pd.Series(s)
   return pd.concat([self, s], ignore_index=True)
 
 def _s_missing(self, fill='none'):  
@@ -64,48 +69,53 @@ def _s_scale(self, min_max=None):
 
   return s
 
-def _s_is_similar(self, other):
-  shortest = float(min(len(self), len(other)))
-  self, other = self[:int(shortest)], other[:int(shortest)]  
-  name = self.name
+def _s_is_valid_name(self):
+  if not self.name: return False
+  return self.name.split('_')[0] in ['c', 'n', 'i', 'd', 'b']
 
-  if name.startswith('d_'): 
-    dbg('date similarity comparison not implemented')
-    return True
-  if name.startswith('c_') or name.startswith('b_'): self, other = self.to_indexes(), other.to_indexes()
+def _s_is_categorical(self):
+  if self.is_valid_name(): return self.name.split('_')[0] == 'c'
+  return sklearn.utils.multiclass.type_of_target(self) == 'multiclass'
 
-  def _comp(v1, v2, prefix):
-    v1, v2 = abs(v1), abs(v2)
-    if v2 > v1: v1, v2 = v2, v1
-    dissimilarity = (v1 - v2) / float(v1)
-    if dissimilarity > .1:
-      dbg(name, ':', prefix, 'below threshold [', v1, '], [', v2, '], dissimilarity[', dissimilarity, ']')
-      return False
-    return True
+def _s_is_indexes(self):
+  if self.is_valid_name(): return self.name.split('_')[0] == 'i'
+  return sklearn.utils.multiclass.type_of_target(self) == 'multiclass'
 
-  if not _comp(np.sum(np.isfinite(self)), np.sum(np.isfinite(other)), 'null/inf'): return False
+def _s_is_binary(self):
+  if self.is_valid_name(): return self.name.split('_')[0] == 'b'
+  return len(self.unique()) == 2
 
-  if name.startswith('n_'):
-    self, other = self.scale(), other.scale()
-    rng, rng2 = self.max() - self.min(), other.max() - other.min()
-    if not _comp(rng, rng2, 'range'): return False
-    if not _comp(self.min(), other.min(), 'min'): return False
-    if not _comp(self.max(), other.max(), 'min'): return False
-    # if not _comp(self.kurtosis(), other.kurtosis(), 'kurtosis'): return False
-  elif name.startswith('c_') or name.startswith('i_') or name.startswith('b_'): 
-    vcs, vcs2 = self.value_counts(), other.value_counts()
-    for val in vcs.keys():
-      c = vcs[val]
-      if c < shortest * .05: continue
-      if val not in vcs2:
-        dbg(name, 'categorical value:', val, 'not in second dataset')
-        return False
-      c2 = vcs2[val]
-      if not _comp(c, c2, 'categorical value: ' + str(val)): return False
-  else:
-    dbg(name, ': is not supported')
-    return False
-  return True
+def _s_is_categorical_like(self):
+  return self.is_categorical() or self.is_indexes() or self.is_binary()
+
+def _s_is_numerical(self):
+  if self.is_valid_name(): return self.name.split('_')[0] == 'n'
+  return sklearn.utils.multiclass.type_of_target(self) == 'continuous'
+
+def _s_is_date(self):
+  if self.is_valid_name(): return self.name.split('_')[0] == 'd'
+  return str(self.dtype).startswith('date') or \
+      type(self[0]) is pd.Timestamp or \
+      type(self[0]) is datetime.datetime
+
+def _s_is_equals(self, s):
+  if type(s) is not pd.Series: s = pd.Series(s)
+  return np.all(self == s);
+
+def _s_all_close(self, s):
+  return np.allclose(self, s)
+
+def _s_infer_col_name(self):
+  if self.is_valid_name(): return self
+  name = self.name or 'unknown'
+  dtype = str(self.dtype)
+  if self.is_date(): prefix = 'd_'
+  elif self.is_binary(): prefix = 'b_'
+  elif self.is_numerical(): prefix = 'n_'  
+  else: prefix = 'c_'
+  self.name = prefix + name
+  return self
+
 
 '''
 DataFrame Extensions
@@ -117,28 +127,22 @@ def _df_numericals(self): return filter(lambda c: c.startswith('n_'), self.colum
 def _df_binaries(self): return filter(lambda c: c.startswith('b_'), self.columns)
 def _df_dates(self): return filter(lambda c: c.startswith('d_'), self.columns)
 
-def _df_infer_col_names(self):
-  misc.start('infering column names')
-  def _get_prefix(c):
-    name = c.name
-    dtype = str(c.dtype)
-    if len(c.unique()) == 2: return 'b_'
-    if dtype.startswith('float') or dtype.startswith('int'): return 'n_'
-    if dtype.startswith('date'): return 'd_'
-    return 'c_'
-
-  new_cols = []
-  for i in range(self.shape[1]):
-    col_name = self.columns[i] if self.columns[i][1] == '_' else _get_prefix(self.ix[:,i]) + self.columns[i]
-    orig_col_name = col_name
-    idx = 1
-    while col_name in new_cols:
-      col_name = orig_col_name + '_' + `idx`
-      idx += 1
-    new_cols.append(col_name)
-  self.columns = new_cols  
-  misc.start('done infering column names')
+def _df_ensure_unique_names(self):
+  uniques = []
+  for i, n in enumerate(self.columns):
+    unique_idx = 1
+    tmp = n
+    while tmp in uniques:
+      tmp = n + '_' + `unique_idx`
+      unique_idx += 1
+    uniques.append(tmp)
+  self.columns = uniques
   return self
+
+def _df_infer_col_names(self):
+  misc.start('infering column names')  
+  self.columns = [self.ix[:,i].infer_col_name().name for i in range(self.shape[1])]
+  return self.ensure_unique_names()
 
 def _df_one_hot_encode(self, dtype=np.float):  
   if self.categoricals(): self.to_indexes(drop_origianls=True)    
@@ -480,7 +484,7 @@ def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):
     col[col.isin(under.index)] = fill
   return col
 
-def _s_compress(self, aggresiveness=0, sparsify=False):  
+def _s_compress_size(self, aggresiveness=0, sparsify=False):  
   def _get_optimal_numeric_type(dtype, min, max):
     dtype = str(dtype)
     is_int = dtype.startswith('int')
@@ -533,7 +537,7 @@ def _s_compress(self, aggresiveness=0, sparsify=False):
     else:
       raise Exception(self.name + ' expected "int" or "float" type got: ', str(self.dtype))
   else : 
-    dbg(self.name + ' is not supported, ignored during compression')
+    misc.dbg(self.name + ' is not supported, ignored during compression')
   return self
 
 def _s_hashcode(self):
@@ -875,7 +879,7 @@ def _get_optimal_numeric_type(dtype, min, max, aggresiveness=0):
       else: raise Exception('Unsupported type: ' + dtype)
     if aggresiveness == 2: return 'float16'  
 
-def _df_compress(self, aggresiveness=0, sparsify=False):  
+def _df_compress_size(self, aggresiveness=0, sparsify=False):  
   misc.start('compressing dataset with ' + `len(self.columns)` + ' columns')    
 
   def _format_bytes(num):
@@ -890,7 +894,7 @@ def _df_compress(self, aggresiveness=0, sparsify=False):
   self.columns = map(lambda c: c.replace('b_', 'c_'), self.columns)
   self.missing(categorical_fill='missing', numerical_fill='none')
   self.toidxs(True)
-  for idx, c in enumerate(self.columns): self[c] = self[c].s_compress(aggresiveness, sparsify)
+  for idx, c in enumerate(self.columns): self[c] = self[c].s_compress_size(aggresiveness, sparsify)
   new_bytes = self.nbytes()
   diff_bytes = original_bytes - new_bytes
   misc.stop('original: %s new: %s improvement: %s percentage: %.2f%%' % 
@@ -1035,12 +1039,12 @@ def _df_importances(self, clf, y):
 def _df_is_similar(self, other):
   in_X = self.columns - other.columns
   if len(in_X) > 0:
-    dbg('columns found in main dataset not in second: ', in_X)
+    misc.dbg('columns found in main dataset not in second: ', in_X)
     return False
   in_X2 = other.columns - self.columns
 
   if len(in_X) > 0:
-    dbg('columns found in second dataset not in main: ', in_X2)
+    misc.dbg('columns found in second dataset not in main: ', in_X2)
     return False
   
   return np.all([is_similar_s(self[c], other[c]) for c in self.columns])
@@ -1103,85 +1107,10 @@ def _extend_s(name, function):
   if not 'pd_extensions' in misc.cfg and hasattr(s, name): raise Exception ('Series already has a ' + name + ' method')
   setattr(pd.Series, name, function)
 
-# Data Frame Extensions  
-_extend_df('one_hot_encode', _df_one_hot_encode)
-_extend_df('to_indexes', _df_to_indexes)
-_extend_df('bin', _df_bin)
-_extend_df('remove', _df_remove)
-_extend_df('remove_nas', _df_remove_nas)
-_extend_df('engineer', _df_engineer)
-_extend_df('combinations', _df_combinations)
-_extend_df('normalise', _df_normalise)
-_extend_df('missing', _df_missing)
-_extend_df('scale', _df_scale)
-_extend_df('outliers', _df_outliers)
-_extend_df('categorical_outliers', _df_categorical_outliers)
-_extend_df('append_right', _df_append_right)
-_extend_df('append_bottom', _df_append_bottom)
-_extend_df('shuffle', _df_shuffle)
-_extend_df('subsample', _df_subsample)
-_extend_df('split', _df_split)
-_extend_df('cv', _df_cv)
-_extend_df('cv_ohe', _df_cv_ohe)
-_extend_df('pca', _df_pca)
-_extend_df('tsne', _df_tsne)
-_extend_df('kmeans', _df_kmeans)
-_extend_df('tree_features', _df_tree_features)
-_extend_df('append_fit_transformer', _df_append_fit_transformer)
-_extend_df('noise_filter', _df_noise_filter)
-_extend_df('predict', _df_predict)
-_extend_df('predict_proba', _df_predict_proba)
-_extend_df('transform', _df_transform)
-_extend_df('decision_function', _df_decision_function)
-_extend_df('self_predict', _df_self_predict)
-_extend_df('self_predict_proba', _df_self_predict_proba)
-_extend_df('self_transform', _df_self_transform)
-_extend_df('self_decision_function', _df_self_decision_function)
-_extend_df('self_chunked_op', _df_self_chunked_op)
-_extend_df('save_csv', _df_save_csv)
-_extend_df('to_vw', _df_to_vw)
-_extend_df('to_libfm', _df_to_libfm)
-_extend_df('to_libffm', _df_to_libffm)
-_extend_df('to_svmlight', _df_to_svmlight)
-_extend_df('to_xgboost', _df_to_svmlight)
-_extend_df('hashcode', _df_hashcode)
-_extend_df('importances', _df_importances)
+for method in dir():
+  if method.startswith('_s_'): _extend_s(method.replace('_s_', ''), getattr(sys.modules[__name__], method))
+  if method.startswith('_df_'): _extend_df(method.replace('_df_', ''), getattr(sys.modules[__name__], method))
 
-_extend_df('categoricals', _df_categoricals)
-_extend_df('indexes', _df_indexes)
-_extend_df('numericals', _df_numericals)
-_extend_df('dates', _df_dates)
-_extend_df('binaries', _df_binaries)
-_extend_df('trim_on_y', _df_trim_on_y)
-_extend_df('nbytes', _df_nbytes)
-_extend_df('compress', _df_compress)
-_extend_df('summarise', _df_summarise)
-
-_extend_df('cats_to_count_ratios', _df_cats_to_count_ratios)
-_extend_df('cats_to_counts', _df_cats_to_counts)
-_extend_df('infer_col_names', _df_infer_col_names)
-_extend_df('group_rare', _df_group_rare)
-_extend_df('is_similar', _df_is_similar)
-_extend_df('numerical_stats', _df_numerical_stats)
-_extend_df('smote', _df_smote)
-_extend_df('to_ratio', _df_to_ratio)
-
-# Series Extensions   
-_extend_s('one_hot_encode', _s_one_hot_encode)
-_extend_s('missing', _s_missing)
-_extend_s('bin', _s_bin)
-_extend_s('categorical_outliers', _s_categorical_outliers)
-_extend_s('sigma_limits', _s_sigma_limits)
-_extend_s('s_compress', _s_compress)
-_extend_s('hashcode', _s_hashcode)
-_extend_s('to_indexes', _s_to_indexes)
-_extend_s('append_bottom', _s_append_bottom)
-_extend_s('scale', _s_scale)
-_extend_s('is_similar', _s_is_similar)
-_extend_s('to_ratio', _s_to_ratio)
-
-# Aliases
-_extend_s('catout', _s_categorical_outliers)
 _extend_s('ohe', _s_one_hot_encode)
 _extend_s('toidxs', _s_to_indexes)
 
@@ -1191,6 +1120,6 @@ _extend_df('rm', _df_remove)
 _extend_df('rmnas', _df_remove_nas)
 _extend_df('eng', _df_engineer)
 _extend_df('nas', _df_missing)
-_extend_df('catout', _df_categorical_outliers)
+
 
 if not 'pd_extensions' in misc.cfg: misc.cfg['pd_extensions'] = True
