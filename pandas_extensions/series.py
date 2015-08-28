@@ -1,5 +1,5 @@
 import pandas as pd, numpy as np
-import sklearn, datetime, utils
+import sklearn, datetime, utils, scipy
 from .. import misc
 
 def _s_one_hot_encode(self):
@@ -63,7 +63,6 @@ def _s_scale(self, min_max=None):
   else:
     s -= s.mean()
     s /= s.std()
-
   return s
 
 def _s_is_valid_name(self):
@@ -203,3 +202,8 @@ def _s_to_rank(self, normalise=True):
   r = self.rank()
   if normalise: r = r.normalise()
   return r
+
+def _s_boxcox(self):
+  minv = self.min()
+  if minv <= 0: self = 1 + (self - minv)
+  return scipy.stats.boxcox(self)[0]

@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from . import *
 
-class T(unittest.TestCase):
+class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
   def test_concat(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2': ['d', 'e', 'f']})    
     df.engineer('concat(c_1, c_2)')
@@ -248,6 +248,3 @@ class T(unittest.TestCase):
     np.testing.assert_array_equal(df1['n_lg(pow(n_1,3))'], df2['n_lg(pow(n_1,3))']);
     np.testing.assert_array_equal(df1['n_lg(mult(n_1,n_2))'], df2['n_lg(mult(n_1,n_2))']);
     np.testing.assert_array_equal(df1['n_mult(lg(mult(n_1,n_2)),lg(pow(n_1,3)))'], df2['n_mult(lg(mult(n_1,n_2)),lg(pow(n_1,3)))']);
-
-if __name__ == '__main__':
-  unittest.main()

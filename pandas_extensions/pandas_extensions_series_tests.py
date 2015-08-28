@@ -1,8 +1,9 @@
 import unittest, sklearn, datetime
 import pandas as pd, numpy as np
 from . import *
+from . import base_pandas_extensions_tester
 
-class T(unittest.TestCase):
+class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
   def test_one_hot_encode(self):
     s = pd.Series([1, 2, 3])
     s2 = s.one_hot_encode().todense()
@@ -14,15 +15,15 @@ class T(unittest.TestCase):
   def test_binning(self):
     s = pd.Series([1., 2., 3.])    
     s2 = s.bin(2)
-    self._eq(s2, ['(0.998, 2]', '(0.998, 2]', '(2, 3]'])
+    self.eq(s2, ['(0.998, 2]', '(0.998, 2]', '(2, 3]'])
 
   def test_group_rare(self):
     s = pd.Series(['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10)    
     s2 = s.copy().group_rare()
-    self._eq(s2, ['a', 'b', 'c'] * 100 + ['rare'] * 30)
+    self.eq(s2, ['a', 'b', 'c'] * 100 + ['rare'] * 30)
 
     s2 = s.copy().group_rare(5)
-    self._eq(s2, ['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10)
+    self.eq(s2, ['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10)
 
   def test_sigma_limits(self):
     min_v, max_v = pd.Series(np.random.normal(size=10000)).sigma_limits(2)
@@ -32,41 +33,41 @@ class T(unittest.TestCase):
   def test_to_indexes(self):
     s = pd.Series(['a', 'b', 'c', 'a'])
     s2 = s.toidxs()
-    self._eq(s2, [0, 1, 2, 0])
+    self.eq(s2, [0, 1, 2, 0])
 
   def test_append_bottom(self):
-    self._eq(pd.Series(['a', 'b', 'c', 'a']).append_bottom(['a']),
+    self.eq(pd.Series(['a', 'b', 'c', 'a']).append_bottom(['a']),
       ['a', 'b', 'c', 'a', 'a'])
-    self._eq(pd.Series(['a', 'b', 'c', 'a']).append_bottom(np.array(['a'])),
+    self.eq(pd.Series(['a', 'b', 'c', 'a']).append_bottom(np.array(['a'])),
       ['a', 'b', 'c', 'a', 'a'])
-    self._eq(pd.Series(['a', 'b', 'c', 'a']).append_bottom(pd.Series(['a'])),
+    self.eq(pd.Series(['a', 'b', 'c', 'a']).append_bottom(pd.Series(['a'])),
       ['a', 'b', 'c', 'a', 'a'])
 
   def test_missing(self):
-    self._eq(pd.Series(['a', 'b', None, 'a'], name='c_col').missing('mode'),
+    self.eq(pd.Series(['a', 'b', None, 'a'], name='c_col').missing('mode'),
       ['a', 'b', 'a', 'a'])
-    self._eq(pd.Series(['a', 'b', None, 'a'], name='c_col').missing('NA'),
+    self.eq(pd.Series(['a', 'b', None, 'a'], name='c_col').missing('NA'),
       ['a', 'b', 'NA', 'a'])
 
-    self._eq(pd.Series([1, 2, None, 1], name='n_col').missing('mode'),
+    self.eq(pd.Series([1, 2, None, 1], name='n_col').missing('mode'),
       [1, 2, 1, 1])
-    self._eq(pd.Series([1, 2, None, 1], name='n_col').missing('mean'),
+    self.eq(pd.Series([1, 2, None, 1], name='n_col').missing('mean'),
       [1, 2, 4./3, 1])
-    self._eq(pd.Series([1, 2, None, 1], name='n_col').missing('median'),
+    self.eq(pd.Series([1, 2, None, 1], name='n_col').missing('median'),
       [1, 2, 1, 1])
-    self._eq(pd.Series([1, 2, None, 1], name='n_col').missing('min'),
+    self.eq(pd.Series([1, 2, None, 1], name='n_col').missing('min'),
       [1, 2, 1, 1])
-    self._eq(pd.Series([1, 2, None, 1], name='n_col').missing('max'),
+    self.eq(pd.Series([1, 2, None, 1], name='n_col').missing('max'),
       [1, 2, 2, 1])
-    self._eq(pd.Series([1, 2, None, 1], name='n_col').missing('max+1'),
+    self.eq(pd.Series([1, 2, None, 1], name='n_col').missing('max+1'),
       [1, 2, 3, 1])
 
   def test_scale(self):
-    self._eq(pd.Series([1, 2, 3]).scale(), [-1, 0, 1])    
-    self._eq(pd.Series([1, 2, 3]).scale((0, 100)), [0, 50, 100])    
+    self.eq(pd.Series([1, 2, 3]).scale(), [-1, 0, 1])    
+    self.eq(pd.Series([1, 2, 3]).scale((0, 100)), [0, 50, 100])    
 
   def test_normalise(self):
-    self._eq(pd.Series([1, 2, 3]).normalise(), [0, .5, 1])
+    self.eq(pd.Series([1, 2, 3]).normalise(), [0, .5, 1])
 
   def test_is_equals(self):
     self.assertTrue(pd.Series([1, 2, 3]).is_equals([1, 2, 3]))
@@ -118,7 +119,7 @@ class T(unittest.TestCase):
     s.categorical_outliers(0.1, 'others')
 
     exp = ['a', 'b', 'c', 'd'] * 100000 + ['others', 'others'] * 10000
-    self._eq(exp, s)
+    self.eq(exp, s)
 
   def test_categorical_outliers_with_mode(self):
     cols = ['a', 'b', 'c', 'd'] * 100000 + ['d', 'f', 'g'] * 10000
@@ -126,14 +127,14 @@ class T(unittest.TestCase):
     s.categorical_outliers(0.1, 'mode')
     
     exp = ['a', 'b', 'c', 'd'] * 100000 + ['d', 'd', 'd'] * 10000
-    self._eq(exp, s)
+    self.eq(exp, s)
 
   def test_compress_size_with_0_aggresiveness(self):
     s = pd.Series(np.random.normal(size=10000))
     self.assertEquals(str(s.dtype), 'float64')
     s2 = s.compress_size(aggresiveness=0)
     self.assertEquals(str(s2.dtype), 'float64')
-    self._eq(s, s2)
+    self.eq(s, s2)
 
   def test_compress_size_with_1_aggresiveness(self):
     s = pd.Series(np.random.normal(size=10000))
@@ -184,35 +185,35 @@ class T(unittest.TestCase):
   def test_to_count_of_binary_target(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
     s.to_count_of_binary_target([0, 1, 1, 0, 1, 0])
-    self._eq(s, [2, 2, 2, 1, 1., 0.])
+    self.eq(s, [2, 2, 2, 1, 1., 0.])
 
   def test_to_ratio_of_binary_target(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
     s.to_ratio_of_binary_target([0, 1, 1, 0, 1, 0])
-    self._eq(s, [2/3., 2/3., 2/3., 1/2., 1/2., 0.])
+    self.eq(s, [2/3., 2/3., 2/3., 1/2., 1/2., 0.])
 
   def test_to_count_of_samples(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
     s.to_count_of_samples()
-    self._eq(s, [3, 3, 3, 2, 2, 1])
+    self.eq(s, [3, 3, 3, 2, 2, 1])
 
   def test_to_ratio_of_samples(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
     s.to_ratio_of_samples()
-    self._eq(s, [1/2., 1/2., 1/2., 1/3., 1/3., 1/6.])  
+    self.eq(s, [1/2., 1/2., 1/2., 1/3., 1/3., 1/6.])  
 
   def test_to_stat(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self._eq(pd.Series(['a', 'a', 'a', 'b', 'b', 'c']).to_stat([1., 2., 3., 4., 5., 6.]), [2, 2, 2, 4.5, 4.5, 6])  
+    self.eq(pd.Series(['a', 'a', 'a', 'b', 'b', 'c']).to_stat([1., 2., 3., 4., 5., 6.]), [2, 2, 2, 4.5, 4.5, 6])  
 
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self._eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'median'), [2, 2, 2, 4.5, 4.5, 6])  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'median'), [2, 2, 2, 4.5, 4.5, 6])  
 
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self._eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'min'), [1, 1, 1, 4, 4, 6])  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'min'), [1, 1, 1, 4, 4, 6])  
 
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self._eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'max'), [3, 3, 3, 5, 5, 6])  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'max'), [3, 3, 3, 5, 5, 6])  
 
   def test_outliers(self):
     s = pd.Series(np.random.normal(size=200))
@@ -225,23 +226,17 @@ class T(unittest.TestCase):
   def test_rank(self):
     s = pd.Series([5, 2, 7, 3, 5, 8, 1])
     rank = s.to_rank(False)
-    self._eq(rank, [4.5, 2., 6., 3., 4.5, 7., 1.])
+    self.eq(rank, [4.5, 2., 6., 3., 4.5, 7., 1.])
     
     rank = s.to_rank(True)
-    self._close(rank, [0.583333,0.166667,0.833333,0.333333,0.583333,1.,0.])
+    self.close(rank, [0.583333,0.166667,0.833333,0.333333,0.583333,1.,0.])
+  
+  def test_boxcox(self):
+    s = pd.Series([1, 2, 3, 4, 5])
+    bc = s.boxcox()
+    self.close(bc, [0.,0.88891531,1.64391666,2.32328256,2.95143041])
 
-  def _close(self, s1, s2):
-    if type(s1) is dict: s1 = pd.DataFrame(s1)
-    if type(s2) is dict: s2 = pd.DataFrame(s2)
-    if hasattr(s1, 'values'): s1 = s1.values
-    if hasattr(s2, 'values'): s2 = s2.values
-    if not isinstance(s1, np.ndarray): np.array(s1)
-    if not isinstance(s2, np.ndarray): np.array(s2)
-    np.testing.assert_almost_equal(s1, s2, 3)
-
-  def _eq(self, s1, s2):
-    if hasattr(s1, 'values'): s1 = s1.values
-    if hasattr(s2, 'values'): s2 = s2.values
-    if not isinstance(s1, np.ndarray): np.array(s1)
-    if not isinstance(s2, np.ndarray): np.array(s2)
-    np.testing.assert_array_equal(s1, s2)
+  def test_boxcox_with_negatives(self):
+    s = pd.Series([1, 2, 3, 4, -1])
+    bc = s.boxcox()
+    self.close(bc, [2.151, 3.301,4.484,5.694, 0.])

@@ -569,3 +569,7 @@ def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
   new_df = self.copy().append_bottom(minorities_df)
   new_df.index = np.arange(new_len)
   return (new_df, y2)
+
+def _df_boxcox(self):
+  for n in self.numericals(): self[n] = self[n].boxcox()
+  return self
