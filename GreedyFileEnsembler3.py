@@ -63,10 +63,10 @@ class GreedyFileEnsembler3(FileEnsembler):
         self.max_score = epoch_score
         print 'epoch:', epoch, 'found improved score:', self.max_score, 'index:', idx, 'ensemble size:', len(self.ensemble)
         
-        if epoch >= 10 and score > self.best_score:
+        if self.max_score > self.best_score:
           self.best_score = self.max_score
           self.best_min_epochs = epoch + 1
-          print 'new total best score found'
+          print 'new total best score found:', self.best_score
       else:
         if epoch_index >= 0:                
           self.ensemble.append(self.arrays[epoch_index])
