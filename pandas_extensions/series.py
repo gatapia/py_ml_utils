@@ -199,5 +199,7 @@ def _s_to_stat(self, y, stat='mean'):
     self[self==val] = utils.get_col_aggregate(y[self == val], stat)
   return self
 
-def _s_to_rank(self):
-  return self.rank()
+def _s_to_rank(self, normalise=True):
+  r = self.rank()
+  if normalise: r = r.normalise()
+  return r

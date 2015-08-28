@@ -222,6 +222,23 @@ class T(unittest.TestCase):
     self.assertTrue(min_1 < min_2)
     self.assertTrue(max_1 > max_2)
 
+  def test_rank(self):
+    s = pd.Series([5, 2, 7, 3, 5, 8, 1])
+    rank = s.to_rank(False)
+    self._eq(rank, [4.5, 2., 6., 3., 4.5, 7., 1.])
+    
+    rank = s.to_rank(True)
+    self._close(rank, [0.583333,0.166667,0.833333,0.333333,0.583333,1.,0.])
+
+  def _close(self, s1, s2):
+    if type(s1) is dict: s1 = pd.DataFrame(s1)
+    if type(s2) is dict: s2 = pd.DataFrame(s2)
+    if hasattr(s1, 'values'): s1 = s1.values
+    if hasattr(s2, 'values'): s2 = s2.values
+    if not isinstance(s1, np.ndarray): np.array(s1)
+    if not isinstance(s2, np.ndarray): np.array(s2)
+    np.testing.assert_almost_equal(s1, s2, 3)
+
   def _eq(self, s1, s2):
     if hasattr(s1, 'values'): s1 = s1.values
     if hasattr(s2, 'values'): s2 = s2.values
