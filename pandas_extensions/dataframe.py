@@ -445,8 +445,9 @@ def _df_self_predict_impl(X, clf, y, cv, method):
       if hasattr(X2, 'values'): X2 = X2.values
       X2 = X2.T[0]
     
-    clf.fit(X, y)  
-    new_predictions = getattr(clf, method)(X2)
+    this_clf = base.clone(clf)
+    this_clf.fit(X, y)  
+    new_predictions = getattr(this_clf, method)(X2)
     if new_predictions.shape[0] == 1:      
       new_predictions = new_predictions.reshape(-1, 1)
     return new_predictions    
