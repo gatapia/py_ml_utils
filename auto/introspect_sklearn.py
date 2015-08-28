@@ -1,8 +1,8 @@
 
 import inspect, warnings, sklearn, psutil, numpy, re, time
 import numpy as np
-from misc import *
-from OverridePredictFunctionClassifier import *
+from ..misc import *
+from ..OverridePredictFunctionClassifier import *
 
 from sklearn import cluster, covariance, \
   decomposition, ensemble, feature_extraction, feature_selection, \
@@ -59,7 +59,7 @@ def get_classifiers(module=None, done=[]):
 all_scores = []
 cached_classifiers = None
 
-def test_all_classifiers(X, y, classifiers=None, scoring=None, 
+def try_all_classifiers(X, y, classifiers=None, scoring=None, 
     ignore=[], classification=None, use_proba=False, classifier_transform=None):
   global all_scores, cached_classifiers
   all_scores = []
@@ -158,7 +158,7 @@ def get_val_for_type(name, t, desc):
   if (t.startswith('double')): return np.linspace(-100, 100, 100)
   return None
 
-def test_classifier_with_arg_customisation(meta):
+def try_classifier_with_arg_customisation(meta):
   clf = meta['classifier']
   gs_args = {}
   for a in meta['args']:    

@@ -1,1 +1,5 @@
 *.pyc
+nosetests.xml
+.coverage
+coverage.xml
+pylint.out

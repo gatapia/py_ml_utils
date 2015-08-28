@@ -7,7 +7,7 @@ class FeatSel():
   def __init__(self, X, y, n_samples=3500, n_iter=3, tol=0.0001, 
     scoring=None, mandatory_columns=[], n_jobs=1, 
     least_sem_of_top_x=0, higher_better=True, validate_Xy=None,
-    replace_columns=None):
+    replace_columns=None, epochs=None):
     self.column_names = X.columns.tolist() if hasattr(X, 'columns') else range(0, X.shape[1])
     self.X = X.values if hasattr(X, 'values') else X
     self.y = y
@@ -21,6 +21,7 @@ class FeatSel():
     self.higher_better = higher_better
     self.validate_Xy = validate_Xy
     self.replace_columns = replace_columns
+    self.epochs = epochs
     if validate_Xy is not None and hasattr(validate_Xy[0], 'values'): 
       self.validate_Xy = (validate_Xy[0].values, validate_Xy[1])
 
@@ -31,7 +32,9 @@ class FeatSel():
     t_whole = time.time()    
 
     last_best = {'score': -1e6 if self.higher_better else 1e6}
+    epoch = 0
     while True:
+      epoch += 1      
       t_iter = time.time()    
       iter_results = self.find_next_best_(selected, clf)
       iter_results = sorted(iter_results, reverse=self.higher_better, key=lambda s: s['score'])
@@ -69,7 +72,7 @@ class FeatSel():
         else last_best['score'] - this_best['score']
 
       last_best = this_best
-      if improvement <= 0: break
+      if improvement <= 0: break      
       selected.append(this_best)
 
       feats = map(lambda s: self.column_names[s['feature']], selected) 
@@ -77,6 +80,11 @@ class FeatSel():
 
       if improvement <= self.tol: 
         print 'improvement of %.3f is less than tol: %.3f, exiting...' % (improvement, self.tol)
+        break
+      
+      print 'self.epochs:', self.epochs, 'epoch:', epoch
+      if self.epochs is not None and epoch >= self.epochs: 
+        print 'max epochs reached, exiting...'
         break
 
     feats = map(lambda s: self.column_names[s['feature']], selected) 

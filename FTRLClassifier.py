@@ -126,7 +126,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
     return predictions_file
 
   def _read_predictions(self, predictions_file):
-    predictions = pd.read_csv(predictions_file, compression='gzip', header=None, dtype='float')
+    predictions = pd.read_csv(predictions_file, compression='gzip', header=None, dtype='float', sep=',')
     return predictions[predictions.columns[-1]].values
 
   def _get_train_file(self, X, y):

@@ -1,24 +1,11 @@
-import unittest
-import pandas as pd
-import numpy as np
-from pandas_extensions import *
-from sklearn import linear_model, preprocessing
+import unittest, sklearn, sklearn.linear_model, \
+  sklearn.decomposition, sklearn.ensemble, datetime, scipy, os
+import pandas as pd, numpy as np
+from . import *
 
 class T(unittest.TestCase):
-  
-  def test_series_one_hot_encode(self):
-    s = pd.Series([1, 2, 3])
-    s2 = s.one_hot_encode().todense()
-    np.testing.assert_array_equal(s2, np.array([
-      [1., 0., 0.], 
-      [0., 1., 0.], 
-      [0., 0., 1.]], 'object'))
-
-  def test_series_binning(self):
-    s = pd.Series([1., 2., 3.])    
-    s2 = s.bin(2)
-    self.assertTrue(np.array_equal(s2.values, np.array(
-      ['(0.998, 2]', '(0.998, 2]', '(2, 3]'], 'object')))
+  def setUp(self):
+    misc.reseed(None)
 
   def test_categoricals(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
@@ -141,7 +128,7 @@ class T(unittest.TestCase):
   def test_scale(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})
-    df.scale()
+    df.scale()    
     np.testing.assert_array_equal(df.values, 
       np.array([
         ['a', 'd', -1, -1, -1],
@@ -163,7 +150,7 @@ class T(unittest.TestCase):
   def test_scale_with_min_max(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
-    df.scale([], (0., 2.))
+    df.scale(min_max=(0., 2.))
     np.testing.assert_array_equal(df.values, 
       np.array([
         ['a', 'd', 0, 0, 0],
@@ -173,12 +160,23 @@ class T(unittest.TestCase):
 
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
-    df.scale([], (10., 20.))
+    df.scale(min_max=(10., 20.))
     np.testing.assert_array_equal(df.values, 
       np.array([
         ['a', 'd', 10, 10, 10],
         ['b', 'e', 15, 15, 15],
         ['c', 'f', 20, 20, 20]
+        ], 'object'))
+
+  def test_normalise(self):
+    df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
+      'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
+    df.normalise()
+    np.testing.assert_array_equal(df.values, 
+      np.array([
+        ['a', 'd', 0, 0, 0],
+        ['b', 'e', .5, .5, .5],
+        ['c', 'f', 1, 1, 1]
         ], 'object'))
 
   def test_missing_vals_in_categoricals_mode(self):
@@ -244,7 +242,7 @@ class T(unittest.TestCase):
     self.assertEqual(-10, df['n_2'][4])
 
   def test_outliers(self):
-    df = pd.DataFrame({'n_1':np.random.normal(size=200)})
+    df = pd.DataFrame({'n_1': np.random.normal(size=200)})
     min_1, max_1 = df.n_1.min(), df.n_1.max()
     df.outliers(2)
     min_2, max_2 = df.n_1.min(), df.n_1.max()
@@ -335,9 +333,9 @@ class T(unittest.TestCase):
 
   def test_append_right_with_sparse(self):
     df1 = pd.DataFrame({'c':[1, 2, 3]})
-    arr1 = sparse.coo_matrix([[4], [5], [6]])
+    arr1 = scipy.sparse.coo_matrix([[4], [5], [6]])
     arr2 = df1.append_right(arr1)
-    self.assertTrue(type(arr2) is sparse.coo.coo_matrix)
+    self.assertTrue(type(arr2) is scipy.sparse.coo.coo_matrix)
     arr2 = arr2.toarray()
     np.testing.assert_array_equal([[1, 4], [2, 5], [3, 6]], arr2)
 
@@ -360,6 +358,7 @@ class T(unittest.TestCase):
   def test_shuffle(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'n_1': [1, 2, 3, 4, 5, 6, 7]})
     y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])
+    misc.cfg['sys_seed'] = 0
     df2, y2 = df.shuffle(y)
     
     # Originals did not change
@@ -383,14 +382,14 @@ class T(unittest.TestCase):
   def test_cv(self):
     df = pd.DataFrame({'n_1': [1, 2, 3, 4, 5, 6, 7]})
     y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])        
-    df.cv(linear_model.LinearRegression(), y)
+    df.cv(sklearn.linear_model.LinearRegression(), y)
 
   def test_cv_ohe(self):
     df = pd.DataFrame({
       'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'] * 10,  
       'n_1': [1, 2, 3, 4, 5, 6, 7] * 10})
     y = pd.Series([1, 0, 0, 1, 1, 0, 1] * 10)        
-    df.cv_ohe(linear_model.LogisticRegression(), y)
+    df.cv_ohe(sklearn.linear_model.LogisticRegression(), y)
 
   def test_pca(self):
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, 2],
@@ -443,8 +442,7 @@ class T(unittest.TestCase):
     file = 'test_vw_file.vw'    
     df.to_vw(file, y, weights)
     with open(file) as f: lines = f.readlines()
-    os.remove(file)
-    print lines
+    os.remove(file)    
     np.testing.assert_array_equal([
       
       '-1.0 \'0 |n 0:0.23 1:0.25 |c 2\n',
@@ -473,9 +471,9 @@ class T(unittest.TestCase):
     with open(file) as f: lines = f.readlines()
     os.remove(file)
     np.testing.assert_array_equal([
-      '-1.0 0:0.23 1:0.25 2:1\n',
-      '1.0 0:0.18 1:0.15 3:1\n',
-      '-1.0 0:0.53 1:0.32 4:1\n',
+      '-1.0 1:0.23 2:0.25 3:1\n',
+      '1.0 1:0.18 2:0.15 4:1\n',
+      '-1.0 1:0.53 2:0.32 5:1\n',
       ], lines)
 
   def test_save_csv(self):
@@ -492,14 +490,394 @@ class T(unittest.TestCase):
     df = pd.DataFrame({'col_1': range(rows), 'col_2': range(rows), 'col_3': range(rows)})    
     def impl(file):
       df.save_csv(file)      
-      df2 = read_df(file)
+      df2 = misc.read_df(file)
       os.remove(file)    
       self.assertEquals(rows, df2.shape[0])
     impl('test.csv.gz')
 
+  def test_ensure_unique_names(self):
+    df = pd.DataFrame({
+      'c1':['a', 'b', 'c'] * 5,
+      'c2':['b', 'c', 'b'] * 5,
+      'c3': [10, 100, 100] * 5,
+      'c4': np.random.normal(size=15),
+      'c5': [datetime.datetime(2010, 1, 1)] * 15
+      })
+    df.columns = ['c'] * 5
+    columns = df.ensure_unique_names().columns
+    self.assertEqual(columns.tolist(), ['c', 'c_1', 'c_2', 'c_3', 'c_4'])
 
-  def test_describe_data(self):
+  def test_infer_col_names(self):
+    columns = pd.DataFrame({
+      'c1':['a', 'b', 'c'] * 5,
+      'c2':['b', 'c', 'b'] * 5,
+      'c3': [10, 100, 100] * 5,
+      'c4': np.random.normal(size=15),
+      'c5': [datetime.datetime(2010, 1, 1)] * 15
+      }).infer_col_names().columns
+    self.assertEqual(columns.tolist(), ['c_c1', 'b_c2', 'b_c3', 'n_c4', 'd_c5'])
+
+  def test_infer_col_names_with_unknowns(self):
+    df = pd.DataFrame({
+      'c1':['a', 'b', 'c'] * 5,
+      'c2':['b', 'c', 'b'] * 5,
+      'c3': [10, 100, 100] * 5,
+      'c4': np.random.normal(size=15),
+      'c5': [datetime.datetime(2010, 1, 1)] * 15
+      })
+    df.columns = [None] * 5
+    columns = df.infer_col_names().columns
+    self.assertEqual(columns.tolist(), ['c_unknown', 'b_unknown', 'b_unknown_1', 'n_unknown', 'd_unknown'])
+
+  def test_cats_to_count_of_samples(self):
+    df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})
+    df.cats_to_count_of_samples()
+    self._eq(df, [[3, 2], [3, 2], [3, 3], [2, 3], [2, 3], [1, 1]])
+
+  def test_cats_to_ratio_of_samples(self):
+    df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})
+    df.cats_to_ratio_of_samples()
+    self._eq(df, [[3/6., 2/6.], [3/6., 2/6.], [3/6., 3/6.], [2/6., 3/6.], [2/6., 3/6.], [1/6., 1/6.]])
+
+  def test_cats_to_count_of_binary_target(self):
+    df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})
+    y = [0, 1, 1, 0, 1, 0]
+    df.cats_to_count_of_binary_target(y)
+    self._eq(df, [[2, 1], [2, 1], [2, 2], [1, 2], [1, 2], [0, 0]])
+
+  def test_cats_to_ratio_of_binary_target(self):
+    df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})
+    y = [0, 1, 1, 0, 1, 0]
+    df.cats_to_ratio_of_binary_target(y)
+    self._eq(df, [[2/3., 1/2.], [2/3., 1/2.], [2/3., 2/3.], [1/2., 2/3.], [1/2., 2/3.], [0, 0]])
+
+  def test_cats_to_stats(self):
+    y = [1, 2, 3, 4, 5, 6]
+    df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})    
+    df.cats_to_stat(y)
+    self._eq(df, [[2., 1.5], [2., 1.5], [2., 4], [4.5, 4], [4.5, 4], [6, 6]])
+
+    df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})    
+    df.cats_to_stat(y, 'max')
+    self._eq(df, [[3., 2], [3., 2], [3., 5], [5, 5], [5, 5], [6, 6]])
+
+  def test_group_rare(self):
+    df = pd.DataFrame({
+      'c_1': ['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10,
+      'c_2': ['a', 'b', 'c'] * 100 + ['d', 'e'] * 15,
+      })    
+    df2 = df.copy().group_rare()
+    self._eq(df2, {
+      'c_1': ['a', 'b', 'c'] * 100 + ['rare'] * 30,
+      'c_2': ['a', 'b', 'c'] * 100 + ['rare'] * 30
+      })
+
+    df2 = df.copy().group_rare(limit=5)
+    self._eq(df2, {
+      'c_1': ['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10,
+      'c_2': ['a', 'b', 'c'] * 100 + ['d', 'e'] * 15
+      })
+
+  def test_noise_filter_gaussian(self):
+    df = pd.DataFrame({'n_1':np.random.normal(size=200)})
+    df2 = df.copy().noise_filter('gaussian', 1, axis=-1)
+    self.assertFalse(df.is_equal(df2))
+    self.assertTrue(df.all_close(df2))
+
+  def test_noise_filter_maximum(self):
+    df = pd.DataFrame({'n_1':np.random.normal(size=200)})
+    df2 = df.noise_filter('maximum', 1, axis=-1)    
+    self.assertTrue(df.all_close(df2))
+
+  def test_noise_filter_minimum(self):
+    df = pd.DataFrame({'n_1':np.random.normal(size=200)})
+    df2 = df.noise_filter('minimum', 1)
+    self.assertTrue(df.all_close(df2))
+
+  def test_noise_filter_uniform(self):
+    df = pd.DataFrame({'n_1':np.random.normal(size=200)})
+    df2 = df.noise_filter('uniform', 1)
+    self.assertTrue(df.all_close(df2))
+  
+  def test_split(self):
+    df = pd.DataFrame({'n_1': range(20)})
+    y = [0, 1] * 10
+    X_train, y_train, X_test, y_test = df.split(y)    
+    self._eq(X_train, {'n_1': [5, 14,  9,  7, 16, 11,  3,  0, 15, 12]})
+    self._eq(y_train, [1, 0, 1, 1, 0, 1, 1, 0, 1, 0])
+    self._eq(X_test, {'n_1': [18, 1, 19, 8, 10, 17, 6, 13, 4, 2]})
+    self._eq(y_test, [0, 1, 1, 0, 0, 1, 0, 1, 0, 0])
+
+    X_train, y_train, X_test, y_test = df.split(y, stratified=True)    
+    self._eq(X_train, {'n_1': [8, 18, 5, 2, 7, 16, 4, 11, 19, 3]})
+    self._eq(y_train, [0, 0, 1, 0, 1, 0, 0, 1, 1, 1])
+    self._eq(X_test, {'n_1': [1, 14, 9, 6, 13, 17, 15, 12, 0, 10]})
+    self._eq(y_test, [1, 0, 1, 0, 1, 1, 1, 0, 0, 0])
+
+    X_train, y_train, X_test, y_test = df.split(y, stratified=True, train_fraction=.8)    
+    self._eq(X_train, {'n_1': [5, 19, 3, 8, 14, 1, 4, 18, 2, 17, 11, 12, 16, 7, 13, 6]})
+    self._eq(y_train, [1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0])
+    self._eq(X_test, {'n_1': [0, 15, 10, 9]})
+    self._eq(y_test, [0, 1, 0, 1])
+
+  def test_tsne(self):
+    df = pd.DataFrame(np.random.normal(size=(20, 5)))
+    tsne = df.tsne()
+    exp = [[  1.01495838e+02,  -1.03764146e+02],
+           [  5.25378255e+01,   1.75595664e-01],
+           [  1.81826568e+02,  -1.41299181e+00],
+           [  6.72235498e+02,  -5.03992958e+02],
+           [  1.95153600e+02,  -1.54963563e+02],
+           [  5.42593037e+02,  -2.58430632e+02],
+           [ -1.17398088e+01,   8.86143537e+01],
+           [  7.68283241e-01,  -1.28952467e+02],
+           [ -1.61562297e+02,   6.76526983e+01],
+           [ -1.99880527e+02,   2.46638701e+02],
+           [ -1.72567856e+03,  -6.29467935e+02],
+           [ -5.84132372e+02,   6.41828851e+02],
+           [ -7.04863185e+02,   2.53752017e+02],
+           [  4.54027458e+01,   1.94803621e+02],
+           [ -9.13778706e+01,   1.69451498e+02],
+           [ -6.28457610e+01,  -1.47037042e+01],
+           [ -1.02945979e+02,  -1.51704781e+02],
+           [ -1.78403109e+02,  -5.35940696e+01],
+           [  1.28801406e+02,   1.04813325e+02],
+           [  1.59582183e+03,   4.41019932e+02]]
+    self.assertTrue(tsne.all_close(exp))
+
+  def test_kmeans(self):
+    df = pd.DataFrame(np.random.normal(size=(20, 5)))
+    kmeans = df.kmeans(2)
+    self._eq(kmeans, [1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1])
+
+  def test_tree_features(self):
+    df = pd.DataFrame(np.random.normal(size=(20, 5)))
+    y = np.random.normal(size=20)
+    tf = df.tree_features(sklearn.ensemble.RandomForestClassifier(2), y)
+    exp = [[10,  7],
+           [17,  7],
+           [15, 13],
+           [17, 18],
+           [21,  5],
+           [10,  7],
+           [ 6,  3],
+           [ 8,  5],
+           [ 2, 13],
+           [ 8,  1],
+           [15, 11],
+           [ 8,  3],
+           [ 6,  3],
+           [ 3, 11],
+           [ 8,  3],
+           [ 6,  1],
+           [15,  2],
+           [ 7,  3],
+           [15, 13],
+           [15, 13]]
+    self._eq(tf, exp)
+
+  def test_append_fit_transformer(self):
+    df = pd.DataFrame({'n_1': np.random.normal(size=10)}).scale(min_max=(1, 2)).astype(int)
+    df2 = df.append_fit_transformer(sklearn.preprocessing.OneHotEncoder())    
+    exp = [[ 1.,  1.,  0.],
+           [ 1.,  1.,  0.],
+           [ 1.,  1.,  0.],
+           [ 2.,  0.,  1.],
+           [ 1.,  1.,  0.],
+           [ 1.,  1.,  0.],
+           [ 1.,  1.,  0.],
+           [ 1.,  1.,  0.],
+           [ 1.,  1.,  0.],
+           [ 1.,  1.,  0.],]
+    self._eq(df2, exp)
+
+  def test_predict(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    y = pd.Series(np.random.normal(size=10)).normalise().astype(int)
+    try: df.predict(lr, y)
+    except: pass
+
+    df = pd.DataFrame(np.random.normal(size=(12, 2)))
+    predictions = df.predict(lr, y)
+    self._eq([1, 0], predictions)
+
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    df_test = pd.DataFrame(np.random.normal(size=(3, 2)))
+    predictions = df.predict(lr, y, df_test)
+    self._eq([0, 0, 0], predictions)
+
+  def test_predict_proba(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    y = pd.Series(np.random.normal(size=10)).normalise().astype(int)
+    try: df.predict_proba(lr, y)
+    except: pass
+
+    df = pd.DataFrame(np.random.normal(size=(12, 2)))
+    predictions = pd.DataFrame(df.predict_proba(lr, y))
+    self._close(predictions, [[ 0.133813,  0.866187], [ 0.827253,  0.172747]])
+
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    df_test = pd.DataFrame(np.random.normal(size=(3, 2)))
+    predictions = pd.DataFrame(df.predict_proba(lr, y, df_test))
+    exp = [[ 0.933073,  0.066927],
+           [ 0.943035,  0.056965],
+           [ 0.915039,  0.084961]]
+    self._close(predictions, exp)
+
+  def test_transform(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    y = pd.Series(np.random.normal(size=10)).normalise().astype(int)
+    try: df.transform(lr, y)
+    except: pass
+
+    df = pd.DataFrame(np.random.normal(size=(12, 2)))
+    predictions = pd.DataFrame(df.transform(lr, y))
+    self._close(predictions, [[-2.55299], [0.864436]])
+
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    df_test = pd.DataFrame(np.random.normal(size=(3, 2)))
+    predictions = pd.DataFrame(df.transform(lr, y, df_test))
+    self._close(predictions, [[0.229887], [1.62716], [0.230434]])
+
+  def test_decision_function(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    y = pd.Series(np.random.normal(size=10)).normalise().astype(int)
+    try: df.decision_function(lr, y)
+    except: pass
+
+    df = pd.DataFrame(np.random.normal(size=(12, 2)))
+    predictions = df.decision_function(lr, y)
+    self._close([1.867659, -1.56628], predictions)
+
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    df_test = pd.DataFrame(np.random.normal(size=(3, 2)))
+    predictions = df.decision_function(lr, y, df_test)
+    self._close([-2.635, -2.807, -2.377], predictions)
+
+  def test_self_predict(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    y = [0, 1] * 5
+    predictions = df.self_predict(lr, y)
+    self._eq([[0, 1, 0, 0, 1, 1, 0, 1, 0, 0]], predictions.T)
+
+  def test_self_predict_proba(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    y = [0, 1] * 5
+    predictions = df.self_predict_proba(lr, y)
+    self._close([0.448,  0.552,  0.199,  0.38 ,  0.667,  0.66 ,  0.454,  0.522, 0.365,  0.326], predictions.T[1])
+
+  def test_self_transform(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    y = [0, 1] * 5
+    predictions = df.self_transform(lr, y)
+    self._close([[0.4  ,  0.979,  1.868,  0.95 , -0.103,  1.454,  0.122,  0.334, -0.205, -0.854]], predictions.T)
+
+  def test_self_decision_function(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    y = [0, 1] * 5
+    predictions = df.self_decision_function(lr, y)
+    self._close([[-0.21 ,  0.21 , -1.395, -0.49 ,  0.696,  0.663, -0.186,  0.09 ,-0.553, -0.726]], predictions.T)
+
+  def test_nbytes(self):
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    self.assertEqual(256, df.nbytes())
+
+    df = pd.DataFrame(np.random.normal(size=(1000, 2)))
+    self.assertEqual(24016, df.nbytes())
+
+  def test_compress_size(self):
+    df = pd.DataFrame(np.random.normal(size=(1000, 2)), columns=['n_1', 'n_2'])
+    self.assertEqual(24016, df.nbytes())
+    self.assertEqual(24016, df.compress_size(0).nbytes())
+    self.assertEqual(16016, df.compress_size(1).nbytes())
+    self.assertEqual(12016, df.compress_size(2).nbytes())
+
+  def test_hashcode(self):
+    np.random.seed(0)
+    df = pd.DataFrame(np.random.normal(size=(1000, 2)), columns=['n_1', 'n_2'])
+    self.assertEqual(-626964747, df.hashcode())
+
+    np.random.seed(0)
+    df = pd.DataFrame(np.random.normal(size=(1000, 2)), columns=['n_1', 'n_2'])
+    self.assertEqual(-626964747, df.hashcode())
+
+    np.random.seed(1)
+    df = pd.DataFrame(np.random.normal(size=(1000, 2)), columns=['n_1', 'n_2'])
+    self.assertEqual(-1185565617, df.hashcode())
+
+  def test_trim_on_y(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(100, 2)))
+    y = np.random.normal(size=(100))
+    df2, y = df.trim_on_y(y, 1)
+    self.assertEqual(71, df2.shape[0])
+    self.assertEqual(71, len(y))
+
+    df2, y = df.trim_on_y(y, 1, max_y=10)
+    self.assertEqual(43, df2.shape[0])
+    self.assertEqual(43, len(y))
+
+  def test_importances(self):    
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(100, 2)))
+    y = np.random.normal(size=(100))
+    imps = df.importances(lr, y)
+    self._close([[0, 0.033174], [1, 0.009108]], imps)
+
+  def test_numerical_stats(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(5, 1)), columns=['n_1'])
+    stats = df.numerical_stats()
+    exp = [[ 1.76405235,  1.76405235,  1.76405235, np.nan,  0., 1.76405235,  1.76405235  , np.nan  , np.nan , 1.76405235],
+           [ 0.40015721,  0.40015721,  0.40015721, np.nan,  0., 0.40015721,   0.40015721 , np.nan ,  np.nan,  0.40015721],
+           [ 0.97873798,  0.97873798,  0.97873798, np.nan,  0., 0.97873798,   0.97873798 , np.nan ,  np.nan,  0.97873798],
+           [ 2.2408932 ,  2.2408932 ,  2.2408932 , np.nan,  0., 2.2408932 ,  2.2408932   , np.nan  , np.nan , 2.2408932 ],
+           [ 1.86755799,  1.86755799,  1.86755799, np.nan,  0., 1.86755799,   1.86755799 , np.nan ,  np.nan,  1.86755799]]
+    self._close(exp, stats)
+
+  def test_smote(self):
+    df = pd.DataFrame(np.random.normal(size=(100, 2)))
+    y = [0, 0, 0, 1, 1] * 20
+    df2, y2 = df.smote(y, 100, n_neighbors=2)
+    self.assertEqual(140, len(df2))
+    self.assertEqual(140, len(y2))
+
+  def test_summarise(self):
     pass
+    # TODO
+    '''
+    df = pd.DataFrame(np.random.normal(size=(100, 2)), columns=['n_1', 'n_2'])
+    f = 'dummy_file.test'
+    if os.path.isfile(f): os.path.remove(f)
+    
+    df.summarise(filename=f)
 
-if __name__ == '__main__':
-  unittest.main()
+    self.assertTrue(os.path.isfile(f))
+    if os.path.isfile(f): os.path.remove(f)
+    '''
+
+  def _close(self, df1, df2):
+    if type(df1) is dict: df1 = pd.DataFrame(df1)
+    if type(df2) is dict: df2 = pd.DataFrame(df2)
+    if hasattr(df1, 'values'): df1 = df1.values
+    if hasattr(df2, 'values'): df2 = df2.values
+    if not isinstance(df1, np.ndarray): np.array(df1)
+    if not isinstance(df2, np.ndarray): np.array(df2)
+    np.testing.assert_almost_equal(df1, df2, 3)
+
+  def _eq(self, df1, df2):
+    if type(df1) is dict: df1 = pd.DataFrame(df1)
+    if type(df2) is dict: df2 = pd.DataFrame(df2)
+    if hasattr(df1, 'values'): df1 = df1.values
+    if hasattr(df2, 'values'): df2 = df2.values
+    if not isinstance(df1, np.ndarray): np.array(df1)
+    if not isinstance(df2, np.ndarray): np.array(df2)
+    np.testing.assert_array_equal(df1, df2)
