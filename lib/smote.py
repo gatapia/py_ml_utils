@@ -31,7 +31,7 @@ This is an implementation of the SMOTE Algorithm.
 See: "SMOTE: synthetic minority over-sampling technique" by
 Chawla, N.V et al.
 '''
-import logging
+import logging, math
 import numpy as np
 from random import randrange, choice
 from sklearn.neighbors import NearestNeighbors
@@ -65,12 +65,12 @@ def SMOTE(T, N, k, h = 1.0):
     neigh.fit(T)
     
     #Calculate synthetic samples    
-    for n in xrange(math.ceil(N)):
+    for n in xrange(int(math.ceil(N))):
         if n == math.ceil(N):
             sample_size = int(n_minority_samples - (n*100))
         else:
-            sample_size == n_minority_samples
-        T2 = np.random.choice(T, sample_size)
+            sample_size = int(n_minority_samples)
+        T2 = T[np.random.choice(len(T), sample_size)]
         for i in xrange(T2.shape[0]):
             nn = neigh.kneighbors(T2[i], return_distance=False)
             nn_index = choice(nn[0])

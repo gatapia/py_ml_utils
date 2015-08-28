@@ -1,6 +1,6 @@
 import unittest, sklearn, datetime
 import pandas as pd, numpy as np
-from pandas_extensions import *
+from . import *
 
 class T(unittest.TestCase):
   def test_one_hot_encode(self):
@@ -15,6 +15,14 @@ class T(unittest.TestCase):
     s = pd.Series([1., 2., 3.])    
     s2 = s.bin(2)
     self._eq(s2, ['(0.998, 2]', '(0.998, 2]', '(2, 3]'])
+
+  def test_group_rare(self):
+    s = pd.Series(['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10)    
+    s2 = s.copy().group_rare()
+    self._eq(s2, ['a', 'b', 'c'] * 100 + ['rare'] * 30)
+
+    s2 = s.copy().group_rare(5)
+    self._eq(s2, ['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10)
 
   def test_sigma_limits(self):
     min_v, max_v = pd.Series(np.random.normal(size=10000)).sigma_limits(2)
@@ -56,6 +64,9 @@ class T(unittest.TestCase):
   def test_scale(self):
     self._eq(pd.Series([1, 2, 3]).scale(), [-1, 0, 1])    
     self._eq(pd.Series([1, 2, 3]).scale((0, 100)), [0, 50, 100])    
+
+  def test_normalise(self):
+    self._eq(pd.Series([1, 2, 3]).normalise(), [0, .5, 1])
 
   def test_is_equals(self):
     self.assertTrue(pd.Series([1, 2, 3]).is_equals([1, 2, 3]))
@@ -101,6 +112,115 @@ class T(unittest.TestCase):
     self.assertEqual('n_col', pd.Series(np.random.normal(size=10000), name='col').infer_col_name().name)
     self.assertEqual('d_col', pd.Series([datetime.datetime(2010, 1, 1)], name='col').infer_col_name().name)
 
+  def test_categorical_outliers_with_new_value(self):
+    cols = ['a', 'b', 'c', 'd'] * 100000 + ['f', 'g'] * 10000
+    s = pd.Series(cols)
+    s.categorical_outliers(0.1, 'others')
+
+    exp = ['a', 'b', 'c', 'd'] * 100000 + ['others', 'others'] * 10000
+    self._eq(exp, s)
+
+  def test_categorical_outliers_with_mode(self):
+    cols = ['a', 'b', 'c', 'd'] * 100000 + ['d', 'f', 'g'] * 10000
+    s = pd.Series(cols)
+    s.categorical_outliers(0.1, 'mode')
+    
+    exp = ['a', 'b', 'c', 'd'] * 100000 + ['d', 'd', 'd'] * 10000
+    self._eq(exp, s)
+
+  def test_compress_size_with_0_aggresiveness(self):
+    s = pd.Series(np.random.normal(size=10000))
+    self.assertEquals(str(s.dtype), 'float64')
+    s2 = s.compress_size(aggresiveness=0)
+    self.assertEquals(str(s2.dtype), 'float64')
+    self._eq(s, s2)
+
+  def test_compress_size_with_1_aggresiveness(self):
+    s = pd.Series(np.random.normal(size=10000))
+    self.assertEquals(str(s.dtype), 'float64')
+    s2 = s.compress_size(aggresiveness=1)
+    self.assertEquals(str(s2.dtype), 'float32')
+    self.assertTrue(s.all_close(s2))
+
+  def test_compress_size_with_2_aggresiveness(self):
+    s = pd.Series(np.random.normal(size=10000))
+    self.assertEquals(str(s.dtype), 'float64')
+    s2 = s.compress_size(aggresiveness=2)
+    self.assertEquals(str(s2.dtype), 'float16')
+    self.assertTrue(s.all_close(s2, .01))
+
+  def test_hashcode_float(self):
+    np.random.seed(0)
+    s = pd.Series(np.random.normal(size=10000))
+    h1 = s.hashcode()
+    np.random.seed(0)
+    s1 = pd.Series(np.random.normal(size=10000))
+    h11 = s.hashcode()
+    np.random.seed(1)
+    s2 = pd.Series(np.random.normal(size=10000))
+    h2 = s2.hashcode()
+
+    self.assertNotEqual(h1, h2)
+    self.assertEqual(h1, h11)
+
+  def test_hashcode_categorical(self):
+    s = pd.Series(['a', 'b', 'c'])
+    h1 = s.hashcode()
+    s1 = pd.Series(['a', 'b', 'c'])
+    h11 = s.hashcode()
+    s2 = pd.Series(['a', 'b', 'd'])
+    h2 = s2.hashcode()
+
+    self.assertNotEqual(h1, h2)
+    self.assertEqual(h1, h11)
+
+  def test_add_noise(self):
+    np.random.seed(0)
+    s = pd.Series(np.random.normal(size=10000))
+    s2 = s.add_noise(.001)
+    self.assertFalse(s.is_equals(s2))
+    self.assertTrue(s.all_close(s2, .01))
+
+  def test_to_count_of_binary_target(self):
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
+    s.to_count_of_binary_target([0, 1, 1, 0, 1, 0])
+    self._eq(s, [2, 2, 2, 1, 1., 0.])
+
+  def test_to_ratio_of_binary_target(self):
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
+    s.to_ratio_of_binary_target([0, 1, 1, 0, 1, 0])
+    self._eq(s, [2/3., 2/3., 2/3., 1/2., 1/2., 0.])
+
+  def test_to_count_of_samples(self):
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
+    s.to_count_of_samples()
+    self._eq(s, [3, 3, 3, 2, 2, 1])
+
+  def test_to_ratio_of_samples(self):
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
+    s.to_ratio_of_samples()
+    self._eq(s, [1/2., 1/2., 1/2., 1/3., 1/3., 1/6.])  
+
+  def test_to_stat(self):
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
+    self._eq(pd.Series(['a', 'a', 'a', 'b', 'b', 'c']).to_stat([1., 2., 3., 4., 5., 6.]), [2, 2, 2, 4.5, 4.5, 6])  
+
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
+    self._eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'median'), [2, 2, 2, 4.5, 4.5, 6])  
+
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
+    self._eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'min'), [1, 1, 1, 4, 4, 6])  
+
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
+    self._eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'max'), [3, 3, 3, 5, 5, 6])  
+
+  def test_outliers(self):
+    s = pd.Series(np.random.normal(size=200))
+    min_1, max_1 = s.min(), s.max()
+    s = s.outliers(2)
+    min_2, max_2 = s.min(), s.max()
+    self.assertTrue(min_1 < min_2)
+    self.assertTrue(max_1 > max_2)
 
   def _eq(self, s1, s2):
     if hasattr(s1, 'values'): s1 = s1.values

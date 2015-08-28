@@ -21,9 +21,10 @@ def start(msg, id=None):
 def stop(msg, id=None): 
   if not cfg['debug']: return
   id = id if id is not None else 'global'
-  log.info(msg + (', took (h:m:s): %s' % 
-    datetime.timedelta(seconds=time.time() - _message_timers[id])))  
-  del _message_timers[id]
+  took = datetime.timedelta(seconds=time.time() - _message_timers[id]) \
+    if id in _message_timers else 'unknown'
+  log.info(msg + (', took (h:m:s): %s' % took))
+  if id in _message_timers: del _message_timers[id]
 
 def reseed(clf):
   if clf is not None: clf.random_state = cfg['sys_seed']

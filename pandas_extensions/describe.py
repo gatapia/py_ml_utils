@@ -1,6 +1,6 @@
 import sklearn
-from misc import *
-from pandas_extensions import *
+from .. import misc
+from . import *
 from sklearn import ensemble, feature_selection
 from IPython.nbformat import v4 as nbf
 from IPython import html
@@ -11,12 +11,13 @@ class Describe():
   #       Public Interface
   #############################################################################
 
-  def __init__(self):    
+  def __init__(self, filename='dataset_description.ipynb'):    
     self._importance_row_limit = 50000
     self._min_variance_threshold = 0.01
     self._code_lines = []
     self._text_lines = []      
     self.cells = []  
+    self.filename = filename
 
   def show_classifier_performance(self, clf, X, y, use_proba=False):    
     if type(X) is not pd.DataFrame: raise Exception('X must be a pandas.DataFrame')
@@ -34,9 +35,9 @@ class Describe():
     if len(y_true) != len(y_pred): raise Exception('y_true and y_pred are not compatible shapes (must be same rows and same columns)')    
 
     self.cells = []
-    start('get_prediction_comparison_cells')
+    misc.start('get_prediction_comparison_cells')
     dataset_name = '_get_prediction_comparison_cells_data'
-    dump(dataset_name, (y_true, y_pred)) 
+    misc.dump(dataset_name, (y_true, y_pred)) 
 
     self.y_true = y_true.copy()
     self.y_true.name = 'y_true'
@@ -46,11 +47,11 @@ class Describe():
     self._do_target_description(self.y_true, False, 'y_true')
     self._do_target_description(self.y_pred, False, 'y_pred')
     self._do_target_comparison_charts()    
-    stop('get_prediction_comparison_cells')    
+    misc.stop('get_prediction_comparison_cells')    
     return list(self.cells)
 
 
-  def show_dataset(self, X, opt_y=None):    
+  def show_dataset(self, X, opt_y=None, start_notebook=True):    
     if type(X) is not pd.DataFrame: raise Exception('X must be a pandas.DataFrame')
     if opt_y is not None and type(opt_y) is not pd.Series: raise Exception('opt_y must be a pandas.Series')
     '''
@@ -68,16 +69,16 @@ class Describe():
     else: self.y = None
     self.is_regression = self._type(self.y) == 'continuous'
 
-    self._create_notebook(self.get_dataset_cells(), True)    
+    self._create_notebook(self.get_dataset_cells(), start_notebook)    
 
 
   def get_dataset_cells(self):
     self.cells = []
-    start('get_dataset_cells')
+    misc.start('get_dataset_cells')
     dataset_name = '_get_dataset_cells_data'
     data_x = self.X.copy()
     data_x['y'] = self.y
-    dump(dataset_name, (data_x, self.y)) 
+    misc.dump(dataset_name, (data_x, self.y)) 
 
     self._do_global_imports(dataset_name, ['X', 'y'])    
     self._do_header_markdown()      
@@ -89,7 +90,7 @@ class Describe():
     self._do_column_summary_charts()
     if self.y is not None: self._do_target_description(self.y, True)
     self._do_all_columns_details()
-    stop('done get_dataset_cells')
+    misc.stop('done get_dataset_cells')
     return list(self.cells)
   
   #############################################################################
@@ -413,28 +414,28 @@ print_confusion_matrix(matrix, ['True', 'False'])
 
   def _get_column_importances(self):
     if self.y is None: return np.ones(self.X.shape[0])
-    start('_get_column_importances')    
+    misc.start('_get_column_importances')    
     rf = ensemble.RandomForestRegressor(50) if self.is_regression else ensemble.RandomForestClassifier(50)    
     rf.fit(self.X_no_nan[:self._importance_row_limit], self.y[:self._importance_row_limit])
-    stop('done _get_column_importances, num feats: ' + `len(rf.feature_importances_)`)
+    misc.stop('done _get_column_importances, num feats: ' + `len(rf.feature_importances_)`)
     return rf.feature_importances_
   
   def _get_column_f_regression_scores(self):
-    start('_get_column_f_regression_scores')
+    misc.start('_get_column_f_regression_scores')
     scores = feature_selection.f_regression(self.X_no_nan, self.y)[0]
-    stop('_get_column_f_regression_scores')
+    misc.stop('_get_column_f_regression_scores')
     return scores
 
   def _get_column_chi2_classification_scores(self):
-    start('_get_column_chi2_classification_scores')
+    misc.start('_get_column_chi2_classification_scores')
     scores = feature_selection.chi2(self.X_no_nan, self.y)[0]
-    stop('_get_column_chi2_classification_scores')
+    misc.stop('_get_column_chi2_classification_scores')
     return scores
 
   def _get_column_f_classification_scores(self):
-    start('_get_column_f_classification_scores')
+    misc.start('_get_column_f_classification_scores')
     scores = feature_selection.f_classif(self.X_no_nan, self.y)[0]
-    stop('_get_column_f_classification_scores')
+    misc.stop('_get_column_f_classification_scores')
     return scores
 
   def   _get_column_specified_type(self, col_name):
@@ -489,7 +490,5 @@ print_confusion_matrix(matrix, ['True', 'False'])
   def _create_notebook(self, cells, start_notebook):
     nb = nbf.new_notebook()
     nb.cells = cells
-    with open('dataset_description.ipynb', 'w') as f: 
-      f.write(nbf.writes(nb)) 
-
-    if start_notebook:call(['ipython', 'notebook', 'dataset_description.ipynb'])
+    with open(self.filename, 'w') as f: f.write(nbf.writes(nb)) 
+    if start_notebook: call(['ipython', 'notebook', self.filename])

@@ -1,9 +1,7 @@
-import unittest
+import unittest, math
 import pandas as pd
 import numpy as np
-from pandas_extensions import *
-from ast_parser import explain
-from sklearn import linear_model, preprocessing
+from . import *
 
 class T(unittest.TestCase):
   def test_concat(self):
