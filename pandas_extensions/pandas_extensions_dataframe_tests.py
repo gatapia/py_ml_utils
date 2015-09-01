@@ -5,8 +5,7 @@ from . import *
 from . import base_pandas_extensions_tester
 
 class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
-  def setUp(self):
-    misc.reseed(None)
+  def setUp(self): misc.reseed(None)
 
   def test_categoricals(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
@@ -139,14 +138,11 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
 
     df = pd.DataFrame({'n_2': [1., 2., 3., 4., 5.], 'n_3': [4., 5., 6., 7., 8.]})
     df.scale()
-    np.testing.assert_allclose(df.values, 
-      [
-        [-1.26491106, -1.26491106],
-        [-0.63245553, -0.63245553],
-        [0, 0],
-        [0.63245553, 0.63245553],
-        [1.26491106, 1.26491106]
-        ], 1e-6)
+    self.close(df, [[-1.26491106, -1.26491106],
+                    [-0.63245553, -0.63245553],
+                    [0, 0],
+                    [0.63245553, 0.63245553],
+                    [1.26491106, 1.26491106]])
 
   def test_scale_with_min_max(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
@@ -396,27 +392,21 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, 2],
         'n_12': [2, 3, 4, 2, 3], 'n_22': [1, 2, 3, 1, 2]})        
     df = df.pca(2)
-    np.testing.assert_allclose(df.values, 
-      [
-        [-1.6,  6.033501e-17],
-        [0.4, -2.071991e-16],
-        [2.4, -1.136632e-16],
-        [-1.6, -3.344294e-16],
-        [0.4, -2.071991e-16]
-        ], 1e-6)
+    self.close(df.values, [[ -1.60000000e+00,   6.11173774e-17],
+                           [  4.00000000e-01,  -2.07359751e-16],
+                           [  2.40000000e+00,  -9.99688998e-17],
+                           [ -1.60000000e+00,  -3.14750603e-16],
+                           [  4.00000000e-01,  -2.07359751e-16]])
 
   def test_pca_with_whitening(self):
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, 2],
         'n_12': [2, 3, 4, 2, 3], 'n_22': [1, 2, 3, 1, 2]})        
     df = df.pca(2, True)
-    np.testing.assert_allclose(df.values, 
-      [
-        [-1.06904497,  0.29145945],
-        [ 0.26726124, -1.00091381],
-        [ 1.60356745, -0.54907124],
-        [-1.06904497, -1.61552322],
-        [ 0.26726124, -1.00091381]
-        ], 1e-6)
+    self.close(df, [ [-1.06904497, 0.30651304],
+                     [ 0.26726124, -1.03994103],
+                     [ 1.60356745, -0.5013594 ],
+                     [-1.06904497, -1.57852266],
+                     [ 0.26726124, -1.03994103]])
 
   def test_remove_nas(self):
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, np.nan]})        
