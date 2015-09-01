@@ -127,7 +127,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})
     df.scale()    
-    np.testing.assert_array_equal(df.values, 
+    self.eq(df, 
       np.array([
         ['a', 'd', -1, -1, -1],
         ['b', 'e', 0, 0, 0],
@@ -146,7 +146,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
     df.scale(min_max=(0., 2.))
-    np.testing.assert_array_equal(df.values, 
+    self.eq(df, 
       np.array([
         ['a', 'd', 0, 0, 0],
         ['b', 'e', 1, 1, 1],
@@ -156,7 +156,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
     df.scale(min_max=(10., 20.))
-    np.testing.assert_array_equal(df.values, 
+    self.eq(df, 
       np.array([
         ['a', 'd', 10, 10, 10],
         ['b', 'e', 15, 15, 15],
@@ -167,7 +167,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2':['d', 'e', 'f'], 
       'n_2': [1., 2., 3.], 'n_3': [4., 5., 6.], 'n_4': [7., 8., 9.]})        
     df.normalise()
-    np.testing.assert_array_equal(df.values, 
+    self.eq(df, 
       np.array([
         ['a', 'd', 0, 0, 0],
         ['b', 'e', .5, .5, .5],
@@ -357,22 +357,23 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df2, y2 = df.shuffle(y)
     
     # Originals did not change
-    np.testing.assert_array_equal(df.values, np.array([['a', 1L], ['b', 2L], ['c', 3L], ['d', 4L], ['e', 5L], ['f', 6L], ['g', 7L]], dtype='object'))
-    np.testing.assert_array_equal(y.values, [1, 2, 3, 4, 5, 6, 7])
+    self.eq(df, np.array([['a', 1L], ['b', 2L], ['c', 3L], ['d', 4L], ['e', 5L], ['f', 6L], ['g', 7L]], dtype='object'))
+    self.eq(y, [1, 2, 3, 4, 5, 6, 7])
 
     # Changed
-    np.testing.assert_array_equal(df2.values, np.array([['g', 7L], ['a', 1L], ['d', 4L], ['b', 2L], ['c', 3L], ['e', 5L], ['f', 6L]], dtype='object'))
-    np.testing.assert_array_equal(y2.values, [7, 1, 4, 2, 3, 5, 6])
+    self.eq(df2, np.array([['g', 7L], ['a', 1L], ['d', 4L], ['b', 2L], ['c', 3L], ['e', 5L], ['f', 6L]], dtype='object'))
+    self.eq(y2, [7, 1, 4, 2, 3, 5, 6])
 
   def test_to_indexes(self):
     df = pd.DataFrame({'c_1':['a', 'b'], 'c_2':['c', 'd'], 'n_1': [1, 2]})
+    print df.values
     df.to_indexes(True)
-    np.testing.assert_array_equal(df.values, [[1, 0, 0], [2, 1, 1]])
+    self.eq(df, [[1, 0, 0], [2, 1, 1]])
 
   def test_to_indexes_with_NA(self):
     df = pd.DataFrame({'c_1':['a', 'b', np.nan], 'c_2':['c', 'd', np.nan], 'n_1': [1, 2, 3]})
     df.to_indexes(True)
-    np.testing.assert_array_equal(df.values, [[1, 0, 0], [2, 1, 1], [3, 255, 255]])
+    self.eq(df, [[1, 0, 0], [2, 1, 1], [3, -1, -1]])
   
   def test_cv(self):
     df = pd.DataFrame({'n_1': [1, 2, 3, 4, 5, 6, 7]})
@@ -399,20 +400,20 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
   def test_remove_nas(self):
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, np.nan]})        
     df.rmnas()
-    np.testing.assert_array_equal(df.values, [[2, 1], [3, 2], [4, 3], [2, 1]])
+    self.eq(df, [[2, 1], [3, 2], [4, 3], [2, 1]])
 
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 'n_2': [1, 2, np.nan, 1, 2]})        
     df.rmnas()
-    np.testing.assert_array_equal(df.values, [[2, 1], [3, 2], [2, 1]])
+    self.eq(df, [[2, 1], [3, 2], [2, 1]])
 
   def test_remove_nas_w_columns(self):
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, np.nan]})        
     df.rmnas(['n_1'])
-    np.testing.assert_array_equal(df.values, [[2, 1], [3, 2], [4, 3], [2, 1], [3, np.nan]])
+    self.eq(df, [[2, 1], [3, 2], [4, 3], [2, 1], [3, np.nan]])
 
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, np.nan], 'n_2': [1, 2, np.nan, 1, 2]})        
     df.rmnas(['n_1'])
-    np.testing.assert_array_equal(df.values, [[2, 1], [3, 2], [4, np.nan], [2, 1]])
+    self.eq(df, [[2, 1], [3, 2], [4, np.nan], [2, 1]])
 
   def test_to_vw(self):
     df = pd.DataFrame({'n_price': [0.23, 0.18, 0.53], 'n_sqft': [0.25, 0.15, 0.32], 'c_year': [2006, 1976, 1924]})

@@ -97,6 +97,7 @@ def dump(file, data):
   sklearn.externals.joblib.dump(data, 'data/pickles/' + file);  
 
 def load(file, opt_fallback=None):
+  start('loading file: ' + file)
   full_file = 'data/pickles/' + file
   if not '.' in full_file: full_file += '.pickle'
   if os.path.isfile(full_file): 
@@ -105,6 +106,7 @@ def load(file, opt_fallback=None):
   if opt_fallback is None: return None
   data = opt_fallback()
   dump(file, data)
+  stop('done loading file: ' + file)
   return data
   
 def read_df(file, nrows=None):

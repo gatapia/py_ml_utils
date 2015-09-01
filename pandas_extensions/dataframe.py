@@ -71,18 +71,10 @@ def _df_one_hot_encode(self, dtype=np.float):
   return matrix.tocsr()
 
 def _df_to_indexes(self, drop_origianls=False, sparsify=False):
-  misc.start('indexing categoricals in data frame. Note: NA gets turned into max index (255, 65535, etc)')  
-  for c in self.categoricals() + self.binaries():
-    col = 'i_' + c
-    cat = pd.Categorical.from_array(self[c])
-    lbls = cat.codes if hasattr(cat, 'codes') else cat.labels    
-    s = pd.Series(lbls, index=self[c].index, \
-      dtype=utils.get_optimal_numeric_type('int', 0, len(lbls) + 1))
-    modes = s.mode()
-    mode = lbls[0]
-    if len(modes) > 0: mode = modes.iget(0)
-    self[col] = s.to_sparse(fill_value=int(mode)) if sparsify else s
-    if drop_origianls: self.drop(c, 1, inplace=True)
+  misc.start('indexing categoricals in data frame')  
+  cols = self.categoricals() + self.binaries()
+  for c in cols: self['i_' + c] = self[c].astype('category').cat.codes
+  if drop_origianls: self.drop(cols, 1, inplace=True)
   misc.stop('done indexing categoricals in data frame')  
   return self
 
