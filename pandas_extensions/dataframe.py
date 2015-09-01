@@ -1,6 +1,6 @@
 import pandas as pd, numpy as np
 import itertools, random, gzip, gc, ast_parser, scipy, \
-  sklearn, sklearn.manifold, sklearn.cluster, smote
+  sklearn, sklearn.manifold, sklearn.cluster, ml.lib.smote
 from .. import misc
 import utils
 
@@ -109,10 +109,14 @@ def _df_cats_to_ratio_of_samples(self):
     self[c].name = c.replace('c_', 'n_')
   return self
 
-def _df_cats_to_stat(self, y, stat='mean'):
-  for c in self.categorical_like():
-    self[c] = self[c].to_stat(y, stat)
-    self[c].name = c.replace('c_', 'n_')
+def _df_cats_to_stat(self, y, stat='mean', remove_originals=True):
+  if stat == 'all': stat = ['mean', 'median', 'min', 'max']
+  if type(stat) is str: stat = [stat]
+  cols = self.categorical_like()
+  for s in stat:
+    for c in cols: 
+      self['n_' + c + '_' + s] = self[c].to_stat(y, s).astype(float)
+  if remove_originals: self.remove(cols)
   return self
 
 def _df_bin(self, n_bins=100, drop_origianls=False):
@@ -573,3 +577,31 @@ def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
 def _df_boxcox(self):
   for n in self.numericals(): self[n] = self[n].boxcox()
   return self
+
+def _df_break_down_dates(self, aggresiveness=3, remove_originals=True):
+  date_cols = self.dates()
+  for d in date_cols:
+    s = self[d]
+    self['c_' + d + '_year'] = s.dt.year
+    self['c_' + d + '_month'] = s.dt.month
+    if aggresiveness >= 1:
+      self['c_' + d + '_dayofweek'] = s.dt.dayofweek
+      self['c_' + d + '_quarter'] = s.dt.quarter
+    if aggresiveness >= 2:
+      self['c_' + d + '_year_and_month'] = self['c_' + d + '_year'] * 100
+      self['c_' + d + '_year_and_month'] += self['c_' + d + '_month']
+      self['c_' + d + '_weekday'] = s.dt.weekday
+      self['c_' + d + '_weekofyear'] = s.dt.weekofyear
+  if remove_originals: self.remove(date_cols)
+  return self
+
+def _df_to_dates(self, columns, remove_originals=True):
+  if type(columns) is str: columns = [columns]
+  for d in columns: self['d_' + d] = pd.to_datetime(self[d])
+  if remove_originals: self.remove(columns)
+  return self
+
+'''
+Add new methods manually using:
+pandas_extensions._extend_df('to_dates', _df_to_dates)
+'''  

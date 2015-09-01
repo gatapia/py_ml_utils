@@ -562,6 +562,19 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df.cats_to_stat(y, 'max')
     self.eq(df, [[3., 2], [3., 2], [3., 5], [5, 5], [5, 5], [6, 6]])
 
+  def test_cats_to_stats_with_all(self):
+    y = [1, 2, 3, 4, 5, 6]
+    df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})    
+    df.cats_to_stat(y, 'all')
+    print df
+    self.eq(df.columns, ['n_c_1_mean', 'n_c_2_mean', 'n_c_1_median', 'n_c_2_median', 'n_c_1_min', 'n_c_2_min', 'n_c_1_max', 'n_c_2_max'])
+    self.eq(df, [[2., 1.5, 2, 1.5, 1, 1, 3, 2], 
+      [2., 1.5, 2, 1.5, 1, 1, 3, 2], 
+      [2., 4, 2, 4, 1, 3, 3, 5], 
+      [4.5, 4, 4.5, 4, 4, 3, 5, 5], 
+      [4.5, 4, 4.5, 4, 4, 3, 5, 5], 
+      [6, 6, 6, 6, 6, 6, 6, 6]])
+
   def test_group_rare(self):
     df = pd.DataFrame({
       'c_1': ['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10,
@@ -872,6 +885,28 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
            [-0.81723613,  0.21331878,  2.77613411],
            [-0.26593622,  0.20148432,  1.55562555]]
     self.close(exp, df)
+
+  def test_to_dates(self):
+    df = pd.DataFrame({ 'col1': ['1997-01-01', '2005-05-12'] })
+    df.to_dates('col1')
+    self.assertFalse('col1' in df)
+    self.assertTrue('d_col1' in df)
+    self.eq(df.d_col1, pd.to_datetime([datetime.datetime(1997, 1, 1), datetime.datetime(2005, 5, 12)]))
+
+  def test_break_down_dates(self):
+    df = pd.DataFrame({ 'd_col1': [1, 2] })
+    df.d_col1 = pd.to_datetime([datetime.datetime(1997, 1, 1), datetime.datetime(2005, 5, 12)])
+    df_0 = df.copy().break_down_dates(0)    
+    self.eq(df_0.columns, ['c_d_col1_year', 'c_d_col1_month'])
+    self.eq(df_0, [[1997, 1], [2005, 5]])
+
+    df_1 = df.copy().break_down_dates(1)        
+    self.eq(df_1.columns, ['c_d_col1_year','c_d_col1_month','c_d_col1_dayofweek','c_d_col1_quarter'])
+    self.eq(df_1, [[1997, 1, 2, 1], [2005, 5, 3, 2]])
+
+    df_2 = df.copy().break_down_dates(2)        
+    self.eq(df_2.columns, ['c_d_col1_year','c_d_col1_month','c_d_col1_dayofweek','c_d_col1_quarter','c_d_col1_year_and_month','c_d_col1_weekday','c_d_col1_weekofyear'])
+    self.eq(df_2, [[1997, 1, 2, 1, 199701, 2, 1], [2005, 5, 3, 2, 200505, 3, 19]])
 
   def test_summarise(self):
     pass

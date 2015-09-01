@@ -1,11 +1,9 @@
 from __future__ import print_function
 import sys, gzip, time, datetime, random, os, logging, gc, \
     scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
-    sklearn.utils
-sys.path.append('utils/lib')
-sys.path.append('lib')
+    sklearn.utils, sklearn.externals.joblib
 import numpy as np, pandas as pd
-from xgb import XGBClassifier, XGBRegressor
+from lib.xgb import XGBClassifier, XGBRegressor
 
 def debug(msg): 
   if not cfg['debug']: return
@@ -96,14 +94,14 @@ def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3,
 def dump(file, data):  
   if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
   if not '.' in file: file += '.pickle'
-  sklearn.external.joblib.dump(data, 'data/pickles/' + file);  
+  sklearn.externals.joblib.dump(data, 'data/pickles/' + file);  
 
 def load(file, opt_fallback=None):
   full_file = 'data/pickles/' + file
   if not '.' in full_file: full_file += '.pickle'
   if os.path.isfile(full_file): 
     if full_file.endswith('.npy'): return np.load(full_file)
-    else: return sklearn.external.joblib.load(full_file);
+    else: return sklearn.externals.joblib.load(full_file);
   if opt_fallback is None: return None
   data = opt_fallback()
   dump(file, data)
