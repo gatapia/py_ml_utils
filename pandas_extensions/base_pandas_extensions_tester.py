@@ -1,7 +1,11 @@
-import unittest
+import unittest, random
 import pandas as pd, numpy as np
 
 class BasePandasExtensionsTester(unittest.TestCase):
+  def setUp(self): 
+    random.seed(0)
+    np.random.seed(0) 
+
   def close(self, o1, o2):
     if type(o1) is dict: o1 = pd.DataFrame(o1)
     if type(o2) is dict: o2 = pd.DataFrame(o2)

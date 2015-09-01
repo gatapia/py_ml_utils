@@ -4,9 +4,7 @@ import pandas as pd, numpy as np
 from . import *
 from . import base_pandas_extensions_tester
 
-class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
-  def setUp(self): misc.reseed(None)
-
+class T(base_pandas_extensions_tester.BasePandasExtensionsTester):  
   def test_categoricals(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
     self.assertTrue(['c_1'] == df.categoricals())
@@ -397,16 +395,6 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
                            [  2.40000000e+00,  -9.99688998e-17],
                            [ -1.60000000e+00,  -3.14750603e-16],
                            [  4.00000000e-01,  -2.07359751e-16]])
-
-  def test_pca_with_whitening(self):
-    df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, 2],
-        'n_12': [2, 3, 4, 2, 3], 'n_22': [1, 2, 3, 1, 2]})        
-    df = df.pca(2, True)
-    self.close(df, [ [-1.06904497, 0.30651304],
-                     [ 0.26726124, -1.03994103],
-                     [ 1.60356745, -0.5013594 ],
-                     [-1.06904497, -1.57852266],
-                     [ 0.26726124, -1.03994103]])
 
   def test_remove_nas(self):
     df = pd.DataFrame({'n_1': [2, 3, 4, 2, 3], 'n_2': [1, 2, 3, 1, np.nan]})        
