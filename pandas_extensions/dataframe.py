@@ -1,6 +1,6 @@
 import pandas as pd, numpy as np
 import itertools, random, gzip, gc, ast_parser, scipy, \
-  sklearn, sklearn.manifold, sklearn.cluster, ml.lib.smote
+  sklearn, sklearn.manifold, sklearn.cluster, smote
 from .. import misc
 import utils
 
@@ -566,7 +566,7 @@ def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
   min_value = opt_target if opt_target is not None else vcs.argmin()
   minorities = self[y == min_value]
 
-  new_minorities = ml.lib.smote.SMOTE(minorities.values, percentage_multiplier, n_neighbors)
+  new_minorities = smote.SMOTE(minorities.values, percentage_multiplier, n_neighbors)
   new_len = self.shape[0] + new_minorities.shape[0]
   y2 = pd.Series(np.append(y.values, np.array([min_value] * len(new_minorities))), index=np.arange(new_len))
   minorities_df = pd.DataFrame(new_minorities, columns=self.columns)
