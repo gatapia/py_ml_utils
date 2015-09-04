@@ -5,12 +5,12 @@ from .. import misc
 from ..lib import smote
 import utils
 
-def _df_categoricals(self): return filter(lambda c: c.startswith('c_'), self.columns)
-def _df_indexes(self): return filter(lambda c: c.startswith('i_'), self.columns)
-def _df_binaries(self): return filter(lambda c: c.startswith('b_'), self.columns)
+def _df_categoricals(self): return filter(lambda c: self[c].is_categorical(), self.columns)
+def _df_indexes(self): return filter(lambda c: self[c].is_index(), self.columns)
+def _df_binaries(self): return filter(lambda c: self[c].is_binary(), self.columns)
 def _df_categorical_like(self): return self.categoricals() + self.indexes() + self.binaries()
-def _df_numericals(self): return filter(lambda c: c.startswith('n_'), self.columns)
-def _df_dates(self): return filter(lambda c: c.startswith('d_'), self.columns)
+def _df_numericals(self): return filter(lambda c: self[c].is_numerical(), self.columns)
+def _df_dates(self): return filter(lambda c: self[c].is_date(), self.columns)
 
 def _df_is_equal(self, other):
   if type(other) is not pd.DataFrame: other = pd.DataFrame(other)
@@ -104,12 +104,14 @@ def _df_cats_to_ratio_of_samples(self):
 
 def _df_cats_to_stat(self, y, stat='mean', remove_originals=True):
   if stat == 'all': stat = ['mean', 'median', 'min', 'max']
+  misc.start('converting categoricals to stat: ' + str(stat))
   if type(stat) is str: stat = [stat]
   cols = self.categorical_like()
   for s in stat:
     for c in cols: 
       self['n_' + c + '_' + s] = self[c].to_stat(y, s).astype(float)
   if remove_originals: self.remove(cols)
+  misc.stop('done converting categoricals')
   return self
 
 def _df_bin(self, n_bins=100, drop_origianls=False):
@@ -124,27 +126,32 @@ def _df_group_rare(self, columns=None, limit=30):
   misc.start('grouping rare categorical columns, limit: ' + `limit`)  
   if columns is None: columns = self.categorical_like()
   for c in columns: self[c].group_rare(limit)
-  misc.start('done grouping rare categorical')  
+  misc.stop('done grouping rare categorical')  
   return self
 
 def _df_combinations(self, group_size=2, columns=[], categoricals=False, indexes=False,
     numericals=False, dates=False, binaries=False, permutations=False):
   cols = list(columns)
+  misc.start('calculating combinations')
   if categoricals: cols = cols + self.categoricals()
   if indexes: cols = cols + self.indexes()
   if numericals: cols = cols + self.numericals()
   if dates: cols = cols + self.dates()
   if binaries: cols = cols + self.binaries()
   op = itertools.permutations if permutations else itertools.combinations
+  misc.stop('done calculating combinations')
   return list(op(cols, group_size))
 
 def _df_remove_nas(self, columns=None):      
+  misc.start('removing missing values')
   self.dropna(0, 'any', subset=columns, inplace=True)
+  misc.stop('done removing missing values')
   return self
 
 def _df_remove(self, columns=[], categoricals=False, numericals=False, 
     dates=False, binaries=False, missing_threshold=0.0):    
   cols = [columns] if type(columns) is str else list(columns)
+  misc.start('removing columns')
   if categoricals: cols = cols + self.categoricals()
   if numericals: cols = cols + self.numericals()
   if dates: cols = cols + self.dates()
@@ -160,9 +167,9 @@ def _df_remove(self, columns=[], categoricals=False, numericals=False,
     raise Exception('At least one of categoricals, numericals, ' +
       'dates binaries should be set to True or columns array passed')
 
-  misc.debug('removing ' + `len(cols)` + ' columns from data frame')
   cols = [c for c in cols if c in self.columns]
   self.drop(cols, 1, inplace=True)
+  misc.stop('done removing [' + str(len(cols)) + '] columns')
   return self
  
 def _df_scale(self, columns=None, min_max=None):  
@@ -175,7 +182,7 @@ def _df_scale(self, columns=None, min_max=None):
 def _df_normalise(self, columns=None):
   return self.scale(columns, min_max=(0, 1))
 
-def _df_missing(self, categorical_fill='none', numerical_fill='none', binary_fill='none'):  
+def _df_missing(self, categorical_fill='none', numerical_fill='none'):  
   misc.start('replacing missing data categorical[' + `categorical_fill` + '] numerical[' + `numerical_fill` + ']')
   
   # Do numerical constants on whole DF for performance
@@ -186,20 +193,18 @@ def _df_missing(self, categorical_fill='none', numerical_fill='none', binary_fil
 
   # Do categorical constants on whole DF for performance
   if categorical_fill != 'none' and categorical_fill != 'mode':
-    self[self.categoricals()] = self[self.categoricals()].fillna(categorical_fill)
+    self[self.categorical_like()] = self[self.categorical_like()].fillna(categorical_fill)
     categorical_fill='none'
 
   # Get list of columns still left to fill
   categoricals_to_fill = []
   numericals_to_fill = []
   binaries_to_fill = []
-  if categorical_fill != 'none': categoricals_to_fill += self.categoricals() + self.indexes()
+  if categorical_fill != 'none': categoricals_to_fill += self.categorical_like()
   if numerical_fill != 'none': numericals_to_fill += self.numericals()
-  if binary_fill != 'none': binaries_to_fill += self.binaries()
 
   # Prepare a dictionary of column -> fill values
-  to_fill = {}
-  for c in binaries_to_fill: to_fill[c] = utils.get_col_aggregate(self[c], binary_fill)
+  to_fill = {}  
   for c in categoricals_to_fill: to_fill[c] = utils.get_col_aggregate(self[c], categorical_fill)
   for c in numericals_to_fill: 
     to_fill[c] = utils.get_col_aggregate(self[c], numerical_fill)
@@ -254,12 +259,10 @@ def _df_append_right(self, df_or_s):
   return self
 
 def _df_append_bottom(self, df):  
-  return pd.concat([self, df], ignore_index=True)
-
-def _create_s_from_templage(template, data):
-  s = pd.Series(data)
-  if template.dtype != s.dtype: s = s.astype(template.dtype)
-  return s
+  misc.start('creating new concatenated dataframe')
+  X = pd.concat([self, df], ignore_index=True)
+  misc.stop('done creating new concatenated dataframe')
+  return X
 
 def _df_subsample(self, y=None, size=0.5):  
   if type(size) is float:
@@ -267,7 +270,7 @@ def _df_subsample(self, y=None, size=0.5):
     size = int(size)
   if self.shape[0] <= size: return self if y is None else (self, y) # unchanged    
 
-  misc.start('subsample data frame')
+  misc.start('subsample data frame, size: ' + str(size))
   df = self.copy().shuffle(y)
   
   result = df[:size] if y is None else df[0][:size], df[1][:size]  
@@ -343,28 +346,38 @@ def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, f
   if len(y) < X.shape[0]: X = X[:len(y)]
   if sklearn.utils.multiclass.type_of_target(y) == 'binary' and not (scoring or misc.cfg['scoring']): 
     scoring = 'roc_auc'
+  score_name = scoring or misc.cfg['scoring']
+  if hasattr(score_name, '__name__'): score_name = score_name.__name__
   misc.start('starting ' + `n_iter` + ' fold cross validation (' + 
-      `n_samples` + ' samples) w/ metric: ' + `scoring or misc.cfg['scoring']`)
+      `n_samples` + ' samples) w/ metric: ' + str(score_name))
   cv = misc.do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True, n_jobs=n_jobs, fit_params=fit_params)
   misc.stop('done cross validation:\n  [CV]: ' + ("{0:.5f} (+/-{1:.5f})").format(cv[0], cv[1]))  
   return cv
 
 def _df_pca(self, n_components, whiten=False):  
+  misc.start('pca')
   new_X = sklearn.decomposition.PCA(n_components, whiten=whiten).fit_transform(self)
   columns = map(lambda i: 'n_pca_' + `i`, range(n_components))
+  misc.start('done pca')
   return pd.DataFrame(columns=columns, data=new_X)
 
 def _df_tsne(self, n_components=2):  
+  misc.start('tsne')
   # barnes_hut not in sklearn master yet. but put in once there
   # new_X = sklearn.manifold.TSNE(n_components, method='barnes_hut').fit_transform(self)
   new_X = sklearn.manifold.TSNE(n_components).fit_transform(self)
   columns = map(lambda i: 'n_tsne_' + `i`, range(n_components))
+  misc.start('done tsne')
   return pd.DataFrame(columns=columns, data=new_X)
 
 def _df_kmeans(self, k):  
-  return pd.Series(sklearn.cluster.KMeans(k).fit_predict(self))
+  misc.start('kmeans, k: ' + str(k))  
+  s = pd.Series(sklearn.cluster.KMeans(k).fit_predict(self))
+  misc.stop('done kmeans')
+  return s
 
 def _df_tree_features(self, tree_ensemble, y):
+  misc.start('tree_features using: ' + tree_ensemble.__class__.__name__)
   def _make_tree_bins(clf, X):
     nd_mat = None
     X32 = np.array(X).astype(np.float32)
@@ -380,15 +393,19 @@ def _df_tree_features(self, tree_ensemble, y):
 
   tree_features = self.self_chunked_op(y, op)
   tree_features.columns = ['i_c_tree_feature_' + `i+1` for i in range(tree_features.shape[1])]  
+  misc.stop('done tree_features')
   return tree_features
 
 def _df_append_fit_transformer(self, fit_transformer, method='transform'):    
+  misc.start('append_fit_transformer')
   if 'fit' not in method: fit_transformer.fit(self)
   new_X = getattr(fit_transformer, method)(self)
   if utils.is_sparse(new_X): new_X = new_X.todense()
   columns = map(lambda i: 'n_new_col_' + `i`, range(new_X.shape[1]))
   new_df = pd.DataFrame(new_X, columns=columns)
-  return self.copy().append_right(new_df)
+  X = self.copy().append_right(new_df)
+  misc.start('done append_fit_transformer')
+  return X
 
 def _df_predict(self, clf, y, X_test=None):    
   return __df_clf_method_impl(self, clf, y, X_test, 'predict')
@@ -403,6 +420,7 @@ def _df_decision_function(self, clf, y, X_test=None):
   return __df_clf_method_impl(self, clf, y, X_test, 'decision_function')
 
 def __df_clf_method_impl(X, clf, y, X_test, method):    
+  misc.start('clf_method_impl: ' + method)
   misc.reseed(clf)
   X_train = X
   if X_test is None:
@@ -413,8 +431,10 @@ def __df_clf_method_impl(X, clf, y, X_test, method):
 
   if len(X_train.shape) == 2 and X_train.shape[1] == 1: X_train = X_train.ix[:,0]
   if len(X_test.shape) == 2 and X_test.shape[1] == 1: X_test = X_test.ix[:,0]
-  clf.fit(X_train, y)
-  return getattr(clf, method)(X_test)
+  clf.fit(X_train, y)  
+  val = getattr(clf, method)(X_test)
+  misc.start('done clf_method_impl: ' + method)
+  return val
 
 def _df_self_predict(self, clf, y, cv=5):    
   return _df_self_predict_impl(self, clf, y, cv, 'predict')
@@ -450,7 +470,7 @@ def _df_self_predict_impl(X, clf, y, cv, method):
     return new_predictions    
   
   predictions = _df_self_chunked_op(X, y, op, cv)
-  misc.stop('self_predict completed')
+  misc.stop('self_predict completed')  
   return predictions.values
 
 def _df_self_chunked_op(self, y, op, cv=5):    
@@ -524,21 +544,19 @@ def _df_hashcode(self, opt_y=None):
   if opt_y is not None: self.remove('_tmpy_')
   return hash_val
 
-def _df_summarise(self, opt_y=None, filename='dataset_description', 
-    columns=None, start_notebook=True):
-  from describe import Describe
-  Describe(filename).show_dataset(self, opt_y, start_notebook=start_notebook)  
-
 def _df_importances(self, clf, y):
+  misc.start('calculating feature importances using: ' + clf.__class__.__name__)
   clf.fit(self[:len(y)], y)
   if hasattr(clf, 'feature_importances_'): imps = clf.feature_importances_ 
   else: imps = map(abs, clf.coef_[0])
   top_importances_indexes = np.argsort(imps)[::-1]
   top_importances_values = np.array(imps)[top_importances_indexes]
   top_importances_features = self.columns[top_importances_indexes]
+  misc.stop('done calculating feature importances')
   return zip(top_importances_features, top_importances_values)
 
 def _df_numerical_stats(self, columns=None):
+  misc.start('adding row numerical stats')
   X2 = self[columns if columns is not None else self.numericals()]
   self['n_min'] = X2.min(1)
   self['n_max'] = X2.max(1)
@@ -549,9 +567,11 @@ def _df_numerical_stats(self, columns=None):
   self['n_sem'] = X2.sem(1)
   self['n_std'] = X2.std(1)
   self['n_sum'] = X2.sum(1)
+  misc.stop('done row numerical stats')
   return self
 
 def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
+  misc.start('smoting by : ' + str(percentage_multiplier) + '%')
   if type(y) is not pd.Series: y = pd.Series(y)
   misc.reseed(None)
   vcs = y.value_counts(dropna=False)
@@ -565,14 +585,18 @@ def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
   minorities_df = pd.DataFrame(new_minorities, columns=self.columns)
   new_df = self.copy().append_bottom(minorities_df)
   new_df.index = np.arange(new_len)
+  misc.stop('done smote')
   return (new_df, y2)
 
 def _df_boxcox(self):
+  misc.start('box-cox converting numerical columns')
   for n in self.numericals(): self[n] = self[n].boxcox()
+  misc.stop('done box-cox conversion')
   return self
 
 def _df_break_down_dates(self, aggresiveness=3, remove_originals=True):
   date_cols = self.dates()
+  misc.start('breaking down date columns; aggresiveness: ' + str(aggresiveness) + ' columns: ' + str(date_cols))
   for d in date_cols:
     s = self[d]
     self['c_' + d + '_year'] = s.dt.year
@@ -586,13 +610,32 @@ def _df_break_down_dates(self, aggresiveness=3, remove_originals=True):
       self['c_' + d + '_weekday'] = s.dt.weekday
       self['c_' + d + '_weekofyear'] = s.dt.weekofyear
   if remove_originals: self.remove(date_cols)
+  misc.stop('done breaking down date columns')
   return self
 
-def _df_to_dates(self, columns, remove_originals=True):
+__df_to_dates_cache = {}
+def _df_to_dates(self, columns, remove_originals=True, cache=True):  
   if type(columns) is str: columns = [columns]
-  for d in columns: self['d_' + d] = pd.to_datetime(self[d])
+  misc.start('converting to pd.datetime: ' + str(columns))
+  for d in columns: 
+    if cache:
+      colid = str(d) + ':' + str(self[d].hashcode())
+      if colid in __df_to_dates_cache: self['d_' + d] = __df_to_dates_cache[colid]
+      else: self['d_' + d] = __df_to_dates_cache[colid] = pd.to_datetime(self[d])
+    else: self['d_' + d] = pd.to_datetime(self[d])
   if remove_originals: self.remove(columns)
+  misc.stop('done converting to pd.datetime')
   return self
+
+def _df_floats_to_ints(self, decimals=5):
+  misc.start('float_to_int decimals: ' + `decimals`)
+  for c in self.numericals(): self[c] = self[c].floats_to_ints(decimals)
+  misc.stop('float_to_int done')
+  return self
+
+def _df_viz(self):
+  from viz.describe.describe_dataframe import DescribeDataFrame
+  return DescribeDataFrame(self)
 
 '''
 Add new methods manually using:

@@ -62,6 +62,12 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.eq(pd.Series([1, 2, None, 1], name='n_col').missing('max+1'),
       [1, 2, 3, 1])
 
+  def test_missing_with_iqm(self):
+    s = pd.Series(np.random.random(100))
+    s[50] = np.nan
+    s.missing('iqm')
+    self.close(s[50], 0.449782)
+
   def test_scale(self):
     self.eq(pd.Series([1, 2, 3]).scale(), [-1, 0, 1])    
     self.eq(pd.Series([1, 2, 3]).scale((0, 100)), [0, 50, 100])    
@@ -83,14 +89,14 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.assertTrue(pd.Series(name='c_col').is_categorical_like())
     self.assertTrue(pd.Series(name='b_col').is_binary())
     self.assertTrue(pd.Series(name='b_col').is_categorical_like())
-    self.assertTrue(pd.Series(name='i_col').is_indexes())
+    self.assertTrue(pd.Series(name='i_col').is_index())
     self.assertTrue(pd.Series(name='i_col').is_categorical_like())
     self.assertTrue(pd.Series(name='n_col').is_numerical())
     self.assertTrue(pd.Series(name='d_col').is_date())
 
     self.assertTrue(pd.Series(['a', 'b', 'c']).is_categorical())
     self.assertTrue(pd.Series(['a', 'b']).is_binary())
-    self.assertTrue(pd.Series([1, 2, 3]).is_indexes())
+    self.assertTrue(pd.Series([1, 2, 3]).is_index())
     self.assertTrue(pd.Series(np.random.normal(size=10000)).is_numerical())
     self.assertTrue(pd.Series([datetime.datetime(2010, 1, 1)]).is_date())
 
@@ -215,6 +221,18 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
     self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'max'), [3, 3, 3, 5, 5, 6])  
 
+  def test_to_stat_iqm(self):
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'iqm'), [2. ,  2. ,  2. ,  4.5,  4.5,  6.])  
+
+  def test_to_stat_larger_data(self):
+    s = pd.Series(np.random.random(100000) * 10).astype(int)
+    y = np.random.random(100000)
+    self.assertEqual(s.copy().to_stat(y, 'mean').mean(), 0.5022836997232796)
+    self.assertEqual(s.copy().to_stat(y, 'median').mean(), 0.5043951662699959)
+    self.assertEqual(s.copy().to_stat(y, 'min').mean(), 6.607534861049408e-05)
+    self.assertEqual(s.copy().to_stat(y, 'max').mean(), 0.9999608457126161)
+
   def test_outliers(self):
     s = pd.Series(np.random.normal(size=200))
     min_1, max_1 = s.min(), s.max()
@@ -240,3 +258,9 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     s = pd.Series([1, 2, 3, 4, -1])
     bc = s.boxcox()
     self.close(bc, [2.151, 3.301,4.484,5.694, 0.])
+  
+  def test_floats_to_ints(self):
+    s = pd.Series(np.random.normal(size=100))
+    s = s.floats_to_ints()
+    self.assertEqual(str(s.dtype), 'int32')
+    self.assertEqual(s.mean(), 5980.74)

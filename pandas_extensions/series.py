@@ -44,8 +44,7 @@ def _s_missing(self, fill='none'):
   
   val = utils.get_col_aggregate(self, fill)  
   self.fillna(val, inplace=True)
-  if self.name.startswith('n_'): 
-    self.replace([np.inf, -np.inf], val, inplace=True)  
+  if self.is_numerical(): self.replace([np.inf, -np.inf], val, inplace=True)  
 
   misc.stop('replacing series missing data')
   return self
@@ -67,29 +66,34 @@ def _s_scale(self, min_max=None):
 
 def _s_is_valid_name(self):
   if not self.name: return False
-  return self.name.split('_')[0] in ['c', 'n', 'i', 'd', 'b']
+  for v in ['c_', 'n_', 'i_', 'd_', 'b_']:
+    if self.name.startswith(v): return True
+  return False
 
 def _s_is_categorical(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'c'
+  if self.is_valid_name(): return self.name.startswith('c_')
   return sklearn.utils.multiclass.type_of_target(self) == 'multiclass'
 
-def _s_is_indexes(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'i'
+def _s_is_index(self):
+  if self.is_valid_name(): return self.name.startswith('i_')
   return sklearn.utils.multiclass.type_of_target(self) == 'multiclass'
 
 def _s_is_binary(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'b'
-  return len(self.unique()) == 2
+  if self.is_valid_name(): return self.name.startswith('b_')
+  uniques = self.unique()
+  if len(uniques) == 1: 
+    misc.dbg('\n!!! columns: ' + self.name + ' has only 1 unique value and hence has no information and should be removed\n')
+  return len(uniques) == 2
 
 def _s_is_categorical_like(self):
-  return self.is_categorical() or self.is_indexes() or self.is_binary()
+  return self.is_categorical() or self.is_index() or self.is_binary()
 
 def _s_is_numerical(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'n'
+  if self.is_valid_name(): return self.name.startswith('n_')
   return sklearn.utils.multiclass.type_of_target(self) == 'continuous'
 
 def _s_is_date(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'd'
+  if self.is_valid_name(): return self.name.startswith('d_')
   return str(self.dtype).startswith('date') or \
       type(self[0]) is pd.Timestamp or \
       type(self[0]) is datetime.datetime
@@ -132,8 +136,8 @@ def _s_compress_size(self, aggresiveness=0, sparsify=False):
   Always returns a new Series as inplace type change is not allowed
   '''
   c = self.copy()
-  if c.is_numerical() or c.is_indexes():
-    if c.is_indexes() or str(c.dtype).startswith('int'):        
+  if c.is_numerical() or c.is_index():
+    if c.is_index() or str(c.dtype).startswith('int'):        
       c = c.astype(utils.get_optimal_numeric_type('int', min(c), max(c)))
       return c if not sparsify else c.to_sparse(fill_value=int(c.mode()))    
     elif str(c.dtype).startswith('float'):
@@ -194,9 +198,10 @@ def _s_to_ratio_of_binary_target(self, y, positive_class=None):
 def _s_to_stat(self, y, stat='mean'):
   if not self.is_categorical_like(): raise Exception('only supported for categorical like columns')
   if type(y) is not pd.Series: y = pd.Series(y)  
-  for val in self.unique():              
-    self[self==val] = utils.get_col_aggregate(y[self == val], stat)
-  return self
+  df = pd.DataFrame({'c_1' : self.values, 'n_y': y.values})
+
+  def iqm(x): return np.mean(np.percentile(x, [75 ,25]))
+  return df.groupby('c_1')['n_y'].transform(iqm if stat == 'iqm' else stat)
 
 def _s_to_rank(self, normalise=True):
   r = self.rank()
@@ -207,3 +212,21 @@ def _s_boxcox(self):
   minv = self.min()
   if minv <= 0: self = 1 + (self - minv)
   return scipy.stats.boxcox(self)[0]
+
+def _s_vc(self):
+  counts = self.value_counts(dropna=False)  
+  print counts, '\n', len(counts), 'uniques'
+
+def _s_floats_to_ints(self, decimals=5):
+  if not str(self.dtype).startswith('float'): return self
+  return (self * (10 ** decimals)).astype(int)
+
+def _s_viz(self):
+  from viz.describe_series import DescribeSeries
+  return DescribeSeries(self)
+
+
+'''
+Add new methods manually using:
+pandas_extensions._extend_s('to_stat', _s_to_stat)
+'''    

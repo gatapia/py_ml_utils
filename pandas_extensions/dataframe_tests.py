@@ -7,7 +7,7 @@ from . import base_pandas_extensions_tester
 class T(base_pandas_extensions_tester.BasePandasExtensionsTester):  
   def test_categoricals(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'n_1': [1., 2., 3.]})
-    self.assertTrue(['c_1'] == df.categoricals())
+    self.assertEqual(['c_1'], df.categoricals())
 
   def test_appending_sparseness_2(self):
     df = pd.DataFrame({'n_1': [1., 2., 3.], 'n_2': [1., 2., 3.]}).to_sparse(fill_value=0)
@@ -900,3 +900,9 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.assertTrue(os.path.isfile(f))
     if os.path.isfile(f): os.path.remove(f)
     '''
+
+  def test_floats_to_ints(self):
+    df = pd.DataFrame(np.random.normal(size=(100, 2)), columns=['n_1', 'n_2'])
+    df.floats_to_ints()
+    self.eq(map(str, df.dtypes), ['int32', 'int32'])
+    self.eq(df.mean(), [-95.74, 14277.78])

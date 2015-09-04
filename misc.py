@@ -1,7 +1,7 @@
 from __future__ import print_function
 import sys, gzip, time, datetime, random, os, logging, gc, \
     scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
-    sklearn.utils, sklearn.externals.joblib
+    sklearn.utils, sklearn.externals.joblib, inspect
 import numpy as np, pandas as pd
 from lib.xgb import XGBClassifier, XGBRegressor
 
@@ -12,17 +12,25 @@ def debug(msg):
 _message_timers = {}
 def start(msg, id=None): 
   if not cfg['debug']: return
-  id = id if id is not None else 'global'
+  if id is None:
+    s = inspect.stack()
+    if len(s) > 0 and len(s[1]) > 2: id = s[1][3]
+    else: id = 'global'
   _message_timers[id] = time.time()
   log.info(msg)
 
 def stop(msg, id=None): 
   if not cfg['debug']: return
-  id = id if id is not None else 'global'
+  if id is None:
+    s = inspect.stack()
+    if len(s) > 0 and len(s[1]) > 2: id = s[1][3]
+    else: id = 'global'
   took = datetime.timedelta(seconds=time.time() - _message_timers[id]) \
     if id in _message_timers else 'unknown'
-  log.info(msg + (', took (h:m:s): %s' % took))
+  msg += (', took (h:m:s): %s' % took)
+  log.info(msg)
   if id in _message_timers: del _message_timers[id]
+  return msg
 
 def reseed(clf):
   if clf is not None: clf.random_state = cfg['sys_seed']
@@ -36,7 +44,7 @@ def seed(seed):
 
 def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False, 
       scoring=None, stratified=False, n_jobs=-1, fit_params=None):
-  start('starting cv', 'cv')
+  if not quiet: start('starting cv', 'cv')
   reseed(clf)
   
   if n_samples is None: n_samples = len(X)
@@ -55,7 +63,7 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
       clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs, 
       fit_params=fit_params)
   score_desc = ("{0:.5f} (+/-{1:.5f})").format(np.mean(test_scores), scipy.stats.sem(test_scores))
-  stop('done CV %s' % score_desc, 'cv')
+  if not quiet: stop('done CV %s' % score_desc, 'cv')
   return (np.mean(test_scores), scipy.stats.sem(test_scores))
 
 def score_classifier_vals(prop, vals, clf, X, y):
