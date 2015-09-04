@@ -199,8 +199,8 @@ def _s_to_stat(self, y, stat='mean'):
   if not self.is_categorical_like(): raise Exception('only supported for categorical like columns')
   if type(y) is not pd.Series: y = pd.Series(y)  
   df = pd.DataFrame({'c_1' : self.values, 'n_y': y.values})
-
   def iqm(x): return np.mean(np.percentile(x, [75 ,25]))
+
   return df.groupby('c_1')['n_y'].transform(iqm if stat == 'iqm' else stat)
 
 def _s_to_rank(self, normalise=True):
@@ -221,12 +221,14 @@ def _s_floats_to_ints(self, decimals=5):
   if not str(self.dtype).startswith('float'): return self
   return (self * (10 ** decimals)).astype(int)
 
+def _s_percentage_positive(self, positive_val=True):
+  return float(len(self[self==positive_val])) / len(self)
+
 def _s_viz(self):
   from viz.describe_series import DescribeSeries
   return DescribeSeries(self)
 
-
 '''
 Add new methods manually using:
-pandas_extensions._extend_s('to_stat', _s_to_stat)
+pandas_extensions._extend_s('percentage_positive', _s_percentage_positive)
 '''    

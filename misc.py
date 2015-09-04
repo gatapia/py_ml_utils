@@ -79,6 +79,24 @@ def score_classifier_vals(prop, vals, clf, X, y):
   dbg('\n\n\n\n', best)
   return sorted_results
 
+def score_operations_on_cols(clf, X, y, columns, operations, operator, n_iter=5):
+  best = X.cv(clf, y, n_iter=n_iter)
+  results = []
+  for c in columns:
+    if c not in X: continue
+    col_best = best
+    col_best_op = 'no-op'
+    for op in operations:
+      X2 = operator(X.copy(), c, op)      
+      score = X2.cv(clf, y, n_iter=n_iter)
+      if score[0] < col_best[0]:
+        col_best = score
+        col_best_op = str(op)
+    r = {'column': c, 'best': col_best_op, 'score': col_best[0], 'improvement': best[0] - col_best[0]}
+    results.append(r)
+    dbg(r)
+  return results
+
 def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3, 
     n_jobs=-2, scoring=None, fit_params=None, 
     random_iterations=None):

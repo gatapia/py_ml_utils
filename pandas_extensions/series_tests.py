@@ -264,3 +264,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     s = s.floats_to_ints()
     self.assertEqual(str(s.dtype), 'int32')
     self.assertEqual(s.mean(), 5980.74)
+
+  def test_percentage_positive(self):
+    s = pd.Series(np.random.normal(size=99) * 10)
+    self.assertEqual(0.18181818181818182, (s > 10).percentage_positive())

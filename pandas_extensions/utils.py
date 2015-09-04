@@ -1,9 +1,6 @@
 import gzip, scipy
 import pandas as pd, numpy as np
 
-def safe_startswith(s, prefix):
-  return type(s) is str and s.startswith(prefix);
-
 def chunked_iterator(df, chunk_size=1000000):
   start = 0
   while True:

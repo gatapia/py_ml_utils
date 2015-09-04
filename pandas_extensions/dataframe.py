@@ -103,13 +103,24 @@ def _df_cats_to_ratio_of_samples(self):
   return self
 
 def _df_cats_to_stat(self, y, stat='mean', remove_originals=True):
-  if stat == 'all': stat = ['mean', 'median', 'min', 'max']
+  '''
+  stat: can be string 'mean', 'iqm', 'median', 'min', 'max' or
+    'all' which creates a group of columns for each of the stats.
+    stat can also be a dictionary of column names to their stat.
+  '''
   misc.start('converting categoricals to stat: ' + str(stat))
-  if type(stat) is str: stat = [stat]
-  cols = self.categorical_like()
-  for s in stat:
-    for c in cols: 
+  if type(stat) is dict:
+    cols = stat.keys()
+    for c in cols:
+      s = stat[c]
       self['n_' + c + '_' + s] = self[c].to_stat(y, s).astype(float)
+  else:
+    if stat == 'all': stat = ['mean', 'iqm', 'median', 'min', 'max']    
+    if type(stat) is str: stat = [stat]
+    cols = self.categorical_like()
+    for s in stat:
+      for c in cols: 
+        self['n_' + c + '_' + s] = self[c].to_stat(y, s).astype(float)
   if remove_originals: self.remove(cols)
   misc.stop('done converting categoricals')
   return self
@@ -490,14 +501,13 @@ def _df_self_chunked_op(self, y, op, cv=5):
   df = pd.DataFrame(data=chunks, index=indexes)
   return df.sort()  
 
-def _df_trim_on_y(self, y, sigma, max_y=None):    
+def _df_trim_on_y(self, y, min_y=None, max_y=None):    
   X = self.copy()  
   X['__tmpy'] = y.copy()
-  X = X[np.abs(X['__tmpy'] - X['__tmpy'].mean()) <= 
-      (float(sigma) * X['__tmpy'].std())]
+  if min_y is not None: X = X[X['__tmpy'] >= min_y]
   if max_y is not None: X = X[X['__tmpy'] <= max_y]
   y = X['__tmpy']
-  return (X.drop(['__tmpy'], 1), y)
+  return (X.remove('__tmpy'), y)
 
 def _df_save_csv(self, file, header=True):   
   if file.endswith('.pickle'): 
@@ -637,7 +647,18 @@ def _df_viz(self):
   from viz.describe.describe_dataframe import DescribeDataFrame
   return DescribeDataFrame(self)
 
+def _df_discribe_similarity(self, other):
+  for c in self.columns:    
+    if self[c].is_categorical_like() or self[c].is_date():
+      tr_d = set(self[c].unique())
+      te_d = set(other[c].unique())
+      intersection = tr_d.intersection(te_d)
+      difference = tr_d.difference(te_d)
+      misc.dbg('column:', c, 
+          'intersection:', len(intersection), 
+          'difference:', len(difference))
+
 '''
 Add new methods manually using:
-pandas_extensions._extend_df('to_dates', _df_to_dates)
+pandas_extensions._extend_df('trim_on_y', _df_trim_on_y)
 '''  

@@ -546,13 +546,19 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})    
     df.cats_to_stat(y, 'all')
     print df
-    self.eq(df.columns, ['n_c_1_mean', 'n_c_2_mean', 'n_c_1_median', 'n_c_2_median', 'n_c_1_min', 'n_c_2_min', 'n_c_1_max', 'n_c_2_max'])
-    self.eq(df, [[2., 1.5, 2, 1.5, 1, 1, 3, 2], 
-      [2., 1.5, 2, 1.5, 1, 1, 3, 2], 
-      [2., 4, 2, 4, 1, 3, 3, 5], 
-      [4.5, 4, 4.5, 4, 4, 3, 5, 5], 
-      [4.5, 4, 4.5, 4, 4, 3, 5, 5], 
-      [6, 6, 6, 6, 6, 6, 6, 6]])
+    self.eq(df.columns, ['n_c_1_mean', 'n_c_2_mean', 'n_c_1_iqm', 'n_c_2_iqm', 'n_c_1_median', 'n_c_2_median', 'n_c_1_min', 'n_c_2_min', 'n_c_1_max', 'n_c_2_max'])
+    self.eq(df, [ [2., 1.5, 2.0, 1.5, 2, 1.5, 1, 1, 3, 2], 
+                  [2., 1.5, 2.0, 1.5, 2, 1.5, 1, 1, 3, 2], 
+                  [2.,   4, 2.0, 4.0, 2, 4, 1, 3, 3, 5], 
+                  [4.5,  4, 4.5, 4.0, 4.5, 4, 4, 3, 5, 5], 
+                  [4.5,  4, 4.5, 4.0, 4.5, 4, 4, 3, 5, 5], 
+                  [6,    6, 6.0, 6.0, 6, 6, 6, 6, 6, 6]])
+
+  def test_cats_to_stats_with_dict(self):
+    y = [1, 2, 3, 4, 5, 6]
+    df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})    
+    df.cats_to_stat(y, {'c_1': 'mean', 'c_2': 'iqm'})
+    self.eq(df, [[2., 1.5], [2., 1.5], [2., 4], [4.5, 4], [4.5, 4], [6, 6]])
 
   def test_group_rare(self):
     df = pd.DataFrame({
@@ -807,16 +813,19 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.assertEqual(-1185565617, df.hashcode())
 
   def test_trim_on_y(self):
-    lr = sklearn.linear_model.LogisticRegression()
-    df = pd.DataFrame(np.random.normal(size=(100, 2)))
-    y = np.random.normal(size=(100))
-    df2, y = df.trim_on_y(y, 1)
-    self.assertEqual(71, df2.shape[0])
-    self.assertEqual(71, len(y))
+    df = pd.DataFrame(np.random.normal(size=(1000, 2)))
+    y = np.arange(1000)
+    df2, y2 = df.trim_on_y(y, 100)
+    self.assertEqual(900, df2.shape[0])
+    self.assertEqual(900, len(y2))
 
-    df2, y = df.trim_on_y(y, 1, max_y=10)
-    self.assertEqual(43, df2.shape[0])
-    self.assertEqual(43, len(y))
+    df2, y2 = df.trim_on_y(y, 100, 500)
+    self.assertEqual(401, df2.shape[0])
+    self.assertEqual(401, len(y2))
+
+    df2, y2 = df.trim_on_y(y, None, 250)
+    self.assertEqual(251, df2.shape[0])
+    self.assertEqual(251, len(y2))
 
   def test_importances(self):    
     lr = sklearn.linear_model.LogisticRegression()
