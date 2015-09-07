@@ -1,11 +1,9 @@
 from __future__ import print_function
 import sys, gzip, time, datetime, random, os, logging, gc, \
     scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
-    sklearn.utils
-sys.path.append('utils/lib')
-sys.path.append('lib')
+    sklearn.utils, sklearn.externals.joblib, inspect
 import numpy as np, pandas as pd
-from xgb import XGBClassifier, XGBRegressor
+from lib.xgb import XGBClassifier, XGBRegressor
 
 def debug(msg): 
   if not cfg['debug']: return
@@ -14,17 +12,25 @@ def debug(msg):
 _message_timers = {}
 def start(msg, id=None): 
   if not cfg['debug']: return
-  id = id if id is not None else 'global'
+  if id is None:
+    s = inspect.stack()
+    if len(s) > 0 and len(s[1]) > 2: id = s[1][3]
+    else: id = 'global'
   _message_timers[id] = time.time()
   log.info(msg)
 
 def stop(msg, id=None): 
   if not cfg['debug']: return
-  id = id if id is not None else 'global'
+  if id is None:
+    s = inspect.stack()
+    if len(s) > 0 and len(s[1]) > 2: id = s[1][3]
+    else: id = 'global'
   took = datetime.timedelta(seconds=time.time() - _message_timers[id]) \
     if id in _message_timers else 'unknown'
-  log.info(msg + (', took (h:m:s): %s' % took))
+  msg += (', took (h:m:s): %s' % took)
+  log.info(msg)
   if id in _message_timers: del _message_timers[id]
+  return msg
 
 def reseed(clf):
   if clf is not None: clf.random_state = cfg['sys_seed']
@@ -38,7 +44,7 @@ def seed(seed):
 
 def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False, 
       scoring=None, stratified=False, n_jobs=-1, fit_params=None):
-  start('starting cv', 'cv')
+  if not quiet: start('starting cv', 'cv')
   reseed(clf)
   
   if n_samples is None: n_samples = len(X)
@@ -57,7 +63,7 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
       clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs, 
       fit_params=fit_params)
   score_desc = ("{0:.5f} (+/-{1:.5f})").format(np.mean(test_scores), scipy.stats.sem(test_scores))
-  stop('done CV %s' % score_desc, 'cv')
+  if not quiet: stop('done CV %s' % score_desc, 'cv')
   return (np.mean(test_scores), scipy.stats.sem(test_scores))
 
 def score_classifier_vals(prop, vals, clf, X, y):
@@ -72,6 +78,24 @@ def score_classifier_vals(prop, vals, clf, X, y):
   best = {'prop': prop, 'value': sorted_results[0]['v'], 'score': sorted_results[0]['score']}
   dbg('\n\n\n\n', best)
   return sorted_results
+
+def score_operations_on_cols(clf, X, y, columns, operations, operator, n_iter=5):
+  best = X.cv(clf, y, n_iter=n_iter)
+  results = []
+  for c in columns:
+    if c not in X: continue
+    col_best = best
+    col_best_op = 'no-op'
+    for op in operations:
+      X2 = operator(X.copy(), c, op)      
+      score = X2.cv(clf, y, n_iter=n_iter)
+      if score[0] < col_best[0]:
+        col_best = score
+        col_best_op = str(op)
+    r = {'column': c, 'best': col_best_op, 'score': col_best[0], 'improvement': best[0] - col_best[0]}
+    results.append(r)
+    dbg(r)
+  return results
 
 def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3, 
     n_jobs=-2, scoring=None, fit_params=None, 
@@ -96,17 +120,19 @@ def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3,
 def dump(file, data):  
   if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
   if not '.' in file: file += '.pickle'
-  sklearn.external.joblib.dump(data, 'data/pickles/' + file);  
+  sklearn.externals.joblib.dump(data, 'data/pickles/' + file);  
 
 def load(file, opt_fallback=None):
+  start('loading file: ' + file)
   full_file = 'data/pickles/' + file
   if not '.' in full_file: full_file += '.pickle'
   if os.path.isfile(full_file): 
     if full_file.endswith('.npy'): return np.load(full_file)
-    else: return sklearn.external.joblib.load(full_file);
+    else: return sklearn.externals.joblib.load(full_file);
   if opt_fallback is None: return None
   data = opt_fallback()
   dump(file, data)
+  stop('done loading file: ' + file)
   return data
   
 def read_df(file, nrows=None):

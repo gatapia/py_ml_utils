@@ -27,6 +27,8 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
       return np.log(y + self.shift_val)
     elif self.transformation == 'arcsinh':
       return np.arcsinh(y)
+    elif self.transformation == 'pseudoLog10':
+      return np.arcsinh(y/2.)/np.log(10)
     else: raise Exception('Not Supported: ' + `self.transformation`)    
 
   def _on_fit_transform(self, y):
@@ -37,8 +39,12 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
     if not self.transform_on_fit: return self._do_transformation_impl(y)
     if not self.anti_transform_on_predict: return y
 
-    elif self.transformation.startswith('log'): return np.exp(y) - self.shift_val
-    elif self.transformation == 'arcsinh': return np.sinh(y)
+    elif self.transformation.startswith('log'): 
+      return np.exp(y) - self.shift_val
+    elif self.transformation == 'arcsinh': 
+      return np.sinh(y)
+    elif self.transformation == 'pseudoLog10': 
+      return np.sinh(y * 2) * np.log(10)
     else: raise Exception('Not Supported: ' + self.transformation)
 
 
