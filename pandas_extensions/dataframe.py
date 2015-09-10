@@ -292,6 +292,14 @@ def _df_subsample(self, y=None, size=0.5):
   misc.start('done, subsample data frame')
   return result
 
+def _df_col_subsample(self, fraction, random_state=None):
+  if random_state is not None: misc.seed(random_state)
+  else: misc.reseed(None)
+  column_idxs  = range(self.shape[1])
+  np.random.shuffle(column_idxs)
+  n_cols = max(1, int(fraction * len(column_idxs)))
+  return self.columns[column_idxs[:n_cols]]
+
 def _df_shuffle(self, y=None):    
   misc.start('shuffling data frame')  
   df = self.copy()  
@@ -598,7 +606,8 @@ def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
 
   new_minorities = smote.SMOTE(minorities.values, percentage_multiplier, n_neighbors)
   new_len = self.shape[0] + new_minorities.shape[0]
-  y2 = pd.Series(np.append(y.values, np.array([min_value] * len(new_minorities))), index=np.arange(new_len))
+  new_y_data = np.append(y.values, np.array([min_value] * len(new_minorities)))
+  y2 = pd.Series(new_y_data, index=np.arange(new_len))
   minorities_df = pd.DataFrame(new_minorities, columns=self.columns)
   new_df = self.copy().append_bottom(minorities_df)
   new_df.index = np.arange(new_len)
@@ -710,4 +719,5 @@ def _df_custom_cache(self, name, value=None):
 '''
 Add new methods manually using:
 pandas_extensions._extend_df('describe_similarity', _df_describe_similarity)
+pandas_extensions._extend_df('trim_on_y', _df_trim_on_y)
 '''  
