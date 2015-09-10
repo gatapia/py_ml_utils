@@ -38,7 +38,7 @@ def _df_infer_col_names(self):
   return self.ensure_unique_names()
 
 def _df_one_hot_encode(self, dtype=np.float):  
-  if self.categoricals(): self.to_indexes(drop_origianls=True)    
+  if self.categoricals(): self.to_indexes()    
 
   misc.start('one_hot_encoding data frame with ' + `self.shape[1]` + \
     ' columns. \n\tNOTE: this resturns a sparse array and empties' + \
@@ -70,7 +70,7 @@ def _df_one_hot_encode(self, dtype=np.float):
   misc.stop('done one_hot_encoding')
   return matrix.tocsr()
 
-def _df_to_indexes(self, drop_origianls=False, sparsify=False):
+def _df_to_indexes(self, drop_origianls=True, sparsify=False):
   misc.start('indexing categoricals in data frame')  
   cols = self.categoricals() + self.binaries()
   for c in cols: self['i_' + c] = self[c].astype('category').cat.codes
@@ -102,7 +102,9 @@ def _df_cats_to_ratio_of_samples(self):
     self[c].name = c.replace('c_', 'n_')
   return self
 
-def _df_cats_to_stat(self, y, stat='mean', remove_originals=True):
+def _df_cats_to_stat(self, y, stat='mean', 
+    remove_originals=True, columns=None, 
+    missing_value='missing', missing_treatment='missing-category'):
   '''
   stat: can be string 'mean', 'iqm', 'median', 'min', 'max' or
     'all' which creates a group of columns for each of the stats.
@@ -113,14 +115,16 @@ def _df_cats_to_stat(self, y, stat='mean', remove_originals=True):
     cols = stat.keys()
     for c in cols:
       s = stat[c]
-      self['n_' + c + '_' + s] = self[c].to_stat(y, s).astype(float)
+      self['n_' + c + '_' + s] = self[c].to_stat(y, s, 
+          missing_value=missing_value, missing_treatment=missing_treatment).astype(float)
   else:
     if stat == 'all': stat = ['mean', 'iqm', 'median', 'min', 'max']    
     if type(stat) is str: stat = [stat]
-    cols = self.categorical_like()
+    cols = columns if columns is not None else self.categorical_like()
     for s in stat:
       for c in cols: 
-        self['n_' + c + '_' + s] = self[c].to_stat(y, s).astype(float)
+        self['n_' + c + '_' + s] = self[c].to_stat(y, s,
+            missing_value=missing_value, missing_treatment=missing_treatment).astype(float)
   if remove_originals: self.remove(cols)
   misc.stop('done converting categoricals')
   return self
@@ -325,6 +329,9 @@ def _df_noise_filter(self, type, *args, **kargs):
   df = utils.create_df_from_templage(self, filtered, self.index)
   misc.stop('noise filtering done')
   return df
+
+def _df_split_train_test(self, y):  
+  return (self[:len(y)], self[len(y):])
 
 def _df_split(self, y, stratified=False, train_fraction=0.5):  
   if type(y) is not pd.Series: y = pd.Series(y)
@@ -647,18 +654,60 @@ def _df_viz(self):
   from viz.describe.describe_dataframe import DescribeDataFrame
   return DescribeDataFrame(self)
 
-def _df_discribe_similarity(self, other):
+def _df_describe_similarity(self, other):
+  single_val = []
+  diffs = []
   for c in self.columns:    
     if self[c].is_categorical_like() or self[c].is_date():
       tr_d = set(self[c].unique())
       te_d = set(other[c].unique())
-      intersection = tr_d.intersection(te_d)
-      difference = tr_d.difference(te_d)
-      misc.dbg('column:', c, 
-          'intersection:', len(intersection), 
-          'difference:', len(difference))
+      intersection = len(tr_d.intersection(te_d))
+      actual_diffs = tr_d.difference(te_d)
+      difference = len(actual_diffs)
+      if difference > 0:
+        diffs.append({'c': c, 'i': intersection, 'ad': actual_diffs, 'd': difference, 'p': (100. * difference / (intersection + difference))})
+      elif intersection == 1:
+        single_val.append(c)
+        
+  if len(single_val) > 0:
+    for c in single_val:
+      misc.dbg('column:', c, 'has only one value? consider removing')  
+    print '\n\n'
+
+  for r in sorted(diffs, key=lambda r: r['p'], reverse=True):
+    misc.dbg(r['c'], 
+        'same:', r['i'], 
+        'diff:', r['d'], 
+        '%% diff: %.1f' % (r['p']))
+    if r['d'] <=3:
+      misc.dbg('\tactual differences: %s:' % r['ad'])
+
+def _df_impute_categorical(self, column, missing_value=np.nan):
+  X = self.copy()
+  to_impute = X[X[column]==missing_value].remove(column)
+  to_impute_indexes = to_impute.index
+  to_train = X[X[column]!=missing_value]
+  y = to_train[column]
+  to_train.remove(column)
+  clf = sklearn.linear_model.LogisticRegression()
+  imputed_values = clf.fit(to_train, y).predict(to_impute)
+  self.ix[to_impute_indexes, column] = imputed_values
+  return self
+
+def _df_custom_cache(self, name, value=None):
+  hashcode = str(self.hashcode())
+  prop_name = hashcode + ':' + name
+  if '__custom_cache' not in self.__dict__:
+    self.__dict__['__custom_cache'] = {}
+  if value is not None:     
+    self.__custom_cache[prop_name] = value
+  for k in self.__custom_cache.keys():
+    this_hash = k.split(':')[0]
+    if this_hash != hashcode: 
+      del self.__custom_cache[k]
+  return self.__custom_cache[prop_name] if prop_name in self.__custom_cache else None  
 
 '''
 Add new methods manually using:
-pandas_extensions._extend_df('trim_on_y', _df_trim_on_y)
+pandas_extensions._extend_df('describe_similarity', _df_describe_similarity)
 '''  

@@ -210,7 +210,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
 
   def test_to_stat(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self.eq(pd.Series(['a', 'a', 'a', 'b', 'b', 'c']).to_stat([1., 2., 3., 4., 5., 6.]), [2, 2, 2, 4.5, 4.5, 6])  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.]), [2, 2, 2, 4.5, 4.5, 6])  
 
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
     self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'median'), [2, 2, 2, 4.5, 4.5, 6])  
@@ -225,6 +225,28 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
     self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'iqm'), [2. ,  2. ,  2. ,  4.5,  4.5,  6.])  
 
+  def test_to_stat_with_test(self):
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2)
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.]), 
+        [2, 2, 2, 4.5, 4.5, 6] * 2)  
+    
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2)
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'median'), [2, 2, 2, 4.5, 4.5, 6] * 2)
+
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2)
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'min'), [1, 1, 1, 4, 4, 6] * 2)
+
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2)
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'max'), [3, 3, 3, 5, 5, 6] * 2)
+
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2)
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'iqm'), [2. ,  2. ,  2. ,  4.5,  4.5,  6.] * 2)  
+
+  def test_to_stat_with_test_with_missing_vals(self):
+    s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2 + ['d', 'd'])
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.]), 
+        [2, 2, 2, 4.5, 4.5, 6] * 2 + [3.5, 3.5])  
+    
   def test_to_stat_larger_data(self):
     s = pd.Series(np.random.random(100000) * 10).astype(int)
     y = np.random.random(100000)
@@ -232,6 +254,13 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.assertEqual(s.copy().to_stat(y, 'median').mean(), 0.5043951662699959)
     self.assertEqual(s.copy().to_stat(y, 'min').mean(), 6.607534861049408e-05)
     self.assertEqual(s.copy().to_stat(y, 'max').mean(), 0.9999608457126161)
+
+    s = pd.Series(np.random.random(100000) * 20).astype(int)
+    y = np.random.random(100000)
+    self.assertEqual(s.copy().to_stat(y, 'mean').mean(), 0.4985913593313108)
+    self.assertEqual(s.copy().to_stat(y, 'median').mean(), 0.4975387552531616)
+    self.assertEqual(s.copy().to_stat(y, 'min').mean(), 0.00020554116883401405)
+    self.assertEqual(s.copy().to_stat(y, 'max').mean(), 0.999710657683425)
 
   def test_outliers(self):
     s = pd.Series(np.random.normal(size=200))

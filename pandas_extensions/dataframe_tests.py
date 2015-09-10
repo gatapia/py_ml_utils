@@ -915,3 +915,18 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df.floats_to_ints()
     self.eq(map(str, df.dtypes), ['int32', 'int32'])
     self.eq(df.mean(), [-95.74, 14277.78])
+
+  def test_impute_categorical(self):
+    df = pd.DataFrame({'n_1': np.random.random(1000)})
+    df['b_to_impute'] = df.n_1 > 0.5
+    df['b_to_impute'].ix[995:] = 'missing'
+    df.impute_categorical('b_to_impute', 'missing')
+    self.eq(df.b_to_impute[995:], df.n_1[995:] > 0.5)
+
+  def test_custom_cache(self):
+    df = pd.DataFrame({'n_1': np.random.random(100)})
+    self.assertIsNone(df.custom_cache('missing'))
+    self.assertEqual(123, df.custom_cache('key1', 123))
+    self.assertEqual(123, df.custom_cache('key1'))
+    df['new_column'] = np.random.random(100)
+    self.assertIsNone(df.custom_cache('key1'))
