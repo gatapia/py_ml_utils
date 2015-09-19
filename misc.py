@@ -42,8 +42,9 @@ def seed(seed):
   cfg['sys_seed'] = seed
   reseed(None)
 
-def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False, 
-      scoring=None, stratified=False, n_jobs=-1, fit_params=None):
+def do_cv(clf, X, y, n_samples=None, n_iter=3, 
+      test_size=None, quiet=False, scoring=None, 
+      stratified=False, n_jobs=-1, fit_params=None):
   if not quiet: start('starting cv', 'cv')
   reseed(clf)
   
@@ -55,8 +56,14 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   try:
     if (n_samples > X.shape[0]): n_samples = X.shape[0]
   except: pass
-  cv = sklearn.cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed']) \
-    if not(stratified) else sklearn.cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
+
+  if cfg['custom_cv'] is not None:
+    cv = cfg['custom_cv']
+  elif stratified:
+    cv = sklearn.cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
+  else:
+    cv = sklearn.cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed'])
+
   if n_jobs == -1 and cfg['cv_n_jobs'] > 0: n_jobs = cfg['cv_n_jobs']
 
   test_scores = sklearn.cross_validation.cross_val_score(
@@ -66,21 +73,22 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   if not quiet: stop('done CV %s' % score_desc, 'cv')
   return (np.mean(test_scores), scipy.stats.sem(test_scores))
 
-def score_classifier_vals(prop, vals, clf, X, y):
+def score_classifier_vals(prop, vals, clf, X, y, n_iter=3):
   results = []
   for v in vals:      
     target_clf = clf.base_classifier if hasattr(clf, 'base_classifier') else clf
-    target_clf = base.clone(target_clf)
+    target_clf = sklearn.base.clone(target_clf)
     setattr(target_clf, prop, v)    
-    score = do_cv(clf, X, y)
+    score = do_cv(target_clf, X, y, n_iter=n_iter)
     results.append({'prop': prop, 'v':v, 'score': score})  
-  sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=True)
+  sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=cfg['scoring_higher_better'])
   best = {'prop': prop, 'value': sorted_results[0]['v'], 'score': sorted_results[0]['score']}
   dbg('\n\n\n\n', best)
   return sorted_results
 
 def score_operations_on_cols(clf, X, y, columns, operations, operator, n_iter=5):
   best = X.cv(clf, y, n_iter=n_iter)
+  if not cfg['scoring_higher_better']: best *= -1
   results = []
   for c in columns:
     if c not in X: continue
@@ -89,6 +97,7 @@ def score_operations_on_cols(clf, X, y, columns, operations, operator, n_iter=5)
     for op in operations:
       X2 = operator(X.copy(), c, op)      
       score = X2.cv(clf, y, n_iter=n_iter)
+      if not cfg['scoring_higher_better']: score *= -1
       if score[0] < col_best[0]:
         col_best = score
         col_best_op = str(op)
@@ -164,7 +173,9 @@ def to_csv_gz(data_dict, file, columns=None):
 def optimise(predictions, y, scorer):
   def scorer_func(weights):
     means = np.average(predictions, axis=0, weights=weights)
-    return -scorer(y, means)  
+    s = scorer(y, means)  
+    if cfg['scoring_higher_better']: s *= -1
+    return s
 
   starting_values = [0.5]*len(predictions)
   cons = ({'type':'eq','fun':lambda w: 1-sum(w)})
@@ -209,8 +220,10 @@ cfg = {
   'sys_seed':0,
   'debug':True,
   'scoring': None,
+  'scoring_higher_better': True,
   'indent': 0,
-  'cv_n_jobs': -1
+  'cv_n_jobs': -1,
+  'custom_cv': None
 }
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)

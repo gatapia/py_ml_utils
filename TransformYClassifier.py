@@ -5,49 +5,67 @@ import pandas as pd
 import math
 
 class TransformYClassifier(BaseEstimator, ClassifierMixin):
-  def __init__(self, base_classifier, 
-      transformation, 
-      transform_on_fit=True, 
-      anti_transform_on_predict=True):    
-    self.base_classifier = base_classifier
-    self.transformation = transformation
-    self.shift_val = 0
+  def __init__(self, 
+      base_classifier, 
+      transform_on_fit=None, 
+      anti_transform_on_predict=None):   
+    '''
+    This wrapper allows transformation before calling
+    fit.  This is the transform_on_fit param.  We also 
+    support transformation after prediction this is the
+    anti_transform_on_predict.  One or both can be set.
+    If anti_transform_on_predict is the same special
+    string as transform_on_fit then we take the anti 
+    transformation if possible.  Both of these can
+    also be callables or a scaling factor.
+    '''
+    if transform_on_fit is None and anti_transform_on_predict is None:
+      raise Exception('Either transform_on_fit or anti_transform_on_predict must be set')
+      
+    self._shift_val = 0
+    self.base_classifier = base_classifier    
     self.transform_on_fit = transform_on_fit
     self.anti_transform_on_predict = anti_transform_on_predict
 
-  def _do_transformation_impl(self, X, y):
-    if hasattr(self.transformation, '__call__'):
-      return self.transformation(X, y)      
-    elif self.transformation.startswith('log'): 
-      if '+' in self.transformation:
-        self.shift_val = float(self.transformation.split('+')[1])        
+  def _on_fit_transform(self, X, y):
+    if hasattr(self.transform_on_fit, '__call__'):
+      return self.transform_on_fit(X, y)      
+    elif type(self.transform_on_fit) is float:
+      return y * self.transform_on_fit
+    elif self.transform_on_fit.startswith('log'): 
+      if '+' in self.transform_on_fit:
+        self._shift_val = float(self.transform_on_fit.split('+')[1])        
       else:
         ymin = y.min()
         if ymin < 0: 
-          self.shift_val = ymin * -1.01
-      return np.log(y + self.shift_val)
-    elif self.transformation == 'arcsinh':
+          self._shift_val = ymin * -1.01
+      return np.log(y + self._shift_val)
+    elif self.transform_on_fit == 'arcsinh':
       return np.arcsinh(y)
-    elif self.transformation == 'pseudoLog10':
+    elif self.transform_on_fit == 'pseudoLog10':
       return np.arcsinh(y/2.)/np.log(10)
-    else: raise Exception('Not Supported: ' + `self.transformation`)    
+    else: raise Exception('Not Supported: ' + `self.transform_on_fit`)    
 
-  def _on_fit_transform(self, X, y):
-    if not self.transform_on_fit: return y    
-    return self._do_transformation_impl(X, y)
-  
   def _post_predict_transform(self, X, y):
-    if not self.transform_on_fit: return self._do_transformation_impl(y)
     if not self.anti_transform_on_predict: return y
+
     if hasattr(self.anti_transform_on_predict, '__call__'):
       return self.anti_transform_on_predict(X, y)
-    elif self.transformation.startswith('log'): 
-      return np.exp(y) - self.shift_val
-    elif self.transformation == 'arcsinh': 
+
+    if self.anti_transform_on_predict != self.transform_on_fit:
+      raise Exception('Currently only the same operation is ' +
+          'supported _post_predict_transform as we try to ' +
+          'automatically apply the anti transformation')
+
+    if type(self.anti_transform_on_predict) is float:
+      return y / self.anti_transform_on_predict
+    elif self.anti_transform_on_predict.startswith('log'): 
+      return np.exp(y) - self._shift_val
+    elif self.anti_transform_on_predict == 'arcsinh': 
       return np.sinh(y)
-    elif self.transformation == 'pseudoLog10': 
+    elif self.anti_transform_on_predict == 'pseudoLog10': 
       return np.sinh(y * 2) * np.log(10)
-    else: raise Exception('Not Supported: ' + self.transformation)
+    else: raise Exception('Not Supported: ' + self.anti_transform_on_predict)
 
 
   def fit(self, X, y):    
