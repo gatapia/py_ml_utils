@@ -277,6 +277,18 @@ def _df_subsample(self, y=None, size=0.5):
   misc.start('done, subsample data frame')
   return result
 
+def _df_col_subsample_columns(self, fraction, random_state=None):
+  if random_state is not None: misc.seed(random_state)
+  else: misc.reseed(None)
+  column_idxs  = range(self.shape[1])
+  np.random.shuffle(column_idxs)
+  n_cols = max(1, int(fraction * len(column_idxs)))
+  return self.columns[column_idxs[:n_cols]]
+
+
+def _df_col_subsample(self, fraction, random_state=None):
+  return self[self.col_subsample_columns(fraction, random_state)]
+
 def _df_shuffle(self, y=None):    
   misc.start('shuffling data frame')  
   df = self.copy()  
