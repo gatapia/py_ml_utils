@@ -199,13 +199,31 @@ def _s_to_ratio_of_binary_target(self, y, positive_class=None):
     self[self==val] = ratio
   return self
 
-def _s_to_stat(self, y, stat='mean'):
+def _s_to_stat(self, y, stat='mean', 
+      missing_value='missing', missing_treatment='missing-category'):
   if not self.is_categorical_like(): raise Exception('only supported for categorical like columns')
   if type(y) is not pd.Series: y = pd.Series(y)  
-  df = pd.DataFrame({'c_1' : self.values, 'n_y': y.values})
+  train = self[:len(y)] 
+  test = self[len(y):]
+  df = pd.DataFrame({'c_1' : train, 'n_y': y.values})
+  
   def iqm(x): return np.mean(np.percentile(x, [75 ,25]))
 
-  return df.groupby('c_1')['n_y'].transform(iqm if stat == 'iqm' else stat)
+  train_values = df.groupby('c_1')['n_y'].\
+      transform(iqm if stat == 'iqm' else stat)
+  if len(test) == 0: 
+    return train_values
+  
+  _, not_in_train = train.difference_with(test, quiet=True)  
+  transformer = dict(zip(train, train_values))
+
+  test[test.isin(not_in_train)] = missing_value if \
+      missing_treatment == 'missing-category' and missing_value in transformer else 'use-whole-set'
+
+  if (missing_treatment != 'missing-category' or missing_value not in transformer):
+    transformer['use-whole-set'] = utils.get_col_aggregate(y, stat)
+
+  return train_values.append_bottom(test.map(transformer))
 
 def _s_to_rank(self, normalise=True):
   r = self.rank()
@@ -232,7 +250,22 @@ def _s_viz(self):
   from viz.describe_series import DescribeSeries
   return DescribeSeries(self)
 
+def _s_difference_with(self, other, quiet=False):
+  self_s = set(self.unique())
+  other_s = set(other.unique())
+  intersection = len(self_s.intersection(other_s))
+  actual_diffs = self_s.difference(other_s)
+  difference = len(actual_diffs)
+  if not quiet: misc.dbg('same:', intersection, 
+        'diff:', difference, 
+        '%% diff: %.1f' % (100. * difference / (intersection + difference)))
+  in_self = self_s - other_s
+  in_other = other_s - self_s
+  if not quiet: misc.dbg('in left: %s:' % in_self)
+  if not quiet: misc.dbg('in right: %s:' % in_other)
+  return (in_self, in_other)
+
 '''
 Add new methods manually using:
-pandas_extensions._extend_s('percentage_positive', _s_percentage_positive)
+pandas_extensions._extend_s('difference_with', _s_difference_with)
 '''    
