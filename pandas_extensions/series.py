@@ -1,5 +1,5 @@
 import pandas as pd, numpy as np
-import sklearn, datetime, utils
+import sklearn, datetime, utils, scipy
 from .. import misc
 
 def _s_one_hot_encode(self):
@@ -44,8 +44,7 @@ def _s_missing(self, fill='none'):
   
   val = utils.get_col_aggregate(self, fill)  
   self.fillna(val, inplace=True)
-  if self.name.startswith('n_'): 
-    self.replace([np.inf, -np.inf], val, inplace=True)  
+  if self.is_numerical(): self.replace([np.inf, -np.inf], val, inplace=True)  
 
   misc.stop('replacing series missing data')
   return self
@@ -63,34 +62,38 @@ def _s_scale(self, min_max=None):
   else:
     s -= s.mean()
     s /= s.std()
-
   return s
 
 def _s_is_valid_name(self):
   if not self.name: return False
-  return self.name.split('_')[0] in ['c', 'n', 'i', 'd', 'b']
+  for v in ['c_', 'n_', 'i_', 'd_', 'b_']:
+    if self.name.startswith(v): return True
+  return False
 
 def _s_is_categorical(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'c'
+  if self.is_valid_name(): return self.name.startswith('c_')
   return sklearn.utils.multiclass.type_of_target(self) == 'multiclass'
 
-def _s_is_indexes(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'i'
+def _s_is_index(self):
+  if self.is_valid_name(): return self.name.startswith('i_')
   return sklearn.utils.multiclass.type_of_target(self) == 'multiclass'
 
 def _s_is_binary(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'b'
-  return len(self.unique()) == 2
+  if self.is_valid_name(): return self.name.startswith('b_')
+  uniques = self.unique()
+  if len(uniques) == 1: 
+    misc.dbg('\n!!! columns: ' + self.name + ' has only 1 unique value and hence has no information and should be removed\n')
+  return len(uniques) == 2
 
 def _s_is_categorical_like(self):
-  return self.is_categorical() or self.is_indexes() or self.is_binary()
+  return self.is_categorical() or self.is_index() or self.is_binary()
 
 def _s_is_numerical(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'n'
+  if self.is_valid_name(): return self.name.startswith('n_')
   return sklearn.utils.multiclass.type_of_target(self) == 'continuous'
 
 def _s_is_date(self):
-  if self.is_valid_name(): return self.name.split('_')[0] == 'd'
+  if self.is_valid_name(): return self.name.startswith('d_')
   return str(self.dtype).startswith('date') or \
       type(self[0]) is pd.Timestamp or \
       type(self[0]) is datetime.datetime
@@ -133,8 +136,8 @@ def _s_compress_size(self, aggresiveness=0, sparsify=False):
   Always returns a new Series as inplace type change is not allowed
   '''
   c = self.copy()
-  if c.is_numerical() or c.is_indexes():
-    if c.is_indexes() or str(c.dtype).startswith('int'):        
+  if c.is_numerical() or c.is_index():
+    if c.is_index() or str(c.dtype).startswith('int'):        
       c = c.astype(utils.get_optimal_numeric_type('int', min(c), max(c)))
       return c if not sparsify else c.to_sparse(fill_value=int(c.mode()))    
     elif str(c.dtype).startswith('float'):
@@ -192,14 +195,73 @@ def _s_to_ratio_of_binary_target(self, y, positive_class=None):
     self[self==val] = ratio
   return self
 
-def _s_to_stat(self, y, stat='mean'):
+def _s_to_stat(self, y, stat='mean', 
+      missing_value='missing', missing_treatment='missing-category'):
   if not self.is_categorical_like(): raise Exception('only supported for categorical like columns')
   if type(y) is not pd.Series: y = pd.Series(y)  
-  for val in self.unique():              
-    self[self==val] = utils.get_col_aggregate(y[self == val], stat)
-  return self
+  train = self[:len(y)] 
+  test = self[len(y):]
+  df = pd.DataFrame({'c_1' : train, 'n_y': y.values})
+  
+  def iqm(x): return np.mean(np.percentile(x, [75 ,25]))
+
+  train_values = df.groupby('c_1')['n_y'].\
+      transform(iqm if stat == 'iqm' else stat)
+  if len(test) == 0: 
+    return train_values
+  
+  _, not_in_train = train.difference_with(test, quiet=True)  
+  transformer = dict(zip(train, train_values))
+
+  test[test.isin(not_in_train)] = missing_value if \
+      missing_treatment == 'missing-category' and missing_value in transformer else 'use-whole-set'
+
+  if (missing_treatment != 'missing-category' or missing_value not in transformer):
+    transformer['use-whole-set'] = utils.get_col_aggregate(y, stat)
+
+  return train_values.append_bottom(test.map(transformer))
 
 def _s_to_rank(self, normalise=True):
   r = self.rank()
   if normalise: r = r.normalise()
   return r
+
+def _s_boxcox(self):
+  minv = self.min()
+  if minv <= 0: self = 1 + (self - minv)
+  return scipy.stats.boxcox(self)[0]
+
+def _s_vc(self):
+  counts = self.value_counts(dropna=False)  
+  print counts, '\n', len(counts), 'uniques'
+
+def _s_floats_to_ints(self, decimals=5):
+  if not str(self.dtype).startswith('float'): return self
+  return (self * (10 ** decimals)).astype(int)
+
+def _s_percentage_positive(self, positive_val=True):
+  return float(len(self[self==positive_val])) / len(self)
+
+def _s_viz(self):
+  from viz.describe_series import DescribeSeries
+  return DescribeSeries(self)
+
+def _s_difference_with(self, other, quiet=False):
+  self_s = set(self.unique())
+  other_s = set(other.unique())
+  intersection = len(self_s.intersection(other_s))
+  actual_diffs = self_s.difference(other_s)
+  difference = len(actual_diffs)
+  if not quiet: misc.dbg('same:', intersection, 
+        'diff:', difference, 
+        '%% diff: %.1f' % (100. * difference / (intersection + difference)))
+  in_self = self_s - other_s
+  in_other = other_s - self_s
+  if not quiet: misc.dbg('in left: %s:' % in_self)
+  if not quiet: misc.dbg('in right: %s:' % in_other)
+  return (in_self, in_other)
+
+'''
+Add new methods manually using:
+pandas_extensions._extend_s('difference_with', _s_difference_with)
+'''    

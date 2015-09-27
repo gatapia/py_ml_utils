@@ -74,7 +74,7 @@ class GreedyFileEnsembler4(FileEnsembler):
           self.best_min_epochs = epoch + 1
           print 'new total best score found:', self.best_score
       else:
-        if epoch_index >= 0:                
+        if epoch_index >= 0 and epoch_score != -1:  
           self.ensemble.append(self.arrays[epoch_index])
           self.indexes.append(epoch_index)
           self.max_score = _score(np.mean(self.ensemble, 0), self.indexes)

@@ -1,5 +1,5 @@
 import gzip, scipy
-import pandas as pd
+import pandas as pd, numpy as np
 
 def chunked_iterator(df, chunk_size=1000000):
   start = 0
@@ -59,11 +59,12 @@ def get_optimal_numeric_type(dtype, min, max, aggresiveness=0):
 def get_col_aggregate(col, mode):
   '''
   col: A pandas column
-  mode: One of <constant>|mode|mean|median|min|max
+  mode: One of <constant>|mode|mean|iqm|median|min|max
   '''
   if type(mode) != str: return mode
   if mode == 'mode': return col.mode().iget(0) 
   if mode == 'mean': return col.mean()
+  if mode == 'iqm': return np.mean(np.percentile(col, [75 ,25]))
   if mode == 'median': return col.median()
   if mode == 'min': return col.min()
   if mode == 'max': return col.max()

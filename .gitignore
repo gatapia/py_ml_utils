@@ -1,3 +1,4 @@
+data/
 *.pyc
 nosetests.xml
 .coverage
