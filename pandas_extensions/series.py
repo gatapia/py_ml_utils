@@ -154,9 +154,13 @@ def _s_hashcode(self):
   item = tuple([index, values])
   return hash(item)
 
-def _s_add_noise(self, level=0.40):
+def _s_add_noise(self, level=0.40, mode='random'):
   misc.reseed(None)
-  return level * np.random.random(size=self.size) + (1 - level) * self
+  if mode == 'random':
+    return level * np.random.random(size=self.size) + (1 - level) * self
+  if mode =='gaussian':
+    return self + np.random.normal(scale=level, size=self.size)
+  raise Exception('mode: ' + mode + ' is not supported.')
 
 def _s_to_count_of_samples(self):
   if not self.is_categorical_like(): raise Exception('only supported for categorical like columns')

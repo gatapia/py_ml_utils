@@ -21,6 +21,7 @@ class GreedyFileEnsembler4(FileEnsembler):
 
     self.best_min_epochs = 0
     self.best_score = 0
+    self.best_indexes = []
 
   def _get_files(self, files):
     if hasattr(files, '__call__'): return files()
@@ -72,6 +73,7 @@ class GreedyFileEnsembler4(FileEnsembler):
         if self.max_score > self.best_score:
           self.best_score = self.max_score
           self.best_min_epochs = epoch + 1
+          self.best_indexes = self.indexes[:]
           print 'new total best score found:', self.best_score
       else:
         if epoch_index >= 0 and epoch_score != -1:  
@@ -89,4 +91,10 @@ class GreedyFileEnsembler4(FileEnsembler):
   def transform(self, test_files):
     test_arrays = self._get_files(test_files)
     test_ensemble = [test_arrays[i] for i in self.indexes]
+    return np.mean(test_ensemble, 0)
+
+
+  def transform_best(self, test_files):
+    test_arrays = self._get_files(test_files)
+    test_ensemble = [test_arrays[i] for i in self.best_indexes]
     return np.mean(test_ensemble, 0)

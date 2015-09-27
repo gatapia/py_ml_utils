@@ -182,9 +182,14 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.assertEqual(h1, h11)
 
   def test_add_noise(self):
-    np.random.seed(0)
     s = pd.Series(np.random.normal(size=10000))
     s2 = s.add_noise(.001)
+    self.assertFalse(s.is_equals(s2))
+    self.assertTrue(s.all_close(s2, .01))
+
+  def test_add_causian(self):
+    s = pd.Series(np.random.normal(size=10000))
+    s2 = s.add_noise(.001, mode='gaussian')
     self.assertFalse(s.is_equals(s2))
     self.assertTrue(s.all_close(s2, .01))
 

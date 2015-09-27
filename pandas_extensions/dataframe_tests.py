@@ -915,3 +915,13 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df.floats_to_ints()
     self.eq(map(str, df.dtypes), ['int32', 'int32'])
     self.eq(df.mean(), [-95.74, 14277.78])
+
+  def test_add_noise(self):
+    df = pd.DataFrame(np.random.normal(size=(100, 2)), columns=['n_1', 'n_2'])
+    df2 = df.copy().add_noise(.0001)
+    self.assertFalse(df.is_equal(df2))
+    self.close(df, df2)
+
+    df2 = df.copy().add_noise(.0001, mode='gaussian')
+    self.assertFalse(df.is_equal(df2))
+    self.close(df, df2)

@@ -667,7 +667,11 @@ def _df_discribe_similarity(self, other):
           'intersection:', len(intersection), 
           'difference:', len(difference))
 
+def _df_add_noise(self, level=.4, mode='random'):
+  for n in self.numericals(): self[n] = self[n].add_noise(level, mode)
+  return self
+
 '''
 Add new methods manually using:
-pandas_extensions._extend_df('trim_on_y', _df_trim_on_y)
+pandas_extensions._extend_df('add_noise', _df_add_noise)
 '''  

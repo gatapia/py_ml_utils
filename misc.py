@@ -27,7 +27,7 @@ def stop(msg, id=None):
     else: id = 'global'
   took = datetime.timedelta(seconds=time.time() - _message_timers[id]) \
     if id in _message_timers else 'unknown'
-  msg += (', took (h:m:s): %s' % took)
+  msg += (', took: %s' % str(took))
   log.info(msg)
   if id in _message_timers: del _message_timers[id]
   return msg
@@ -43,8 +43,8 @@ def seed(seed):
   reseed(None)
 
 def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False, 
-      scoring=None, stratified=False, n_jobs=-1, fit_params=None):
-  if not quiet: start('starting cv', 'cv')
+      scoring=None, stratified=False, n_jobs=-1, fit_params=None, prefix='CV'):
+  if not quiet: start('starting ' + prefix)
   reseed(clf)
   
   if n_samples is None: n_samples = len(X)
@@ -63,7 +63,7 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
       clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs, 
       fit_params=fit_params)
   score_desc = ("{0:.5f} (+/-{1:.5f})").format(np.mean(test_scores), scipy.stats.sem(test_scores))
-  if not quiet: stop('done CV %s' % score_desc, 'cv')
+  if not quiet: stop('done %s: %s' % (prefix, score_desc))
   return (np.mean(test_scores), scipy.stats.sem(test_scores))
 
 def score_classifier_vals(prop, vals, clf, X, y):
