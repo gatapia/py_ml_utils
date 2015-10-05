@@ -475,6 +475,20 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
       self.assertEquals(rows, df2.shape[0])
     impl('test.csv.gz')
 
+  def test_save_csv_with_existing_file(self):
+    df = pd.DataFrame({'col_1': range(10)})    
+    file = 'test.csv'
+    if os.path.isfile(file): os.remove(file)
+    df.save_csv(file)
+    self.assertTrue(os.path.isfile(file))
+    try:
+      df.save_csv(file)
+      self.fail()
+    except:
+      pass
+    self.assertTrue(os.path.isfile(file))
+    os.remove(file)
+
   def test_ensure_unique_names(self):
     df = pd.DataFrame({
       'c1':['a', 'b', 'c'] * 5,
