@@ -24,13 +24,19 @@ class GreedyFileEnsembler4(FileEnsembler):
     self.best_indexes = []
 
   def _get_files(self, files):
-    if hasattr(files, '__call__'): return files()
-    first = files[0]
-    if type(first) is str: 
-      loaded = [load(f) for f in files]
-      if loaded[0] is None: raise Exception('could not load files')
-      return loaded
-    return files
+    if hasattr(files, '__call__'): 
+      files = files()
+    else:
+      first = files[0]      
+      if type(first) is str: 
+        loaded = [load(f) for f in files]
+        if loaded[0] is None: raise Exception('could not load files')
+        files = loaded
+    
+    newarr = []
+    for arr in files:
+      newarr.append(arr.values if hasattr(arr, 'values') else arr)
+    return newarr
 
   def fit(self, train_files, y):        
     self.y = y
