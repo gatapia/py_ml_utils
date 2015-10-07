@@ -3,7 +3,7 @@ import sys, gzip, time, datetime, random, os, logging, gc, \
     scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
     sklearn.utils, sklearn.externals.joblib, inspect
 import numpy as np, pandas as pd
-from lib.xgb import XGBClassifier, XGBRegressor
+from xgboost import XGBClassifier, XGBRegressor
 
 def debug(msg): 
   if not cfg['debug']: return
