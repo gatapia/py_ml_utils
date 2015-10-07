@@ -125,9 +125,11 @@ def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3,
   dbg(gs.best_params_, gs.best_score_)  
   return gs
 
-def dump(file, data):  
+def dump(file, data, force=False):  
   if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
   if not '.' in file: file += '.pickle'
+  if os.path.isfile(file) and not force:
+    raise Exception('file: ' + file + ' already exists. Set force=True to overwrite.')
   sklearn.externals.joblib.dump(data, 'data/pickles/' + file);  
 
 def load(file, opt_fallback=None):
@@ -162,12 +164,6 @@ def read_df(file, nrows=None):
       df = pd.read_csv(file, compression=compression, nrows=nrows, sep=sep);
   stop('done reading dataframe')
   return df
-
-def to_csv_gz(data_dict, file, columns=None):
-  if file.endswith('.gz'): file = gzip.open(file, "wb")
-  df = data_dict
-  if type(df) is not pd.DataFrame: df = pd.DataFrame(df)
-  df.to_csv(file, index=False, columns=columns)  
 
 def optimise(predictions, y, scorer):
   def scorer_func(weights):

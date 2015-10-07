@@ -1,6 +1,6 @@
 import pandas as pd, numpy as np
 import itertools, random, gzip, gc, ast_parser, scipy, \
-  sklearn, sklearn.manifold, sklearn.cluster
+  sklearn, sklearn.manifold, sklearn.cluster, os
 from .. import misc
 from ..lib import smote
 import utils
@@ -527,7 +527,9 @@ def _df_trim_on_y(self, y, min_y=None, max_y=None):
   y = X['__tmpy']
   return (X.remove('__tmpy'), y)
 
-def _df_save_csv(self, file, header=True):   
+def _df_save_csv(self, file, header=True, force=False):   
+  if os.path.isfile(file) and not force:
+    raise Exception('File: ' + file + ' already exists.  To overwrite set force=True')
   if file.endswith('.pickle'): 
     dump(file, self)
     return self

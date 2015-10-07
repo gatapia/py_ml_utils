@@ -22,11 +22,11 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
   def test_start_stop(self):
     start('msg', 'id')
     msg = stop('msg', 'id')
-    self.assertTrue(msg.startswith('msg, took (h:m:s): 0:00'))
+    self.assertTrue(msg.startswith('msg, took: 0:00'))
 
     start('msg1', 'id1')
     start('msg2', 'id2')
     msg1 = stop('msg1', 'id1')
     msg2 = stop('msg2', 'id2')
-    self.assertTrue(msg1.startswith('msg1, took (h:m:s): 0:00'))
-    self.assertTrue(msg2.startswith('msg2, took (h:m:s): 0:00'))
+    self.assertTrue(msg1.startswith('msg1, took: 0:00'))
+    self.assertTrue(msg2.startswith('msg2, took: 0:00'))
