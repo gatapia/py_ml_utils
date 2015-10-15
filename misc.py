@@ -157,8 +157,13 @@ def read_df(file, nrows=None):
    
       with libarchive.reader(file) as reader:
         df = pd.read_csv(reader, nrows=nrows, sep=sep);
+    elif file.endswith('.zip'):
+      import zipfile
+      zf = zipfile.ZipFile(file)
+      if len(zf.filelist) != 1: raise Exception('zip files with multiple files not supported')
+      with zf.open(zf.filelist[0].filename) as reader:
+        df = pd.read_csv(reader, nrows=nrows, sep=sep);
     else:
-      
       compression = 'gzip' if file.endswith('.gz') else None
       nrows = None if nrows == None else int(nrows)  
       df = pd.read_csv(file, compression=compression, nrows=nrows, sep=sep);
