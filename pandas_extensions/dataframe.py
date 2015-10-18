@@ -70,11 +70,11 @@ def _df_one_hot_encode(self, dtype=np.float):
   misc.stop('done one_hot_encoding')
   return matrix.tocsr()
 
-def _df_to_indexes(self, drop_origianls=True, sparsify=False):
+def _df_to_indexes(self, columns=None, drop_origianls=True, sparsify=False):
   misc.start('indexing categoricals in data frame')  
-  cols = self.categoricals() + self.binaries()
-  for c in cols: self['i_' + c] = self[c].astype('category').cat.codes
-  if drop_origianls: self.drop(cols, 1, inplace=True)
+  if columns is None or len(columns) == 0: columns = self.categoricals() + self.binaries()
+  for c in columns: self['i_' + c] = self[c].astype('category').cat.codes
+  if drop_origianls: self.drop(columns, 1, inplace=True)
   misc.stop('done indexing categoricals in data frame')  
   return self
 
@@ -553,7 +553,7 @@ def _df_compress_size(self, aggresiveness=0, sparsify=False):
 
   original_bytes = self.nbytes()
   self.missing(categorical_fill='missing', numerical_fill='none')
-  self.toidxs(True)
+  self.toidxs(drop_origianls=True)
   for idx, c in enumerate(self.columns): 
     self[c] = self[c].compress_size(aggresiveness, sparsify)
 
@@ -727,5 +727,5 @@ def _df_add_noise(self, level=.4, mode='random'):
 
 '''
 Add new methods manually using:
-pandas_extensions._extend_df('describe_similarity', _df_describe_similarity)
+pandas_extensions._extend_df('to_indexes', _df_to_indexes)
 '''  

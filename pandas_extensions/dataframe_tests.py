@@ -47,7 +47,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
 
   def test_one_hot_encode_2_cols(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c'], 'c_2': ['d', 'e', 'f']})
-    df.to_indexes(True)
+    df.to_indexes(drop_origianls=True)
     df = df.one_hot_encode().toarray()    
     self.assertEquals((3, 6), df.shape)
     np.testing.assert_array_equal(df, [
@@ -367,12 +367,12 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
   def test_to_indexes(self):
     df = pd.DataFrame({'c_1':['a', 'b'], 'c_2':['c', 'd'], 'n_1': [1, 2]})
     print df.values
-    df.to_indexes(True)
+    df.to_indexes(drop_origianls=True)
     self.eq(df, [[1, 0, 0], [2, 1, 1]])
 
   def test_to_indexes_with_NA(self):
     df = pd.DataFrame({'c_1':['a', 'b', np.nan], 'c_2':['c', 'd', np.nan], 'n_1': [1, 2, 3]})
-    df.to_indexes(True)
+    df.to_indexes(drop_origianls=True)
     self.eq(df, [[1, 0, 0], [2, 1, 1], [3, -1, -1]])
   
   def test_cv(self):
@@ -715,11 +715,6 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     predictions = df.predict(lr, y)
     self.eq([1, 0], predictions)
 
-    df = pd.DataFrame(np.random.normal(size=(10, 2)))
-    df_test = pd.DataFrame(np.random.normal(size=(3, 2)))
-    predictions = df.predict(lr, y, df_test)
-    self.eq([0, 0, 0], predictions)
-
   def test_predict_proba(self):
     lr = sklearn.linear_model.LogisticRegression()
     df = pd.DataFrame(np.random.normal(size=(10, 2)))
@@ -730,14 +725,6 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df = pd.DataFrame(np.random.normal(size=(12, 2)))
     predictions = pd.DataFrame(df.predict_proba(lr, y))
     self.close(predictions, [[ 0.133813,  0.866187], [ 0.827253,  0.172747]])
-
-    df = pd.DataFrame(np.random.normal(size=(10, 2)))
-    df_test = pd.DataFrame(np.random.normal(size=(3, 2)))
-    predictions = pd.DataFrame(df.predict_proba(lr, y, df_test))
-    exp = [[ 0.933073,  0.066927],
-           [ 0.943035,  0.056965],
-           [ 0.915039,  0.084961]]
-    self.close(predictions, exp)
 
   def test_transform(self):
     lr = sklearn.linear_model.LogisticRegression()
@@ -750,11 +737,6 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     predictions = pd.DataFrame(df.transform(lr, y))
     self.close(predictions, [[-2.55299], [0.864436]])
 
-    df = pd.DataFrame(np.random.normal(size=(10, 2)))
-    df_test = pd.DataFrame(np.random.normal(size=(3, 2)))
-    predictions = pd.DataFrame(df.transform(lr, y, df_test))
-    self.close(predictions, [[0.229887], [1.62716], [0.230434]])
-
   def test_decision_function(self):
     lr = sklearn.linear_model.LogisticRegression()
     df = pd.DataFrame(np.random.normal(size=(10, 2)))
@@ -765,11 +747,6 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     df = pd.DataFrame(np.random.normal(size=(12, 2)))
     predictions = df.decision_function(lr, y)
     self.close([1.867659, -1.56628], predictions)
-
-    df = pd.DataFrame(np.random.normal(size=(10, 2)))
-    df_test = pd.DataFrame(np.random.normal(size=(3, 2)))
-    predictions = df.decision_function(lr, y, df_test)
-    self.close([-2.635, -2.807, -2.377], predictions)
 
   def test_self_predict(self):
     lr = sklearn.linear_model.LogisticRegression()
@@ -816,15 +793,15 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
   def test_hashcode(self):
     np.random.seed(0)
     df = pd.DataFrame(np.random.normal(size=(1000, 2)), columns=['n_1', 'n_2'])
-    self.assertEqual(-626964747, df.hashcode())
+    v1 = df.hashcode()
 
     np.random.seed(0)
     df = pd.DataFrame(np.random.normal(size=(1000, 2)), columns=['n_1', 'n_2'])
-    self.assertEqual(-626964747, df.hashcode())
+    self.assertEqual(v1, df.hashcode())
 
     np.random.seed(1)
     df = pd.DataFrame(np.random.normal(size=(1000, 2)), columns=['n_1', 'n_2'])
-    self.assertEqual(-1185565617, df.hashcode())
+    self.assertNotEqual(v1, df.hashcode())
 
   def test_trim_on_y(self):
     df = pd.DataFrame(np.random.normal(size=(1000, 2)))

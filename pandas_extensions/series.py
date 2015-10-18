@@ -241,7 +241,7 @@ def _s_vc(self):
 
 def _s_floats_to_ints(self, decimals=5):
   if not str(self.dtype).startswith('float'): return self
-  return (self * (10 ** decimals)).astype(int)
+  return (self * (10 ** decimals)).astype(np.int32)
 
 def _s_percentage_positive(self, positive_val=True):
   return float(len(self[self==positive_val])) / len(self)
