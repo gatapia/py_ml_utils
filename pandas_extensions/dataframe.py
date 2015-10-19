@@ -37,19 +37,23 @@ def _df_infer_col_names(self):
   self.columns = [self.ix[:,i].infer_col_name().name for i in range(self.shape[1])]
   return self.ensure_unique_names()
 
-def _df_one_hot_encode(self, dtype=np.float):  
-  if self.categoricals(): self.to_indexes()    
+def _df_one_hot_encode(self, columns=None, dtype=np.float):  
+  if self.categoricals(): 
+    self.to_indexes(columns=columns)    
+    if columns is not None: columns = ['i_' for c in columns]
 
   misc.start('one_hot_encoding data frame with ' + `self.shape[1]` + \
     ' columns. \n\tNOTE: this resturns a sparse array and empties' + \
     ' the initial array.')  
 
   misc.debug('separating categoricals from others')
-  indexes = self.indexes()
-  if not indexes: return self
-  others = filter(lambda c: not c in indexes, self.columns)
+  if columns is None: columns = self.indexes()  
+  if len(columns) == 0: 
+    misc.stop('no columns found to one hot encode, returning original data frame')
+    return self
+  others = filter(lambda c: not c in columns, self.columns)
 
-  categorical_df = self[indexes]    
+  categorical_df = self[columns]    
   others_df = scipy.sparse.coo_matrix(self[others].values)
 
   # Destroy original as it now just takes up memory
@@ -57,7 +61,7 @@ def _df_one_hot_encode(self, dtype=np.float):
   gc.collect()
 
   ohe_sparse = None
-  for i, c in enumerate(indexes):
+  for i, c in enumerate(columns):
     misc.debug('one hot encoding column: ' + `c`)
     col_ohe = sklearn.preprocessing.OneHotEncoder(categorical_features=[0], dtype=dtype).\
       fit_transform(categorical_df[[c]])
@@ -70,11 +74,11 @@ def _df_one_hot_encode(self, dtype=np.float):
   misc.stop('done one_hot_encoding')
   return matrix.tocsr()
 
-def _df_to_indexes(self, drop_origianls=True, sparsify=False):
+def _df_to_indexes(self, columns=None, drop_origianls=True, sparsify=False):
   misc.start('indexing categoricals in data frame')  
-  cols = self.categoricals() + self.binaries()
-  for c in cols: self['i_' + c] = self[c].astype('category').cat.codes
-  if drop_origianls: self.drop(cols, 1, inplace=True)
+  if columns is None or len(columns) == 0: columns = self.categoricals() + self.binaries()
+  for c in columns: self['i_' + c] = self[c].astype('category').cat.codes
+  if drop_origianls: self.drop(columns, 1, inplace=True)
   misc.stop('done indexing categoricals in data frame')  
   return self
 
@@ -362,13 +366,13 @@ def _df_split(self, y, stratified=False, train_fraction=0.5):
   misc.stop('splitting done')
   return new_set
 
-def _df_cv(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):  
-  return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring, n_jobs, fit_params)
+def _df_cv(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None, prefix=None):  
+  return _df_cv_impl_(self, clf, y, n_samples, n_iter, scoring, n_jobs, fit_params, prefix)
 
-def _df_cv_ohe(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):  
-  return _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring, n_jobs, fit_params)
+def _df_cv_ohe(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None, prefix=None):  
+  return _df_cv_impl_(self.one_hot_encode(), clf, y, n_samples, n_iter, scoring, n_jobs, fit_params, prefix)
 
-def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None):    
+def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None, prefix=None):    
   if hasattr(y, 'values'): y = y.values
   if n_samples is None: n_samples = len(y)
   else: n_samples = min(n_samples, len(y), X.shape[0])
@@ -379,7 +383,8 @@ def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, f
   if hasattr(score_name, '__name__'): score_name = score_name.__name__
   misc.start('starting ' + `n_iter` + ' fold cross validation (' + 
       `n_samples` + ' samples) w/ metric: ' + str(score_name))
-  cv = misc.do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, quiet=True, n_jobs=n_jobs, fit_params=fit_params)
+  cv = misc.do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, 
+    quiet=prefix is None, n_jobs=n_jobs, fit_params=fit_params, prefix=prefix)
   misc.stop('done cross validation:\n  [CV]: ' + ("{0:.5f} (+/-{1:.5f})").format(cv[0], cv[1]))  
   return cv
 
@@ -727,5 +732,5 @@ def _df_add_noise(self, level=.4, mode='random'):
 
 '''
 Add new methods manually using:
-pandas_extensions._extend_df('describe_similarity', _df_describe_similarity)
+pandas_extensions._extend_df('one_hot_encode', _df_one_hot_encode)
 '''  
