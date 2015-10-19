@@ -82,26 +82,30 @@ def _df_to_indexes(self, columns=None, drop_origianls=True, sparsify=False):
   misc.stop('done indexing categoricals in data frame')  
   return self
 
-def _df_cats_to_count_of_binary_target(self, y, positive_class=None):
-  for c in self.categorical_like():
+def _df_cats_to_count_of_binary_target(self, y, columns=None, positive_class=None):
+  if columns is None or len(columns) == 0: columns = self.categorical_like()
+  for c in columns:
     self[c] = self[c].to_count_of_binary_target(y, positive_class)
     self[c].name = c.replace('c_', 'n_')
   return self
 
-def _df_cats_to_ratio_of_binary_target(self, y, positive_class=None):
-  for c in self.categorical_like():
+def _df_cats_to_ratio_of_binary_target(self, y, columns=None, positive_class=None):
+  if columns is None or len(columns) == 0: columns = self.categorical_like()
+  for c in columns:
     self[c] = self[c].to_ratio_of_binary_target(y, positive_class)
     self[c].name = c.replace('c_', 'n_')
   return self
 
-def _df_cats_to_count_of_samples(self):
-  for c in self.categorical_like():
+def _df_cats_to_count_of_samples(self, columns=None):
+  if columns is None or len(columns) == 0: columns = self.categorical_like()
+  for c in columns:
     self[c] = self[c].to_count_of_samples()
     self[c].name = c.replace('c_', 'n_')
   return self
 
-def _df_cats_to_ratio_of_samples(self):
-  for c in self.categorical_like():
+def _df_cats_to_ratio_of_samples(self, columns=None):
+  if columns is None or len(columns) == 0: columns = self.categorical_like()
+  for c in columns:
     self[c] = self[c].to_ratio_of_samples()
     self[c].name = c.replace('c_', 'n_')
   return self
@@ -726,8 +730,9 @@ def _df_custom_cache(self, name, value=None):
       del self.__custom_cache[k]
   return self.__custom_cache[prop_name] if prop_name in self.__custom_cache else None  
 
-def _df_add_noise(self, level=.4, mode='random'):
-  for n in self.numericals(): self[n] = self[n].add_noise(level, mode)
+def _df_add_noise(self, columns=None, level=.4, mode='random'):
+  if columns is None or len(columns) == 0: columns = self.numericals()
+  for n in columns: self[n] = self[n].add_noise(level, mode)
   return self
 
 '''
