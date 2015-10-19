@@ -224,7 +224,7 @@ def _s_to_stat(self, y, stat='mean',
   if (missing_treatment != 'missing-category' or missing_value not in transformer):
     transformer['use-whole-set'] = utils.get_col_aggregate(y, stat)
   s =  train_values.append_bottom(test.map(transformer))
-  if noise_level > 0: s.add_noise(noise_level, 'gaussian')
+  if noise_level > 0: s = s.add_noise(noise_level, 'gaussian')
   return s
 
 def _s_to_rank(self, normalise=True):
