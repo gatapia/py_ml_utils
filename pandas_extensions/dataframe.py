@@ -112,7 +112,7 @@ def _df_cats_to_ratio_of_samples(self, columns=None):
 
 def _df_cats_to_stat(self, y, stat='mean', 
     remove_originals=True, columns=None, 
-    missing_value='missing', missing_treatment='missing-category'):
+    missing_value='missing', missing_treatment='missing-category', noise_level=None):
   '''
   stat: can be string 'mean', 'iqm', 'median', 'min', 'max' or
     'all' which creates a group of columns for each of the stats.
@@ -131,8 +131,8 @@ def _df_cats_to_stat(self, y, stat='mean',
     cols = columns if columns is not None else self.categorical_like()
     for s in stat:
       for c in cols: 
-        self['n_' + c + '_' + s] = self[c].to_stat(y, s,
-            missing_value=missing_value, missing_treatment=missing_treatment).astype(float)
+        self['n_' + c + '_' + s] = self[c].to_stat(y, s, missing_value=missing_value, 
+            missing_treatment=missing_treatment, noise_level=noise_level).astype(float)
   if remove_originals: self.remove(cols)
   misc.stop('done converting categoricals')
   return self
@@ -737,5 +737,5 @@ def _df_add_noise(self, columns=None, level=.4, mode='random'):
 
 '''
 Add new methods manually using:
-pandas_extensions._extend_df('one_hot_encode', _df_one_hot_encode)
+pandas_extensions._extend_df('cats_to_stat', _df_cats_to_stat)
 '''  

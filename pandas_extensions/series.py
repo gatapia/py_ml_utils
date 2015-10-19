@@ -200,8 +200,9 @@ def _s_to_ratio_of_binary_target(self, y, positive_class=None):
   return self
 
 def _s_to_stat(self, y, stat='mean', 
-      missing_value='missing', missing_treatment='missing-category'):
-  if not self.is_categorical_like(): raise Exception('only supported for categorical like columns')
+      missing_value='missing', missing_treatment='missing-category', 
+      noise_level=None):
+  # if not self.is_categorical_like(): raise Exception('only supported for categorical like columns')
   if type(y) is not pd.Series: y = pd.Series(y)  
   train = self[:len(y)] 
   test = self[len(y):]
@@ -222,8 +223,9 @@ def _s_to_stat(self, y, stat='mean',
 
   if (missing_treatment != 'missing-category' or missing_value not in transformer):
     transformer['use-whole-set'] = utils.get_col_aggregate(y, stat)
-
-  return train_values.append_bottom(test.map(transformer))
+  s =  train_values.append_bottom(test.map(transformer))
+  if noise_level > 0: s.add_noise(noise_level, 'gaussian')
+  return s
 
 def _s_to_rank(self, normalise=True):
   r = self.rank()
@@ -267,5 +269,5 @@ def _s_difference_with(self, other, quiet=False):
 
 '''
 Add new methods manually using:
-pandas_extensions._extend_s('difference_with', _s_difference_with)
+pandas_extensions._extend_s('to_stat', _s_to_stat)
 '''    
