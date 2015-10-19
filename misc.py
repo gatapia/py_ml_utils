@@ -78,9 +78,9 @@ def score_classifier_vals(prop, vals, clf, X, y, n_iter=3):
     target_clf = clf.base_classifier if hasattr(clf, 'base_classifier') else clf
     target_clf = sklearn.base.clone(target_clf)
     setattr(target_clf, prop, v)    
-    score = do_cv(target_clf, X, y, n_iter=n_iter)
+    score = do_cv(target_clf, X, y, n_iter=n_iter, prefix='CV - prop[%s] val[%s]' % (prop, str(v)))
     results.append({'prop': prop, 'v':v, 'score': score})  
-  sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=cfg['scoring_higher_better'])
+  sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=True)
   best = {'prop': prop, 'value': sorted_results[0]['v'], 'score': sorted_results[0]['score']}
   dbg('\n\n\n\n', best)
   return sorted_results

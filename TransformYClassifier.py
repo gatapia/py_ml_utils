@@ -68,8 +68,9 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
     else: raise Exception('Not Supported: ' + self.anti_transform_on_predict)
 
 
-  def fit(self, X, y):    
-    self.base_classifier.fit(X, self._on_fit_transform(X, y))
+  def fit(self, X, y, fit_params=None):    
+    if fit_params is None: fit_params = {}
+    self.base_classifier.fit(X, self._on_fit_transform(X, y), **fit_params)
     return self
 
   def predict(self, X): 

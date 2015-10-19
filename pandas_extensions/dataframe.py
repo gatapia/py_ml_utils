@@ -558,7 +558,7 @@ def _df_compress_size(self, aggresiveness=0, sparsify=False):
 
   original_bytes = self.nbytes()
   self.missing(categorical_fill='missing', numerical_fill='none')
-  self.toidxs(True)
+  self.toidxs(drop_origianls=True)
   for idx, c in enumerate(self.columns): 
     self[c] = self[c].compress_size(aggresiveness, sparsify)
 
