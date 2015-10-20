@@ -210,20 +210,19 @@ def _s_to_stat(self, y, stat='mean',
   
   def iqm(x): return np.mean(np.percentile(x, [75 ,25]))
 
-  train_values = df.groupby('c_1')['n_y'].\
+  s = df.groupby('c_1')['n_y'].\
       transform(iqm if stat == 'iqm' else stat)
-  if len(test) == 0: 
-    return train_values
-  
-  _, not_in_train = train.difference_with(test, quiet=True)  
-  transformer = dict(zip(train, train_values))
+  if len(test) > 0:   
+    _, not_in_train = train.difference_with(test, quiet=True)  
+    transformer = dict(zip(train, s))
 
-  test[test.isin(not_in_train)] = missing_value if \
-      missing_treatment == 'missing-category' and missing_value in transformer else 'use-whole-set'
+    test[test.isin(not_in_train)] = missing_value if \
+        missing_treatment == 'missing-category' and missing_value in transformer else 'use-whole-set'
 
-  if (missing_treatment != 'missing-category' or missing_value not in transformer):
-    transformer['use-whole-set'] = utils.get_col_aggregate(y, stat)
-  s =  train_values.append_bottom(test.map(transformer))
+    if (missing_treatment != 'missing-category' or missing_value not in transformer):
+      transformer['use-whole-set'] = utils.get_col_aggregate(y, stat)
+    s =  s.append_bottom(test.map(transformer))  
+    
   if noise_level > 0: s = s.add_noise(noise_level, 'gaussian')
   return s
 

@@ -124,7 +124,7 @@ def _df_cats_to_stat(self, y, stat='mean',
     for c in cols:
       s = stat[c]
       self['n_' + c + '_' + s] = self[c].to_stat(y, s, 
-          missing_value=missing_value, missing_treatment=missing_treatment).astype(float)
+          missing_value=missing_value, missing_treatment=missing_treatment, noise_level=noise_level).astype(float)
   else:
     if stat == 'all': stat = ['mean', 'iqm', 'median', 'min', 'max']    
     if type(stat) is str: stat = [stat]
