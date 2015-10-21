@@ -695,7 +695,7 @@ def _df_describe_similarity(self, other):
   if len(single_val) > 0:
     for c in single_val:
       misc.dbg('column:', c, 'has only one value? consider removing')  
-    print '\n\n'
+    misc.dbg('\n\n')
 
   for r in sorted(diffs, key=lambda r: r['p'], reverse=True):
     misc.dbg(r['c'], 
@@ -732,10 +732,11 @@ def _df_custom_cache(self, name, value=None):
 
 def _df_add_noise(self, columns=None, level=.4, mode='random'):
   if columns is None or len(columns) == 0: columns = self.numericals()
+  if len(columns) == 0: misc.dbg('not adding noise: no numerical columns found')
   for n in columns: self[n] = self[n].add_noise(level, mode)
   return self
 
 '''
 Add new methods manually using:
-pandas_extensions._extend_df('cats_to_stat', _df_cats_to_stat)
+pandas_extensions._extend_df('add_noise', _df_add_noise)
 '''  

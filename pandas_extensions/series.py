@@ -238,7 +238,7 @@ def _s_boxcox(self):
 
 def _s_vc(self):
   counts = self.value_counts(dropna=False)  
-  print counts, '\n', len(counts), 'uniques'
+  misc.dbg(counts, '\n', len(counts), 'uniques')
 
 def _s_floats_to_ints(self, decimals=5):
   if not str(self.dtype).startswith('float'): return self
