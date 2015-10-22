@@ -41,10 +41,9 @@ def _s_append_bottom(self, s):
 
 def _s_missing(self, fill='none'):  
   misc.start('replacing series missing data fill[' + `fill` + ']')
-  
-  val = utils.get_col_aggregate(self, fill)  
+  val = utils.get_col_aggregate(self, fill)    
   self.fillna(val, inplace=True)
-  if self.is_numerical(): self.replace([np.inf, -np.inf], val, inplace=True)  
+  self.replace([np.inf, -np.inf], val, inplace=True)  
 
   misc.stop('replacing series missing data')
   return self
