@@ -64,7 +64,14 @@ def get_col_aggregate(col, mode):
   if type(mode) != str: return mode
   if mode == 'mode': return col.mode().iget(0) 
   if mode == 'mean': return col.mean()
-  if mode == 'iqm': return np.mean(np.percentile(col, [75 ,25]))
+  if mode == 'iqm': 
+    to_replace = np.isnan(col) | np.isinf(col) | np.isneginf(col)
+    if np.any(to_replace): 
+      col[to_replace] = col.mean()
+      iqm = np.mean(np.percentile(col, [75 ,25]))
+      col[to_replace] = np.nan
+      return iqm
+    return np.mean(np.percentile(col, [75 ,25]))
   if mode == 'median': return col.median()
   if mode == 'min': return col.min()
   if mode == 'max': return col.max()

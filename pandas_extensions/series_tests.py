@@ -65,8 +65,8 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
   def test_missing_with_iqm(self):
     s = pd.Series(np.random.random(100))
     s[50] = np.nan
-    s.missing('iqm')
-    self.close(s[50], 0.449782)
+    s = s.missing('iqm')
+    self.close(s[50], 0.4451432058306285)
 
   def test_scale(self):
     self.eq(pd.Series([1, 2, 3]).scale(), [-1, 0, 1])    
