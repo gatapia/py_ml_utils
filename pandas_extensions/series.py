@@ -156,7 +156,7 @@ def _s_hashcode(self):
 def _s_add_noise(self, level=0.40, mode='random'):
   misc.reseed(None)
   if mode == 'random':
-    return level * np.random.random(size=self.size) + (1 - level) * self
+    return self + self * (level * np.random.random(size=self.size) - (level/2.))
   if mode =='gaussian':
     return self + np.random.normal(scale=level, size=self.size)
   raise Exception('mode: ' + mode + ' is not supported.')
@@ -267,5 +267,5 @@ def _s_difference_with(self, other, quiet=False):
 
 '''
 Add new methods manually using:
-pandas_extensions._extend_s('to_stat', _s_to_stat)
+pandas_extensions._extend_s('add_noise', _s_add_noise)
 '''    
