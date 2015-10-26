@@ -28,6 +28,7 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
     self.anti_transform_on_predict = anti_transform_on_predict
 
   def _on_fit_transform(self, X, y):
+    if self.transform_on_fit is None: return y
     if hasattr(self.transform_on_fit, '__call__'):
       return self.transform_on_fit(X, y)      
     elif type(self.transform_on_fit) is float:

@@ -4,6 +4,7 @@ import sys, gzip, time, datetime, random, os, logging, gc, \
     sklearn.utils, sklearn.externals.joblib, inspect
 import numpy as np, pandas as pd, xgboost as xgb
 from xgboost import XGBClassifier, XGBRegressor
+from pandas import Series, DataFrame
 
 def debug(msg): 
   if not cfg['debug']: return
