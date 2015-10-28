@@ -674,7 +674,7 @@ def _df_floats_to_ints(self, decimals=5):
   return self
 
 def _df_viz(self):
-  from viz.describe.describe_dataframe import DescribeDataFrame
+  from .viz.describe_dataframe import DescribeDataFrame
   return DescribeDataFrame(self)
 
 def _df_describe_similarity(self, other):

@@ -6,6 +6,7 @@ from IPython.nbformat import v4 as nbf
 from IPython import html
 from subprocess import call
 from .utils import Utils
+import pandas as pd, numpy as np
 
 class DescribeDataFrame(Utils):
   #############################################################################
@@ -29,6 +30,12 @@ class DescribeDataFrame(Utils):
     Xy = X.subsample(opt_y, 5e5)  
     self.X = Xy.copy() if opt_y is None else Xy[0].copy()
     self.X_no_nan = self.X.copy().missing('na', 0)
+    if np.any(self.X_no_nan < 0):
+      for c in self.X_no_nan.columns:        
+        s = self.X_no_nan[c]
+        if np.all(s >= 0): continue
+        offset = abs(s.min())
+        self.X_no_nan[c] = s + offset
     if opt_y is not None:
       self.y = Xy[1].copy()
       self.y.name = 'y'
@@ -75,16 +82,16 @@ class DescribeDataFrame(Utils):
     self.flush_cell()
 
   def _intialise_feature_basic_details(self):
-    self.importances = self.__get_column_importances()    
+    self.importances = self._get_column_importances()    
     self.variances = self.X.var().values
     if self.y is None:
       self.col_details = zip(self.X.columns, self.importances, self.variances)
     elif self.is_regression:
-      self.f_scores = self.__get_column_f_regression_scores()    
+      self.f_scores = self._get_column_f_regression_scores()    
       self.col_details = zip(self.X.columns, self.importances, self.f_scores, self.variances)
     else:
-      self.f_classif_scores = self.__get_column_f_classification_scores()    
-      self.chi2_scores = self.__get_column_chi2_classification_scores()          
+      self.f_classif_scores = self._get_column_f_classification_scores()    
+      self.chi2_scores = self._get_column_chi2_classification_scores()          
       self.col_details = zip(self.X.columns, self.importances, self.f_classif_scores, self.chi2_scores, self.variances)
 
     self.col_details = sorted(self.col_details, key=lambda d: d[1], reverse=True)
@@ -120,10 +127,11 @@ class DescribeDataFrame(Utils):
     return scores
 
   def _get_column_specified_type(self, col_name):
-    if col_name.startswith('c_'): return 'categorical'
-    if col_name.startswith('i_'): return 'categorical index'
+    if col_name.startswith('c_'): return 'multiclass'
+    if col_name.startswith('i_c'): return 'multiclass'    
     if col_name.startswith('n_'): return 'continuous'
-    if col_name.startswith('b_'): return 'binary (0, 1)'
+    if col_name.startswith('b_'): return 'binary'
+    if col_name.startswith('i_b'): return 'binary'
     if col_name.startswith('d_'): return 'date'
     return 'unknown'
 
@@ -147,7 +155,7 @@ class DescribeDataFrame(Utils):
   def _do_column_summary_row(self, idx, col_details):
     col_name = col_details[0]
     inferred = self.type(self.X[col_name])
-    specified = self.  __get_column_specified_type(col_name)
+    specified = self._get_column_specified_type(col_name)
     inf_same_specified = inferred == specified
     cols = [
       col_name, 
@@ -164,11 +172,10 @@ class DescribeDataFrame(Utils):
     self.txt('<tr><td>' + '</td><td>'.join(map(self.pretty, cols)) + '</td></tr>')
 
   def _do_column_summary_charts(self):
-    numericals = self.X.numericals()
-    self.txt('<hr/>\n#Top ' + `max(5, len(numericals))` + ' Column Interaction', True)
+    numericals = self.X.numericals()[:5]
+    self.txt('<hr/>\n#Top ' + `len(numericals)` + ' Column Interaction', True)
     valid_col_details = filter(lambda c: c[0] in numericals, self.col_details)
     top_X = map(lambda c: c[0], valid_col_details[:5])
-    print 'numericals:', numericals,'top_X:', top_X, 'valid_col_details:', valid_col_details
     self.code([
       'top_X = ' + str(top_X),      
       '_ = pd.tools.plotting.scatter_matrix(X[top_X], alpha=0.2, figsize=(12, 12), diagonal="kde")'
@@ -195,13 +202,13 @@ class DescribeDataFrame(Utils):
   def _do_column_details(self, idx, col):    
     col_name = col[0]
     c = self.X[col_name]    
-    specifiedself.type = self.  __get_column_specified_type(col_name)
-    inferredself.type = self.type(c)
+    specified_type = self._get_column_specified_type(col_name)
+    inferred_type = self.type(c)
 
     self.txt('\n\n<hr/>\n## ' + col_name)
 
     self.name_value('Distinct values', len(pd.unique(c)))
-    self.name_value('Specified type', self.  __get_column_specified_type(col_name))
+    self.name_value('Specified type', self._get_column_specified_type(col_name))
     self.name_value('Inferred type', self.type(c))
     self.name_value('RF Importance Rank', idx + 1)
     self.name_value('RF Importance Score', col[1])
@@ -212,7 +219,7 @@ class DescribeDataFrame(Utils):
       self.name_value('Chi2 Score', col[3])
     self.name_value('Variance', col[-1])
 
-    if specifiedself.type != inferredself.type:
+    if specified_type != inferred_type:
       self.txt(self.warn('Note:') + ' Check if specified type is correct as it does not match inferred type')
     
     self.txt('\n', True)
@@ -259,25 +266,34 @@ class DescribeDataFrame(Utils):
       if type_b == 'continuous' :
         self.code('_ = X.plot(kind="scatter", x="' + a.name + '", y="' + b.name + '")')      
         self.code(identifier_a + '.cov(' + identifier_b + ', method="pearson")')      
-        self.code(identifier_a + '.cov(' + identifier_b + ', method="spearman")')      
-      
-      if type_b == 'binary' or type_b == 'multiclass':
+        self.code(identifier_a + '.cov(' + identifier_b + ', method="spearman")')            
+      elif type_b == 'binary' or type_b == 'multiclass':
         self.code('fig, axs = plt.subplots(1,2)')         
         self.code('_ = X[["' + a.name + '", "' + b.name + '"]].boxplot(by="' + b.name + '", ax=axs[0])')
         self.code('_ = X.plot(kind="scatter", x="' + b.name + '", y="' + a.name +'", ax=axs[1])')      
         self.code('_ = X.hist(column="' + a.name + '", by="y", figsize=(12, 12))')
+      else:
+        raise Exception('not supported type (b): ' + type_b + ' with type a: ' + type_a)
 
-
-    if type_a == 'multiclass':
+    elif type_a == 'multiclass':
       if type_b == 'continuous':        
         self.code('fig, axs = plt.subplots(1,1)') 
-        self.code('_ = X.plot(kind="scatter", x="' + a.name + '", y="' + b.name +'", ax=axs[0])')      
-      
-      if type_b == 'multiclass':
+        self.code('_ = X.plot(kind="scatter", x="' + a.name + '", y="' + b.name +'", ax=axs[0])')            
+      elif type_b == 'binary' or type_b == 'multiclass':
         self.code('fig, axs = plt.subplots(1,1)')         
         self.code('X.boxplot(column="' + a.name + '", by="' + b.name + '", ax=axs)')
+      else:
+        raise Exception('not supported type (b): ' + type_b + ' with type a: ' + type_a)
 
-    if type_a == 'binary':
+    elif type_a == 'binary':
       if type_b == 'continuous' :
         self.code('fig, axs = plt.subplots(1,1)') 
         self.code('_ = ' + identifier_a + '.plot(kind="box", by="' + b.name + '", ax=axs)')
+      elif type_b == 'binary' or type_b == 'multiclass':
+        self.code('fig, axs = plt.subplots(1,1)')         
+        self.code('_ = X.hist(column="' + a.name + '", by="' + b.name + '", figsize=(12, 12))')
+      else:
+        raise Exception('not supported type (b): ' + type_b + ' with type a: ' + type_a)
+
+    else:
+      raise Exception('not supported type (a): ' + type_a)

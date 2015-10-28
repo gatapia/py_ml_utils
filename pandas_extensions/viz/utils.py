@@ -14,20 +14,16 @@ class Utils(object):
   def do_global_imports(self, dataset_name, variables):    
     imports = [
       '%matplotlib inline',
-      'import numpy as np',
-      'import pandas as pd',      
-      'import matplotlib.pyplot as plt',
-      'import pylab',
+      'import qgrid, numpy as np, pandas as pd, matplotlib.pyplot as plt, pylab',
       'from sys import path',
-      'path.append("utils")',
-      'from misc import *',
-      'from graphs import *',
-      'from pandas_extensions import *',
-      'from sklearn import *',
+      'path.append("ml")',
+      'from misc import *; from graphs import *; from ml.pandas_extensions import *;from sklearn import *',
       '\npd.set_option("display.notebook_repr_html", False)',
       'pd.set_option("display.max_columns", 20)',
       'pd.set_option("display.max_rows", 25)',
-      'pylab.rcParams[\'figure.figsize\'] = (10.0, 6.0)',
+      'qgrid.nbinstall(overwrite=True)',
+      'qgrid.set_defaults(remote_js=True, precision=4)',
+      'pylab.rcParams[\'figure.figsize\'] = (10.0, 6.0)',      
       ','.join(variables) + ' = load("' + dataset_name + '")',
       'MARKERS=[".", ",", "o", "v", "^", "<", ">", "1", "2", "3", "4", "8", "s", "p", "*", "h", "H", "+", "x", "D", "d", "|", "_"]',
       'COLOURS=["Blue","Green","Red","Cyan","Magenta","Yellow","Black","White"]',
@@ -245,4 +241,5 @@ print_confusion_matrix(matrix, ['True', 'False'])
     nb = nbf.new_notebook()
     nb.cells = cells
     with open(filename, 'w') as f: f.write(nbf.writes(nb)) 
+    call(['ipython', 'trust', filename])
     if start_notebook: call(['ipython', 'notebook', filename])
