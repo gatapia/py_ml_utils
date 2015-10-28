@@ -52,11 +52,11 @@ class DescribeDataFrame(Utils):
     self.cells = []
     misc.start('get_dataset_cells')
     dataset_name = '_get_dataset_cells_data'
+    
     data_x = self.X.copy()
-    data_x['y'] = self.y
-    misc.dump(dataset_name, (data_x, self.y)) 
+    data_x['y'] = self.y      
 
-    self.do_global_imports(dataset_name, ['X', 'y'])    
+    self.do_global_imports(dataset_name, ['X', 'y', 'summary_df'])    
     self._do_header_markdown()      
     self._intialise_feature_basic_details()
     self._do_column_summary_table()
@@ -66,6 +66,13 @@ class DescribeDataFrame(Utils):
     self._do_column_summary_charts()
     if self.y is not None: self.do_target_description(self.y, True)
     self._do_all_columns_details()
+
+    columns = self._get_column_summary_table_col_names()
+    rows = [self._get_column_summary_table_row(col) for col in self.col_details]    
+    summary_df = pd.DataFrame(data=rows, columns=columns)
+    
+    misc.dump(dataset_name, (data_x, self.y, summary_df)) 
+
     misc.stop('done get_dataset_cells')
     return list(self.cells)
   
@@ -140,19 +147,16 @@ class DescribeDataFrame(Utils):
   #############################################################################
 
   def _do_column_summary_table(self):    
-    self.txt('<hr/>\n#Features Summary Table')
-    self.txt('<table>')
-    self._do_column_summary_header_row()
-    for idx, col in enumerate(self.col_details): self._do_column_summary_row(idx, col)            
-    self.txt('</table>', True)
+    self.txt('<hr/>\n#Features Summary Table', True)            
+    self.code('qgrid.show_grid(summary_df)', True)    
 
-  def _do_column_summary_header_row(self):
-    cols = ['Column', 'Inferred', 'Specified', 'RF Imp Rank', 'RF Importance V', 'F Score']
+  def _get_column_summary_table_col_names(self):
+    cols = ['Column', 'Inferred', 'Specified', 'RF Importance', 'F Score']
     if not self.is_regression: cols.append('Chi2')
-    cols.append('Var')
-    self.txt('<tr><th>' + '</th><th>'.join(cols) + '</th></tr>')
+    cols.append('Variance')
+    return cols
 
-  def _do_column_summary_row(self, idx, col_details):
+  def _get_column_summary_table_row(self, col_details):
     col_name = col_details[0]
     inferred = self.type(self.X[col_name])
     specified = self._get_column_specified_type(col_name)
@@ -160,8 +164,7 @@ class DescribeDataFrame(Utils):
     cols = [
       col_name, 
       inferred, 
-      specified if inf_same_specified else self.warn(specified),
-      idx + 1,
+      specified if inf_same_specified else self.warn(specified),      
       col_details[1]      
     ]
     if self.is_regression: cols.append(col_details[2])
@@ -169,7 +172,7 @@ class DescribeDataFrame(Utils):
     variance = col_details[-1]
     if variance < self._min_variance_threshold: cols.append('<b>' + self.pretty(col_details[-1]) + '</b>')
     else: cols.append(col_details[-1])
-    self.txt('<tr><td>' + '</td><td>'.join(map(self.pretty, cols)) + '</td></tr>')
+    return map(self.pretty, cols)
 
   def _do_column_summary_charts(self):
     numericals = self.X.numericals()[:5]
