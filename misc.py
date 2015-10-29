@@ -4,6 +4,7 @@ import sys, gzip, time, datetime, random, os, logging, gc, \
     sklearn.utils, sklearn.externals.joblib, inspect
 import numpy as np, pandas as pd, xgboost as xgb
 from xgboost import XGBClassifier, XGBRegressor
+from pandas import Series, DataFrame
 
 def debug(msg): 
   if not cfg['debug']: return
@@ -75,11 +76,11 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
 
 def score_classifier_vals(prop, vals, clf, X, y, n_iter=3):
   results = []
-  for v in vals:      
+  for v in vals:  
+    clf = sklearn.base.clone(clf)
     target_clf = clf.base_classifier if hasattr(clf, 'base_classifier') else clf
-    target_clf = sklearn.base.clone(target_clf)
     setattr(target_clf, prop, v)    
-    score = do_cv(target_clf, X, y, n_iter=n_iter, prefix='CV - prop[%s] val[%s]' % (prop, str(v)))
+    score = do_cv(clf, X, y, n_iter=n_iter, prefix='CV - prop[%s] val[%s]' % (prop, str(v)))
     results.append({'prop': prop, 'v':v, 'score': score})  
   sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=True)
   best = {'prop': prop, 'value': sorted_results[0]['v'], 'score': sorted_results[0]['score']}
@@ -213,6 +214,20 @@ def calibrate(y_train, y_true, y_test=None, method='platt'):
       else:
         res = pd.DataFrame(y_train).transform(clf, y_true, y_test)
       return np.nan_to_num(res)
+
+def xgb_picker(clf, X, y):
+  clf = sklearn.base.clone(clf)
+  def do(prop, vals):    
+    target = clf.base_classifier if hasattr(clf, 'base_classifier') else clf
+    v = score_classifier_vals(prop, vals, clf, X, y, 5)[0]['v']  
+    setattr(target, prop, v)
+  do('max_depth', range(3, 10))
+  do('learning_rate', [.001, .01, .025, .1, .2, .5])
+  do('n_estimators', [50, 75, 100, 150, 200, 250, 300, 350])
+  do('min_child_weight', [1, 2, 5, 10])
+  do('subsample', [.5, .6, .8, .9, .95, 1.])
+  do('colsample_bytree', [.5, .6, .8, .9, .95, 1.])
+  return clf
 
 def dbg(*args): 
   if cfg['debug']: print(*args)
