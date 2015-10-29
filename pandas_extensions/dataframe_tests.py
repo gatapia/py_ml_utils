@@ -931,3 +931,12 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.assertEqual(123, df.custom_cache('key1'))
     df['new_column'] = np.random.random(100)
     self.assertIsNone(df.custom_cache('key1'))
+
+  def test_subsample(self):
+    df = pd.DataFrame({'n_1': np.random.random(100)})
+    y = pd.Series(np.random.random(50))
+    df2, y2 = df.subsample(y, size=.5)
+    self.assertEquals(25, len(y2))
+    self.assertEquals(25, len(df2))
+    self.assertFalse(np.any(np.isnan(y2)))
+

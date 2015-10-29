@@ -1,11 +1,13 @@
 import pandas as pd, numpy as np
-import itertools, ast_parser
+import itertools, ast_parser, scipy
 from .. import misc
 
 def _df_engineer(self, name, columns=None, quiet=False):  
   '''
   name(Array|string): Can list-like of names.  ';' split list of names 
   also supported
+
+  TODO: Tons of duplicated code here, fix
   '''
   if type(name) is str and ';' in name: name = name.split(';')
   if type(name) is list or type(name) is tuple: 
@@ -36,7 +38,7 @@ def _df_engineer(self, name, columns=None, quiet=False):
       args[i] = get_new_col_name(a)
       self.engineer(func_to_string(a))
 
-  if not quiet: misc.debug('engineering feature: ' + name)
+  if not quiet: misc.debug('engineering feature: ' + name + ' new column: ' + new_name)
   if len(args) == 0 and (func == 'avg' or func == 'mult' or func == 'add' or func == 'concat'):    
     combs = list(itertools.combinations(columns, 2)) if columns is not None \
       else self.combinations(categoricals=func=='concat', indexes=func=='concat', numericals=func in ['mult', 'avg', 'add'])    
@@ -87,6 +89,14 @@ def _df_engineer(self, name, columns=None, quiet=False):
     cols = columns if columns is not None else self.numericals()
     for n in cols: self.engineer('safe_lg(' + n + ')', quiet=True)    
     return self
+  elif len(args) == 0 and func == 'boxcox':
+    cols = columns if columns is not None else self.numericals()
+    for n in cols: self.engineer('boxcox(' + n + ')', quiet=True)    
+    return self
+  elif len(args) == 0 and func == 'safe_boxcox':
+    cols = columns if columns is not None else self.numericals()
+    for n in cols: self.engineer('safe_boxcox(' + n + ')', quiet=True)    
+    return self
   elif len(args) == 0 and func == 'sqrt':
     cols = columns if columns is not None else self.numericals()
     for n in cols: self.engineer('sqrt(' + n + ')', quiet=True)    
@@ -99,6 +109,10 @@ def _df_engineer(self, name, columns=None, quiet=False):
     self[new_name] = np.log(self[args[0]])
   elif func == 'safe_lg': 
     self[new_name] = np.log(self[args[0]] + 1 - self[args[0]].min())
+  elif func == 'boxcox': 
+    self[new_name] = scipy.stats.boxcox(self[args[0]])[0]
+  elif func == 'safe_boxcox': 
+    self[new_name] = scipy.stats.boxcox(self[args[0]] + 1 - self[args[0]].min())[0]
   elif func == 'sqrt': 
     self[new_name] = np.sqrt(self[args[0]])
   elif func.startswith('rolling_'):

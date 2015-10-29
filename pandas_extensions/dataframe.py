@@ -288,8 +288,9 @@ def _df_append_bottom(self, df):
   return X
 
 def _df_subsample(self, y=None, size=0.5):  
+  if y is not None: self = self[:len(y)]
   if type(size) is float:
-    if size < 1.0: size = df.shape[0] * size
+    if size < 1.0: size = self.shape[0] * size
     size = int(size)
   if self.shape[0] <= size: return self if y is None else (self, y) # unchanged    
 
@@ -316,7 +317,7 @@ def _df_shuffle(self, y=None):
   df = self.copy()  
   if y is not None: 
     df = df[:y.shape[0]]
-    df['__tmpy'] = y    
+    df['__tmpy'] = y.values
 
   index = list(df.index)
   misc.reseed(None)
@@ -326,7 +327,7 @@ def _df_shuffle(self, y=None):
 
   result = df
   if y is not None:     
-    y = pd.Series(df['__tmpy'], index=df.index)
+    y = pd.Series(df['__tmpy'].values)
     df.remove(['__tmpy'])
     result = (df, y)
 

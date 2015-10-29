@@ -52,7 +52,7 @@ class Utils(object):
 
     if target_type == 'continuous': self.continuous_charts(target_var_identifier)
     elif target_type == 'binary' or target_type == 'multiclass': 
-      self.categorical_charts(target_var)
+      self.categorical_charts('X["y"]')
       if show_pca_graphs:
         self.code([
           'X2 = X.copy().missing("na", 0)',        
