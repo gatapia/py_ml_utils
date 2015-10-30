@@ -15,10 +15,15 @@ def _s_one_hot_encode(self):
 def _s_bin(self, n_bins=100):
   return pd.Series(pd.cut(self, n_bins), index=self.index)
 
-def _s_group_rare(self, limit=30):
+def _s_group_rare(self, limit=30, rare_val=None):
   vcs = self.value_counts()
-  rare = vcs[vcs < limit].keys()  
-  self[self.isin(rare)] = 'rare'
+  rare = vcs[vcs <= limit].keys()  
+  if rare_val is None:
+    rare_val = 'rare' 
+    if self.is_numerical(): rare_val = -1
+    elif self.is_index(): self.max() + 1
+
+  self[self.isin(rare)] = rare_val
   return self
 
 def _s_sigma_limits(self, sigma):
@@ -267,5 +272,5 @@ def _s_difference_with(self, other, quiet=False):
 
 '''
 Add new methods manually using:
-pandas_extensions._extend_s('add_noise', _s_add_noise)
+pandas_extensions._extend_s('group_rare', _s_group_rare)
 '''    

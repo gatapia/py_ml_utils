@@ -145,10 +145,10 @@ def _df_bin(self, n_bins=100, drop_origianls=False):
   misc.stop('done binning data into ' + `n_bins` + ' bins')  
   return self
 
-def _df_group_rare(self, columns=None, limit=30):
+def _df_group_rare(self, columns=None, limit=30, rare_val=None):
   misc.start('grouping rare categorical columns, limit: ' + `limit`)  
   if columns is None: columns = self.categorical_like()
-  for c in columns: self[c].group_rare(limit)
+  for c in columns: self[c].group_rare(limit, rare_val=rare_val)
   misc.stop('done grouping rare categorical')  
   return self
 
@@ -739,5 +739,5 @@ def _df_add_noise(self, columns=None, level=.4, mode='random'):
 
 '''
 Add new methods manually using:
-pandas_extensions._extend_df('add_noise', _df_add_noise)
+pandas_extensions._extend_df('group_rare', _df_group_rare)
 '''  
