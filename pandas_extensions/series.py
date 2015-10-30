@@ -21,7 +21,9 @@ def _s_group_rare(self, limit=30, rare_val=None):
   if rare_val is None:
     rare_val = 'rare' 
     if self.is_numerical(): rare_val = -1
-    elif self.is_index(): self.max() + 1
+    elif self.is_index(): 
+      print 'self.max():', self.max(), self
+      self.max() + 1
 
   self[self.isin(rare)] = rare_val
   return self
@@ -80,7 +82,7 @@ def _s_is_categorical(self):
 
 def _s_is_index(self):
   if self.is_valid_name(): return self.name.startswith('i_')
-  return sklearn.utils.multiclass.type_of_target(self) == 'multiclass'
+  return sklearn.utils.multiclass.type_of_target(self) == 'multiclass' and str(self.dtype).startswith('int')
 
 def _s_is_binary(self):
   if self.is_valid_name(): return self.name.startswith('b_')
