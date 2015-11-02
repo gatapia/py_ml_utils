@@ -177,7 +177,7 @@ if __name__ == '__main__':
   boston_data = datasets.load_boston()
   X = boston_data['data']
   y = boston_data['target']
-  test_all_classifiers(X, y)
+  try_all_classifiers(X, y)
   # metas = [parse_classifier_meta(clf) for clf in classifiers]
   # ignore = [test_classifier_with_arg_customisation(m) for m in metas]
 '''
