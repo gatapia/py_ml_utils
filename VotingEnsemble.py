@@ -14,40 +14,6 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
     self.use_proba = use_proba    
     self.weights = weights
 
-  def cv(self, X, y, scorer, n_samples=None, n_folds=5):
-    if not(isinstance(X, list)): 
-      X = list(itertools.repeat(X, len(self.models)))
-    
-    if not(isinstance(y, list)): 
-      y = list(itertools.repeat(y, len(self.models)))
-      
-    if n_samples is None: n_samples = X[0].shape[0]
-    for i in range(len(X)):
-      X[i], y[i] = X[i][:n_samples], y[i][:n_samples]
-
-    cv = cross_validation.KFold(n_samples, n_folds=n_folds, indices=False)
-    scores = []
-    for train, test in cv:      
-      Xs = []
-      ys = []
-      X_tests = []
-      
-      for i, clf in enumerate(self.models):        
-        X_train = X[i][train]
-        X_test = X[i][test]
-        y_train = y[i][train]
-        Xs.append(X_train)
-        ys.append(y_train)
-        X_tests.append(X_test)
-
-      predictions = self.fit(Xs, ys).predict(X_tests)
-      scores.append(scorer(y[i][test], predictions))
-
-    cv = (np.mean(scores), sem(scores))
-    if cfg['debug']: print 'cv %.5f (+/-%.5f)' % cv
-    return cv
-
-
   def fit(self, X, y):
     """X can either be a dataset or a list of datasets"""
     if not(isinstance(X, list)): 
@@ -59,11 +25,19 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
     return self
 
   def predict_proba(self, X):
-    classone_probs = self.predict(X)
+    classone_probs = self.predict_impl(X)
     classzero_probs = 1.0 - classone_probs
     return np.vstack((classzero_probs, classone_probs)).transpose()
 
   def predict(self, X):
+    predictions = self.predict_impl(X)
+    if self.use_proba:
+      new_preds = np.zeros(len(predictions))
+      new_preds[predictions > .5] = 1
+      predictions = new_preds
+    return predictions
+
+  def predict_impl(self, X):
     """X can either be a dataset or a list of datasets"""
     if not(isinstance(X, list)): 
       X = list(itertools.repeat(X, len(self.models)))
