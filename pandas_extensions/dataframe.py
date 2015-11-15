@@ -475,59 +475,13 @@ def __df_clf_method_impl(X, clf, y, X_test, method):
   misc.start('done clf_method_impl: ' + method)
   return val
 
-def _df_self_predict(self, clf, y, cv=5):    
-  return _df_self_predict_impl(self, clf, y, cv, 'predict')
+def _df_self_predict(self, clf, y, cv=5): return misc.self_predict(clf, self, y, cv)
 
-def _df_self_predict_proba(self, clf, y, cv=5):    
-  return _df_self_predict_impl(self, clf, y, cv, 'predict_proba')
+def _df_self_predict_proba(self, clf, y, cv=5): return misc.self_predict_proba(clf, self, y, cv, 'predict_proba')
 
-def _df_self_transform(self, clf, y, cv=5):    
-  return _df_self_predict_impl(self, clf, y, cv, 'transform')
+def _df_self_transform(self, clf, y, cv=5): return misc.self_transform(clf, self, y, cv, 'transform')
 
-def _df_self_decision_function(self, clf, y, cv=5):    
-  return _df_self_predict_impl(self, clf, y, cv, 'decision_function')
-
-def _df_self_predict_impl(X, clf, y, cv, method):    
-  if type(y) is not pd.Series: y = pd.Series(y)
-  if y is not None and X.shape[0] != len(y): X = X[:len(y)]
-  misc.start('self_' + method +' with ' + `cv` + ' chunks starting')
-  misc.reseed(clf)
-      
-  def op(X, y, X2):
-    if len(X.shape) == 2 and X.shape[1] == 1: 
-      if hasattr(X, 'values'): X = X.values
-      X = X.T[0]
-    if len(X2.shape) == 2 and X2.shape[1] == 1: 
-      if hasattr(X2, 'values'): X2 = X2.values
-      X2 = X2.T[0]
-    
-    this_clf = sklearn.base.clone(clf)
-    this_clf.fit(X, y)  
-    new_predictions = getattr(this_clf, method)(X2)
-    if new_predictions.shape[0] == 1:      
-      new_predictions = new_predictions.reshape(-1, 1)
-    return new_predictions    
-  
-  predictions = _df_self_chunked_op(X, y, op, cv)
-  misc.stop('self_predict completed')  
-  return predictions.values
-
-def _df_self_chunked_op(self, y, op, cv=5):    
-  if y is not None and hasattr(y, 'values'): y = y.values
-  X = self
-  if cv is None: cv = 5
-  if type(cv) is int: cv = sklearn.cross_validation.StratifiedKFold(y, cv, shuffle=True, random_state=misc.cfg['sys_seed'])
-  indexes=None
-  chunks=None
-  for train_index, test_index in cv:
-    X_train = X.iloc[train_index]
-    y_train = y[train_index]
-    X_test = X.iloc[test_index]
-    predictions = op(X_train, y_train, X_test)
-    indexes = test_index if indexes is None else np.concatenate((indexes, test_index))
-    chunks = predictions if chunks is None else np.concatenate((chunks, predictions))
-  df = pd.DataFrame(data=chunks, index=indexes)
-  return df.sort()  
+def _df_self_chunked_op(self, y, op, cv=5): return misc.self_chunked_op(self, y, op, cv)
 
 def _df_trim_on_y(self, y, min_y=None, max_y=None):    
   X = self.copy()  

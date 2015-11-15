@@ -242,8 +242,8 @@ def self_transform(clf, X, y, cv=5):
 def self_predict_impl(clf, X, y, cv, method):    
   if type(y) is not pd.Series: y = pd.Series(y)
   if y is not None and X.shape[0] != len(y): X = X[:len(y)]
-  misc.start('self_' + method +' with ' + `cv` + ' chunks starting')
-  misc.reseed(clf)
+  start('self_' + method +' with ' + `cv` + ' chunks starting')
+  reseed(clf)
       
   def op(X, y, X2):
     if len(X.shape) == 2 and X.shape[1] == 1: 
@@ -261,13 +261,13 @@ def self_predict_impl(clf, X, y, cv, method):
     return new_predictions    
   
   predictions = self_chunked_op(X, y, op, cv)
-  misc.stop('self_predict completed')  
+  stop('self_predict completed')  
   return predictions.values
 
 def self_chunked_op(X, y, op, cv=5):    
   if y is not None and hasattr(y, 'values'): y = y.values
   if cv is None: cv = 5
-  if type(cv) is int: cv = sklearn.cross_validation.StratifiedKFold(y, cv, shuffle=True, random_state=misc.cfg['sys_seed'])
+  if type(cv) is int: cv = sklearn.cross_validation.StratifiedKFold(y, cv, shuffle=True, random_state=cfg['sys_seed'])
   indexes=None
   chunks=None
   for train_index, test_index in cv:
@@ -279,8 +279,6 @@ def self_chunked_op(X, y, op, cv=5):
     chunks = predictions if chunks is None else np.concatenate((chunks, predictions))
   df = pd.DataFrame(data=chunks, index=indexes)
   return df.sort()
-
-
 
 def dbg(*args): 
   if cfg['debug']: print(*args)
