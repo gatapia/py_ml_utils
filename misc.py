@@ -229,6 +229,59 @@ def xgb_picker(clf, X, y):
   do('colsample_bytree', [.5, .6, .8, .9, .95, 1.])
   return clf
 
+
+def self_predict(clf, X, y, cv=5):    
+  return self_predict_impl(clf, X, y, cv, 'predict')
+
+def self_predict_proba(clf, X, y, cv=5):    
+  return self_predict_impl(clf, X, y, cv, 'predict_proba')
+
+def self_transform(clf, X, y, cv=5):    
+  return self_predict_impl(clf, X, y, cv, 'transform')
+
+def self_predict_impl(clf, X, y, cv, method):    
+  if type(y) is not pd.Series: y = pd.Series(y)
+  if y is not None and X.shape[0] != len(y): X = X[:len(y)]
+  misc.start('self_' + method +' with ' + `cv` + ' chunks starting')
+  misc.reseed(clf)
+      
+  def op(X, y, X2):
+    if len(X.shape) == 2 and X.shape[1] == 1: 
+      if hasattr(X, 'values'): X = X.values
+      X = X.T[0]
+    if len(X2.shape) == 2 and X2.shape[1] == 1: 
+      if hasattr(X2, 'values'): X2 = X2.values
+      X2 = X2.T[0]
+    
+    this_clf = sklearn.base.clone(clf)
+    this_clf.fit(X, y)  
+    new_predictions = getattr(this_clf, method)(X2)
+    if new_predictions.shape[0] == 1:      
+      new_predictions = new_predictions.reshape(-1, 1)
+    return new_predictions    
+  
+  predictions = self_chunked_op(X, y, op, cv)
+  misc.stop('self_predict completed')  
+  return predictions.values
+
+def self_chunked_op(X, y, op, cv=5):    
+  if y is not None and hasattr(y, 'values'): y = y.values
+  if cv is None: cv = 5
+  if type(cv) is int: cv = sklearn.cross_validation.StratifiedKFold(y, cv, shuffle=True, random_state=misc.cfg['sys_seed'])
+  indexes=None
+  chunks=None
+  for train_index, test_index in cv:
+    X_train = X.iloc[train_index] if hasattr(X, 'iloc') else X[train_index]
+    y_train = y[train_index]
+    X_test = X.iloc[test_index] if hasattr(X, 'iloc') else X[test_index]
+    predictions = op(X_train, y_train, X_test)
+    indexes = test_index if indexes is None else np.concatenate((indexes, test_index))
+    chunks = predictions if chunks is None else np.concatenate((chunks, predictions))
+  df = pd.DataFrame(data=chunks, index=indexes)
+  return df.sort()
+
+
+
 def dbg(*args): 
   if cfg['debug']: print(*args)
 
