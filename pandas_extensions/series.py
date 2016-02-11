@@ -268,8 +268,8 @@ def _s_difference_with(self, other, quiet=False):
         '%% diff: %.1f' % (100. * difference / (intersection + difference)))
   in_self = self_s - other_s
   in_other = other_s - self_s
-  if not quiet: misc.dbg('in left: %s:' % in_self)
-  if not quiet: misc.dbg('in right: %s:' % in_other)
+  if not quiet and len(in_self) < 50: misc.dbg('in left: %s:' % in_self)
+  if not quiet and len(in_other) < 50: misc.dbg('in right: %s:' % in_other)
   return (in_self, in_other)
 
 '''
