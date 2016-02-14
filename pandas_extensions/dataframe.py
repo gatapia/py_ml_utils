@@ -1,8 +1,8 @@
 import pandas as pd, numpy as np
 import itertools, random, gzip, gc, ast_parser, scipy, \
   sklearn, sklearn.manifold, sklearn.cluster, os
-from .. import misc
-from ..lib import smote
+import misc
+from lib import smote
 import utils
 
 def _df_categoricals(self): return filter(lambda c: self[c].is_categorical(), self.columns)

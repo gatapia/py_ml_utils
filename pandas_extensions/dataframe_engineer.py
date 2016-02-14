@@ -1,6 +1,6 @@
 import pandas as pd, numpy as np
 import itertools, ast_parser, scipy
-from .. import misc
+import misc
 
 def _df_engineer(self, name, columns=None, quiet=False):  
   '''
