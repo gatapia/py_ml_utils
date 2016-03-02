@@ -29,8 +29,10 @@ def _add_graph_branch(graph, layers, dtype='int'):
     graph.add_input(name, layers[0].input_shape, dtype=dtype)
 
   for layer_idx, layer in enumerate(layers):
+    if layer is None: continue
     last_name = name
-    name = branch_idx + (layer.name or str(layer_idx))
+    name = branch_idx + '_' + str(layer_idx) + '_' + (layer.name or str(layer_idx))
+    # print 'adding:', name, 'layer:', print_layer(layer)
     graph.add_node(layer, name, last_name)   
   return graph
 

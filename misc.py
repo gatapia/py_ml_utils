@@ -292,6 +292,7 @@ cfg = {
   'cv_n_jobs': -1,
   'custom_cv': None
 }
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s', filename='output.log', filemode='w')
 log = logging.getLogger(__name__)
 reseed(None)
