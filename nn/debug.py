@@ -1,4 +1,5 @@
 from keras import backend as K
+from keras.layers import *
 from theano import function
 import inspect
 
@@ -26,28 +27,44 @@ def print_shape(layer, input_data, train=True):
   print output.shape
   return output
 
+def to_str(obj, print_shapes=True, indent=0, buffer=None):
+  desc = buffer or ''
+
+  if isinstance(obj, Layer):
+    desc += type(obj).__name__ + '('
+    args, _, _, defaults = inspect.getargspec(obj.__init__)  
+    mandatories = len(args) if defaults is None else len(args) - len(defaults)
+    arg_descs = []
+    for i, arg in enumerate(args):
+      if arg == 'self' or arg == 'layers' or not hasattr(obj, arg): continue        
+      val = getattr(obj, arg)
+      if inspect.isfunction(val): val = val.__name__
+      default_idx = i - mandatories
+      if default_idx < 0 or defaults[default_idx] != val:
+        arg_descs.append(arg + '=' + (("'" + val + "'") if type(val) is str else str(val)))
+    desc += ', '.join(arg_descs) + ')'
+    if print_shapes: 
+      try: desc += ' => ' + str(obj.output_shape)
+      except: desc += ' => unknown'
+    desc = ('    ' * indent) + desc
+    if hasattr(obj, 'layers') and len(obj.layers) > 0:
+      desc = to_str(obj.layers, print_shapes, indent+1, desc)
+    return desc
+
+  elif type(obj) is list and isinstance(obj[0], Layer):    
+    for l in obj: 
+      desc = to_str(l, print_shapes, indent, desc)
+      desc += '\n'
+    return desc
+
+  elif type(obj) is Sequential: return to_str(obj.layers)
+  else: raise Exception(type(obj).__name__ + ' is not supported')
+
 def print_layer(layer, print_shapes=True, indent=0):  
-  desc = type(layer).__name__ + '('
-  args, _, _, defaults = inspect.getargspec(layer.__init__)  
-  mandatories = len(args) if defaults is None else len(args) - len(defaults)
-  arg_descs = []
-  for i, arg in enumerate(args):
-    if arg == 'self' or arg == 'layers' or not hasattr(layer, arg): continue        
-    val = getattr(layer, arg)
-    if inspect.isfunction(val): val = val.__name__
-    default_idx = i - mandatories
-    if default_idx < 0 or defaults[default_idx] != val:
-      arg_descs.append(arg + '=' + (("'" + val + "'") if type(val) is str else str(val)))
-  desc += ', '.join(arg_descs) + ')'
-  if print_shapes: 
-    try: desc += ' => ' + str(layer.output_shape)
-    except: desc += ' => unknown'
-  print ('    ' * indent) + desc
-  if hasattr(layer, 'layers') and len(layer.layers) > 0:
-    print_layers(layer.layers, print_shapes, indent+1)
+  print to_str(layer, print_shapes, indent)  
 
 def print_layers(layers, print_shapes=True, indent=0):
-  for l in layers: print_layer(l, print_shapes, indent)
+  print to_str(layers, print_shapes, indent)
 
 def print_sequential(seq, print_shapes=True):
-  print_layers(seq.layers, print_shapes)
+  print to_str(seq, print_shapes)
