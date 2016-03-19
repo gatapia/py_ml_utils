@@ -27,7 +27,7 @@ def print_shape(layer, input_data, train=True):
   print output.shape
   return output
 
-def to_str(obj, print_shapes=True, indent=0, buffer=None):
+def to_str(obj, print_shapes=True, print_weights=True, indent=0, buffer=None):
   desc = buffer or ''
 
   if isinstance(obj, Layer):
@@ -46,25 +46,28 @@ def to_str(obj, print_shapes=True, indent=0, buffer=None):
     if print_shapes: 
       try: desc += ' => ' + str(obj.output_shape)
       except: desc += ' => unknown'
+    if print_weights:
+      try: desc += ' w: ' + str(obj.get_weights()[0].shape)
+      except: desc += ' w: unknown'
     desc = ('    ' * indent) + desc
     if hasattr(obj, 'layers') and len(obj.layers) > 0:
-      desc = to_str(obj.layers, print_shapes, indent+1, desc)
+      desc = to_str(obj.layers, print_shapes, print_weights, indent+1, desc)
     return desc
 
   elif type(obj) is list and isinstance(obj[0], Layer):    
     for l in obj: 
-      desc = to_str(l, print_shapes, indent, desc)
+      desc = to_str(l, print_shapes, print_weights, indent, desc)
       desc += '\n'
     return desc
 
   elif type(obj) is Sequential: return to_str(obj.layers)
   else: raise Exception(type(obj).__name__ + ' is not supported')
 
-def print_layer(layer, print_shapes=True, indent=0):  
-  print to_str(layer, print_shapes, indent)  
+def print_layer(layer, print_shapes=True, print_weights=True, indent=0):  
+  print to_str(layer, print_shapes, print_weights, indent)  
 
-def print_layers(layers, print_shapes=True, indent=0):
-  print to_str(layers, print_shapes, indent)
+def print_layers(layers, print_shapes=True, print_weights=True, indent=0):
+  print to_str(layers, print_shapes, print_weights, indent)
 
-def print_sequential(seq, print_shapes=True):
-  print to_str(seq, print_shapes)
+def print_sequential(seq, print_shapes=True, print_weights=True):
+  print to_str(seq, print_shapes, print_weights)
