@@ -48,10 +48,9 @@ def resize_img(img, size):
 
   return ImageChops.offset(img, offset_x, offset_y)  
 
-def rotate_imgs(imgs, angle=20):  
-  return [rotate_img(i, angle) for i in imgs]
+def rotate_imgs(imgs, angle=20): return [rotate_img(i, angle) for i in imgs]
 
-def rotate_img(img, angle=20):  return img.rotate(_get_rng_from_min_max(angle))
+def rotate_img(img, angle=20): return img.rotate(_get_rng_from_min_max(angle))
 
 def toarr_imgs(imgs, keras_style=True):
   arr = np.array([np.asarray(img) for img in imgs])
