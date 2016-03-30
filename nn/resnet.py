@@ -1,11 +1,17 @@
 from keras.models import *
 from keras.layers import *
+import sys
 
 channels = 0
 
+# imagenet - not working @ Flatten layer
 def build_resnet(input_shape, depth=34, 
-      shortcut_type='B', datatype='imagenet'):      
+      shortcut_type=None, datatype='imagenet'):      
+  if depth > 34 and sys.getrecursionlimit() <= 1000: sys.setrecursionlimit(5000)
+
   global channels
+  if shortcut_type is None: shortcut_type = 'B' if datatype == 'imagenet' else 'A'
+  
   model = Graph()  
   model.add_input('0', input_shape)
   def add(l, last_str=None):    
@@ -104,7 +110,7 @@ def build_resnet(input_shape, depth=34,
     }
     defn, n_features, block = cfg[depth]
     channels = 64
-    add(Convolution2D(64, 7, 7, subsample=(2,2), init='normal'))
+    add(Convolution2D(channels, 7, 7, subsample=(2,2), init='normal'))
     add(ZeroPadding2D((3, 3))),
     add(BatchNormalization())
     add(Activation('relu')),
@@ -117,10 +123,10 @@ def build_resnet(input_shape, depth=34,
     add(Flatten())
     # add(Dense(1000, activation='linear'))
   elif datatype == 'cifar10':
-    assert((depth - 2) % 6 == 0, 'depth should be one of 20, 32, 44, 56, 110, 1202')
+    assert((depth - 2) % 6 == 0, 'depth should be one of 20, 32, 44, 56, 101, 1202')
     n = (depth - 2) / 6
     channels = 16
-    add(Convolution2D(16, 3, 3, subsample=(1, 1), init='normal'))    
+    add(Convolution2D(channels, 3, 3, subsample=(1, 1), init='normal'))    
     add(ZeroPadding2D((1, 1)))
     add(BatchNormalization())
     add(Activation('relu'))
@@ -130,7 +136,23 @@ def build_resnet(input_shape, depth=34,
     add(AveragePooling2D((8, 8), (1, 1)))
     add(Flatten())
     # add(Dense(10, activation='linear'))
+  elif datatype == 'chalearn': 
+    assert((depth - 2) % 6 == 0, 'depth should be one of 20, 32, 44, 56, 101, 1202')
+    n = (depth - 2) / 6
+    channels = 32
+    add(Convolution2D(channels, 3, 3, subsample=(1, 1), init='normal'))    
+    add(ZeroPadding2D((1, 1)))
+    add(BatchNormalization())
+    add(Activation('relu'))
+    add(MaxPooling2D((2, 2), (1, 1)))
+    layer(basic_block, 32, n, 1)
+    layer(basic_block, 64, n, 2)
+    layer(basic_block, 128, n, 2)
+    add(AveragePooling2D((8, 8), (1, 1)))
+    add(Flatten())
+    # add(Dense(10, activation='linear'))
   else: raise Exception('invalid dataset: ' + datatype)
+  return model
 
 class IdentityAndMultZero(Layer):  
   @property
@@ -141,13 +163,13 @@ class IdentityAndMultZero(Layer):
 
   def get_output(self, train):
     X = self.get_input(train)
-    return K.concatenate([X, X*0], concat_axis=1)
+    return K.concatenate([X, X*0], 1)
 
-'''
 class Identity(Layer):
   def get_output(self, train):
     return self.get_input(train)
 
+'''
 class MultZero(Layer):
   def get_output(self, train):
     return self.get_input(train) * 0

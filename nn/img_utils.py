@@ -1,11 +1,15 @@
-import cv2, os, math
-from PIL import Image
+import os, math
 import numpy as np
+from PIL import Image, ImageChops
 
 def load_imgs(path, files=None, grayscale=False):
-  if files is None: files = os.listdir(path)
-  return np.array([cv2.imread(os.path.join(path, f), 0) for f in files]) if grayscale \
-      else np.array([cv2.imread(os.path.join(path, f)) for f in files]) 
+  if files is None: 
+    def isimg(f):
+      ext = f.split('.')[-1]
+      return ext in ['jpg', 'gif', 'png', 'bmp']      
+    files = [f for f in os.listdir(path) if isimg(f)]
+  files = [os.path.join(path, f) for f in files]
+  return [Image.open(f).convert("L" if grayscale else "RGB") for f in files]
 
 def save_imgs(filename, imgs, size=800):
   if '.' not in filename: filename += '.png'
@@ -27,29 +31,38 @@ def save_imgs(filename, imgs, size=800):
 
 def save_img(filename, img):
   if '.' not in filename: filename += '.png'
-  cv2.imwrite(filename, img)
+  if type(img) is np.array: img = Image.fromarray(img)
+  img.save(filename)
+
+def resize_imgs(imgs, size):
+  return [resize_img(i, size) for i in imgs]
+
+def resize_img(img, size):
+  img = img.copy()
+  img.thumbnail(size, Image.ANTIALIAS)
+  new_size = img.size
+  img = img.crop( (0, 0, size[0], size[1]))
+
+  offset_x = max( (size[0] - new_size[0]) / 2, 0 )
+  offset_y = max( (size[1] - new_size[1]) / 2, 0 )
+
+  return ImageChops.offset(img, offset_x, offset_y)  
 
 def rotate_imgs(imgs, angle=20):  
-  return np.array([rotate_img(i, angle) for i in imgs])
+  return [rotate_img(i, angle) for i in imgs]
 
-def rotate_img(img, angle=20):  
-  rows, cols = img.shape[:2]
-  M = cv2.getRotationMatrix2D((cols/2,rows/2), _get_rng_from_min_max(angle), 1)
-  return cv2.warpAffine(img, M, (cols,rows))
+def rotate_img(img, angle=20):  return img.rotate(_get_rng_from_min_max(angle))
+
+def toarr_imgs(imgs, keras_style=True):
+  arr = np.array([np.asarray(img) for img in imgs])
+  if keras_style: arr = np.swapaxes(arr,3,1)
+  return arr
 
 def flip_imgs(imgs, horizontal=True):
-  return np.array([flip_img(i, horizontal) for i in imgs])
+  return [flip_img(img, horizontal) for img in imgs]
 
 def flip_img(img, horizontal=True):
-  return cv2.flip(img, int(horizontal))
-
-def shift_imgs(imgs, shift=(10, 10)):
-  return np.array([shift_img(i, shift) for i in imgs])
-
-def shift_img(img, shift=(10, 10)):
-  rows, cols = img.shape[:2]
-  M = np.float32([[1,0, _get_rng_from_min_max(shift[0])],[0,1,_get_rng_from_min_max(shift[1])]])
-  return cv2.warpAffine(img,M,(cols,rows))
+  return img.transpose(Image.FLIP_LEFT_RIGHT if horizontal else Image.FLIP_TOP_BOTTOM)
 
 def zoom_imgs(imgs, factor=10):
   return np.array([zoom_img(i, factor) for i in imgs])
@@ -62,11 +75,6 @@ def zoom_img(img, factor=10):
   pts2 = np.float32([[0,0],[cols,0],[0,rows],[cols,rows]])
   M = cv2.getPerspectiveTransform(pts1, pts2)
   return cv2.warpPerspective(img,M,(rows,cols))
-
-def to_rgb(img):
-  if len(img.shape) == 4: return np.array([to_rgb(i) for i in img])
-  b,g,r = cv2.split(img)
-  return cv2.merge([r,g,b])
 
 def save_history_loss(filename, history):
   if '.' not in filename: filename += '.png'

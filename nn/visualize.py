@@ -1,4 +1,3 @@
-import cv2
 from PIL import Image
 from img_utils import *
 import matplotlib as plt
