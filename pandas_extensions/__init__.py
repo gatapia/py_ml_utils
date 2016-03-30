@@ -9,7 +9,7 @@ d_ = date
 
 import series, dataframe, dataframe_engineer, dataframe_format_convert
 import pandas as pd
-from .. import misc
+import misc
 
 def _extend_df(name, function):
   df = pd.DataFrame({})

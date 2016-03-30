@@ -2,8 +2,8 @@ from __future__ import print_function
 import sys, gzip, time, datetime, random, os, logging, gc, \
     scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
     sklearn.utils, sklearn.externals.joblib, inspect
-import numpy as np, pandas as pd, xgboost as xgb
-from xgboost import XGBClassifier, XGBRegressor
+import numpy as np
+import pandas as pd
 from pandas import Series, DataFrame
 
 def debug(msg): 

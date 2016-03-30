@@ -1,6 +1,6 @@
 import pandas as pd, numpy as np
 import sklearn, datetime, utils, scipy
-from .. import misc
+import misc
 
 def _s_one_hot_encode(self):
   misc.start('one_hot_encoding column')  
