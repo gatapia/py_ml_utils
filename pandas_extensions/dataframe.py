@@ -477,7 +477,7 @@ def __df_clf_method_impl(X, clf, y, X_test, method):
 
 def _df_self_predict(self, clf, y, cv=5): return misc.self_predict(clf, self, y, cv)
 
-def _df_self_predict_proba(self, clf, y, cv=5): return misc.self_predict_proba(clf, self, y, cv, 'predict_proba')
+def _df_self_predict_proba(self, clf, y, cv=5): return misc.self_predict_proba(clf, self, y, cv)
 
 def _df_self_transform(self, clf, y, cv=5): return misc.self_transform(clf, self, y, cv, 'transform')
 
