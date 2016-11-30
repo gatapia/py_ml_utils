@@ -479,7 +479,7 @@ def _df_self_predict(self, clf, y, cv=5): return misc.self_predict(clf, self, y,
 
 def _df_self_predict_proba(self, clf, y, cv=5): return misc.self_predict_proba(clf, self, y, cv)
 
-def _df_self_transform(self, clf, y, cv=5): return misc.self_transform(clf, self, y, cv, 'transform')
+def _df_self_transform(self, clf, y, cv=5): return misc.self_transform(clf, self, y, cv)
 
 def _df_self_chunked_op(self, y, op, cv=5): return misc.self_chunked_op(self, y, op, cv)
 
