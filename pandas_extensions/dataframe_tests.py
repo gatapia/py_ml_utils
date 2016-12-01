@@ -769,6 +769,13 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     predictions = df.self_transform(lr, y)
     self.close([[0.4  ,  0.979,  1.868,  0.95 , -0.103,  1.454,  0.122,  0.334, -0.205, -0.854]], predictions.T)
 
+  def test_self_decision_function(self):
+    lr = sklearn.linear_model.LogisticRegression()
+    df = pd.DataFrame(np.random.normal(size=(10, 2)))
+    y = [0, 1] * 5
+    predictions = df.self_decision_function(lr, y)
+    self.close([[-0.21 ,  0.21 , -1.395, -0.49 ,  0.696,  0.663, -0.186,  0.09 ,-0.553, -0.726]], predictions.T)
+
   def test_nbytes(self):
     df = pd.DataFrame(np.random.normal(size=(10, 2)))
     self.assertEqual(256, df.nbytes())
