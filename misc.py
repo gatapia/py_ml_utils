@@ -1,4 +1,5 @@
-from __future__ import print_function
+from __future__ import print_function, absolute_import
+
 import sys, gzip, time, datetime, random, os, logging, gc, \
     scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
     sklearn.utils, sklearn.externals.joblib, inspect
@@ -241,7 +242,7 @@ def self_transform(clf, X, y, cv=5):
 def self_predict_impl(clf, X, y, cv, method):    
   if type(y) is not pd.Series: y = pd.Series(y)
   if y is not None and X.shape[0] != len(y): X = X[:len(y)]
-  start('self_' + method +' with ' + `cv` + ' chunks starting')
+  start('self_' + method +' with ' + 'cv' + ' chunks starting')
   reseed(clf)
       
   def op(X, y, X2):

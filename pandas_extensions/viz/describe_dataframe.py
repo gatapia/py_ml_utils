@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import sklearn
 from .. import misc
 from . import *
@@ -138,7 +140,7 @@ class DescribeDataFrame(Utils):
     misc.start('_get_column_importances')    
     rf = ensemble.RandomForestRegressor(50) if self.is_regression else ensemble.RandomForestClassifier(50)    
     rf.fit(self.X_no_nan[:self._importance_row_limit], self.y[:self._importance_row_limit])
-    misc.stop('done _get_column_importances, num feats: ' + `len(rf.feature_importances_)`)
+    misc.stop('done _get_column_importances, num feats: ' + repr(self.shape[1])))
     return rf.feature_importances_
   
   def _get_column_f_regression_scores(self):
@@ -178,7 +180,7 @@ class DescribeDataFrame(Utils):
   
   def _do_column_summary_charts(self):
     numericals = self.X.numericals()[:5]
-    self.txt('<hr/>\n#Top ' + `len(numericals)` + ' Column Interaction', True)
+    self.txt('<hr/>\n#Top ' + repr(self.shape[1]) + ' Column Interaction', True)
     valid_col_details = filter(lambda c: c[0] in numericals, self.col_details)
     top_X = map(lambda c: c[0], valid_col_details[:5])
     self.code([
@@ -231,8 +233,8 @@ class DescribeDataFrame(Utils):
     self.txt('\n', True)
     
     if col_name.startswith('c_') or col_name.startswith('b_') \
-        or col_name.startswith('i_'): self.categorical_charts('X[' + `c.name` + ']')
-    elif col_name.startswith('n_'): self.continuous_charts('X[' + `c.name` + ']')
+        or col_name.startswith('i_'): self.categorical_charts('X[' + repr(e) + ']')
+    elif col_name.startswith('n_'): self.continuous_charts('X[' + repr(e) + ']')
     self.flush_cell()
 
     if self.y is not None:

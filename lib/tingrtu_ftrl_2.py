@@ -60,8 +60,8 @@ class ftrl_proximal(object):
       L = len(x)
 
       x = sorted(x)
-      for i in xrange(L):
-        for j in xrange(i+1, L):
+      for i in range(L):
+        for j in range(i+1, L):
           # one-hot encode interactions with hash trick
           yield abs(hash(str(x[i]) + '_' + str(x[j]))) % D
 
@@ -267,7 +267,7 @@ def train_learner(train, args):
          args.L1, args.L2, D, 
          interaction=args.interactions)
     
-  for e in xrange(args.n_epochs):
+  for e in range(args.n_epochs):
     loss = 0.
     count = 0
     if train != "/dev/stdin": f_train.seek(0,0)

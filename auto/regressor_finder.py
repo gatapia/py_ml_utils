@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import pandas as pd
 import numpy as np
 
@@ -8,8 +10,8 @@ Regression Finder
 def find_optimal_regressor(X, y):
   scores = map(get_regressor_score_, regressors)
   optimal = max(scores, key=lambda s: s.score)
-  print '\n\n\n\nOptimal Regressior: %s Score: {0:.3f} Args: %s\n\n\n\n' % \
-    (optimal.name, optimal.score, optimal.args)
+  print('\n\n\n\nOptimal Regressior: %s Score: {0:.3f} Args: %s\n\n\n\n' % \
+    (optimal.name, optimal.score, optimal.args))
   return optimal
 
 def load_regressors_meta_():
@@ -55,4 +57,4 @@ def get_class_(name):
 
 
 regressors = load_regressors_meta_()
-print 'load_regressors_meta_: ', regressors
+print('load_regressors_meta_: ', regressors)

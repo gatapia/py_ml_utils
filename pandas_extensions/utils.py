@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import gzip, scipy
 import pandas as pd, numpy as np
 
@@ -27,7 +29,7 @@ def get_optimal_numeric_type(dtype, min, max, aggresiveness=0):
     if max <= 65535: return 'uint16'
     if max <= 4294967295: return 'uint32'
     if max <= 18446744073709551615: return 'uint64'
-    raise Exception(`max` + ' is too large')
+    raise Exception(repr(x) + ' is too large')
   elif is_int:
     '''
     int8 Byte (-128 to 127)
@@ -39,7 +41,7 @@ def get_optimal_numeric_type(dtype, min, max, aggresiveness=0):
     if min >= -32768 and max <= 32767: return 'int16'
     if min >= -2147483648 and max <= 2147483647: return 'int32'
     if min >= -9223372036854775808 and max <= 9223372036854775807: return 'int64'
-    raise Exception(`min` + ' and ' + `max` + ' are out of supported range')
+    raise Exception(repr(n) + ' and ' + repr(x) + ' are out of supported range')
   else:
     '''
     float16 Half precision float: sign bit, 5 bits exponent, 10 bits mantissa

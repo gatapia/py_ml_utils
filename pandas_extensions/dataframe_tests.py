@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import unittest, sklearn, sklearn.linear_model, \
   sklearn.decomposition, sklearn.ensemble, datetime, scipy, os
 import pandas as pd, numpy as np
@@ -365,8 +367,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.eq(y2, [7, 1, 4, 2, 3, 5, 6])
 
   def test_to_indexes(self):
-    df = pd.DataFrame({'c_1':['a', 'b'], 'c_2':['c', 'd'], 'n_1': [1, 2]})
-    print df.values
+    df = pd.DataFrame({'c_1':['a', 'b'], 'c_2':['c', 'd'], 'n_1': [1, 2]})    
     df.to_indexes(drop_origianls=True)
     self.eq(df, [[1, 0, 0], [2, 1, 1]])
 
@@ -558,8 +559,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
   def test_cats_to_stats_with_all(self):
     y = [1, 2, 3, 4, 5, 6]
     df = pd.DataFrame({'c_1': ['a', 'a', 'a', 'b', 'b', 'c'], 'c_2': ['a', 'a', 'b', 'b', 'b', 'c']})    
-    df.cats_to_stat(y, 'all')
-    print df
+    df.cats_to_stat(y, 'all')    
     self.eq(df.columns, ['n_c_1_mean', 'n_c_2_mean', 'n_c_1_iqm', 'n_c_2_iqm', 'n_c_1_median', 'n_c_2_median', 'n_c_1_min', 'n_c_2_min', 'n_c_1_max', 'n_c_2_max'])
     self.eq(df, [ [2., 1.5, 2.0, 1.5, 2, 1.5, 1, 1, 3, 2], 
                   [2., 1.5, 2.0, 1.5, 2, 1.5, 1, 1, 3, 2], 
@@ -856,8 +856,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
 
   def test_boxcox_on_negatives(self):
     df = pd.DataFrame(np.random.normal(size=(5, 3)), columns=['n_1', 'n_2', 'n_3'])
-    df = df.boxcox()
-    print df.values
+    df = df.boxcox()    
     exp = [[ 0.60018495,  0.31885521,  2.19243151],
            [ 0.87374604,  0.52973271,  0.        ],
            [-0.05094574,  0.,          0.92972061],

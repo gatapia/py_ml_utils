@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from keras import backend as K
 from keras.layers import *
 from theano import function
@@ -19,12 +21,12 @@ def _simulate_layer_call(layer, input_data, train=True):
 
 def print_out(layer, input_data, train=True):
   output = _simulate_layer_call(layer, input_data, train)
-  print output
+  print (output)
   return output
 
 def print_shape(layer, input_data, train=True):
   output = _simulate_layer_call(layer, input_data, train)
-  print output.shape
+  print (output.shape)
   return output
 
 def to_str(obj, print_shapes=True, print_weights=True, indent=0, buffer=None):
@@ -64,10 +66,10 @@ def to_str(obj, print_shapes=True, print_weights=True, indent=0, buffer=None):
   else: raise Exception(type(obj).__name__ + ' is not supported')
 
 def print_layer(layer, print_shapes=True, print_weights=True, indent=0):  
-  print to_str(layer, print_shapes, print_weights, indent)  
+  print (to_str(layer, print_shapes, print_weights, indent))
 
 def print_layers(layers, print_shapes=True, print_weights=True, indent=0):
-  print to_str(layers, print_shapes, print_weights, indent)
+  print (to_str(layers, print_shapes, print_weights, indent))
 
 def print_sequential(seq, print_shapes=True, print_weights=True):
-  print to_str(seq, print_shapes, print_weights)
+  print (to_str(seq, print_shapes, print_weights))

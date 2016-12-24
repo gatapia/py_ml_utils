@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import ast
 from itertools import cycle, chain, islice
 from collections import namedtuple
@@ -318,5 +320,5 @@ if __name__ == '__main__':
     genexp_test = "f_genexp([a for a in range(2)], b=(b for b in range(2)))")
 
     for name, test in tests.iteritems():
-        print '%s: %s' % (name, explain(test,
-                                        ['func', 'keywords', 'args'])[0])
+        print('%s: %s' % (name, explain(test,
+                                        ['func', 'keywords', 'args'])[0]))

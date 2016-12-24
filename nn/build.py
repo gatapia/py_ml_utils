@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from keras.models import *
 
 def build_sequential(layers, input_shape):
@@ -32,7 +34,7 @@ def _add_graph_branch(graph, layers, dtype='int'):
     if layer is None: continue
     last_name = name
     name = branch_idx + '_' + str(layer_idx) + '_' + (layer.name or str(layer_idx))
-    # print 'adding:', name, 'layer:', print_layer(layer)
+    # print('adding:', name, 'layer:', print_layer(layer))
     graph.add_node(layer, name, last_name)   
   return graph
 

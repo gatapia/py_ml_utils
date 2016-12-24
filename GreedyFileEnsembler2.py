@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
 import sys
@@ -32,7 +34,7 @@ class GreedyFileEnsembler2(FileEnsembler):
     self.max_score = np.max(scores)
     self.ensemble = [self.arrays[np.argmax(scores)]]
     self.indexes = [np.argmax(scores)]
-    print 'starting score:', self.max_score, 'index:', self.indexes[0]
+    print('starting score:', self.max_score, 'index:', self.indexes[0])
     self.current_epoch = -1
     return self.continue_epochs(self.min_epochs)
 
@@ -58,20 +60,20 @@ class GreedyFileEnsembler2(FileEnsembler):
         self.indexes.append(epoch_index)
         self.ensemble.append(self.arrays[epoch_index])        
         self.max_score = epoch_score
-        print 'epoch:', epoch, 'found improved score:', self.max_score, 'index:', idx, 'ensemble size:', len(self.ensemble)
+        print('epoch:', epoch, 'found improved score:', self.max_score, 'index:', idx, 'ensemble size:', len(self.ensemble))
         
         if epoch >= 10 and score > self.best_score:
           self.best_score = self.max_score
           self.best_min_epochs = epoch + 1
-          print 'new total best score found'
+          print('new total best score found')
       else:
         if epoch_index >= 0:                
           self.ensemble.append(self.arrays[epoch_index])
           self.indexes.append(epoch_index)
           self.max_score = self.scorer(self.y, np.mean(self.ensemble, 0))
-        print 'no improvement found after ', epoch, 'min_epochs, picking best:', self.max_score, 'index:', epoch_index     
+        print('no improvement found after ', epoch, 'min_epochs, picking best:', self.max_score, 'index:', epoch_index)
     
-    print 'fit done indexes selected: ', self.indexes, 'self.max_score:', self.max_score
+    print('fit done indexes selected: ', self.indexes, 'self.max_score:', self.max_score)
     return self
 
   def transform(self, test_files):

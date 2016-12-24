@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from misc import *
 import time
 import operator
@@ -28,7 +30,7 @@ class FeatSel():
   def run(self, clf):
     if hasattr(clf, 'max_features') and clf.max_features: clf.max_features = None
     selected = map(lambda f: {'feature': f, 'score': 0, 'sem': 0}, self.mandatory_columns)
-    print 'starting feature selected, features: ', self.X.shape[1], 'n_jobs:', self.n_jobs
+    print('starting feature selected, features: ', self.X.shape[1], 'n_jobs:', self.n_jobs)
     t_whole = time.time()    
 
     last_best = {'score': -1e6 if self.higher_better else 1e6}
@@ -58,14 +60,14 @@ class FeatSel():
           
           if s_improvement > 0: 
             if i > 0: 
-              print 'changed selection as it did not perform' +\
-                ' in the validation set. Old Best: ' + `this_best` + \
-                ' New best:' + `r`
+              print('changed selection as it did not perform' +\
+                ' in the validation set. Old Best: ' + repr(t) + \
+                ' New best:' + repr(r))
             this_best = r          
             break
           if i == check_top - 1: 
-            print 'Could not find any feature that performed well ' +\
-                'on validation set, stopping selecton.'
+            print('Could not find any feature that performed well ' +\
+                'on validation set, stopping selecton.')
             this_best = last_best
 
       improvement = this_best['score'] - last_best['score'] if self.higher_better \
@@ -76,19 +78,19 @@ class FeatSel():
       selected.append(this_best)
 
       feats = map(lambda s: self.column_names[s['feature']], selected) 
-      print 'iteration %d took: %.2fm - [%.4f] features: %s' % (len(selected), (time.time() - t_iter)/60, this_best['score'], feats)
+      print('iteration %d took: %.2fm - [%.4f] features: %s' % (len(selected), (time.time() - t_iter)/60, this_best['score')], feats)
 
       if improvement <= self.tol: 
-        print 'improvement of %.3f is less than tol: %.3f, exiting...' % (improvement, self.tol)
+        print('improvement of %.3f is less than tol: %.3f, exiting...' % (improvement, self.tol))
         break
       
-      print 'self.epochs:', self.epochs, 'epoch:', epoch
+      print('self.epochs:', self.epochs, 'epoch:', epoch)
       if self.epochs is not None and epoch >= self.epochs: 
-        print 'max epochs reached, exiting...'
+        print('max epochs reached, exiting...')
         break
 
     feats = map(lambda s: self.column_names[s['feature']], selected) 
-    print 'feature selection took: %.2fm - [%.4f] features: %s' % ((time.time() - t_whole)/60, last_best['score'], feats)
+    print('feature selection took: %.2fm - [%.4f] features: %s' % ((time.time() - t_whole)/60, last_best['score'], feats))
     return selected
       
   def find_next_best_(self, selected, clf):

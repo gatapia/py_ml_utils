@@ -1,5 +1,8 @@
+from __future__ import print_function, absolute_import
+
 import pandas as pd, numpy as np
-import sklearn, datetime, utils, scipy
+import sklearn, datetime, scipy
+from . import utils
 from .. import misc
 
 def _s_one_hot_encode(self):
@@ -8,8 +11,7 @@ def _s_one_hot_encode(self):
   arr = self.values
   col_ohe = sklearn.preprocessing.OneHotEncoder().fit_transform(arr.reshape((len(arr), 1)))
 
-  misc.stop('done one_hot_encoding column converted to ' + 
-      `col_ohe.shape[1]` + ' columns')  
+  misc.stop('done one_hot_encoding column converted to ' + repr(col_ohe.shape[1]) + ' columns')  
   return col_ohe
 
 def _s_bin(self, n_bins=100):
@@ -22,7 +24,7 @@ def _s_group_rare(self, limit=30, rare_val=None):
     rare_val = 'rare' 
     if self.is_numerical(): rare_val = -1
     elif self.is_index(): 
-      print 'self.max():', self.max(), self
+      print('self.max():', self.max(), self)
       self.max() + 1
 
   self[self.isin(rare)] = rare_val
@@ -47,7 +49,7 @@ def _s_append_bottom(self, s):
   return pd.concat([self, s], ignore_index=True)
 
 def _s_missing(self, fill='none'):  
-  misc.start('replacing series missing data fill[' + `fill` + ']')
+  misc.start('replacing series missing data fill[' + repr(l) + ']')
   val = utils.get_col_aggregate(self, fill)    
   self.fillna(val, inplace=True)
   self.replace([np.inf, -np.inf], val, inplace=True)  
@@ -133,7 +135,7 @@ def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):
   vc = self.value_counts()
   under = vc[vc <= threshold]    
   if under.shape[0] > 0: 
-    misc.debug('column [' + str(self.name) + '] threshold[' + `threshold` + '] fill[' + `fill` + '] num of rows[' + `len(under.index)` + ']')
+    misc.debug('column [' + str(self.name) + '] threshold[' + repr(d) + '] fill[' + repr(l) + '] num of rows[' + repr(len(s)) + ']')
     self[self.isin(under.index)] = fill
   return self
 

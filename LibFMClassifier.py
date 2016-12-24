@@ -1,4 +1,5 @@
-from __future__ import absolute_import
+from __future__ import print_function, absolute_import
+
 import os, sys, subprocess, shlex, tempfile, time, sklearn.base
 import numpy as np
 import pandas as pd
@@ -62,11 +63,11 @@ class _LibFM(ExeEstimator):
     assert predictions_file
     args = [self.executable]
     if self.dim is not None: args.append('-dim ' + self.dim)
-    if self.init_stdev is not None: args.append('-init_stdev ' + `self.init_stdev`)
-    if self.iter is not None: args.append('-iter ' + `self.iter`)
-    if self.learn_rate is not None: args.append('--learn_rate ' + `self.learn_rate`)
+    if self.init_stdev is not None: args.append('-init_stdev ' + repr(v))
+    if self.iter is not None: args.append('-iter ' + repr(r))
+    if self.learn_rate is not None: args.append('--learn_rate ' + repr(e))
     if self.method is not None: args.append('-method ' + self.method)
-    if self.regular is not None: args.append('-regular ' + `self.regular`)
+    if self.regular is not None: args.append('-regular ' + repr(r))
     if self.task is not None: args.append('-task ' + self.task)
     args.append('-train ' + train_file)
     args.append('-test ' + test_file)

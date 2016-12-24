@@ -1,5 +1,8 @@
+from __future__ import print_function, absolute_import
+
 import pandas as pd, numpy as np
-import itertools, ast_parser, scipy
+import itertools, scipy
+from sympy.parsing import ast_parser
 from .. import misc
 
 def _df_engineer(self, name, columns=None, quiet=False):  

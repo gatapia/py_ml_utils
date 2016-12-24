@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from keras.models import *
 from keras.layers import *
 import sys
@@ -179,6 +181,6 @@ if __name__ == '__main__':
   # shortcut_type=B for imagenet and A for cifar
   # nn = build_resnet(input_shape=(3, 224, 224), depth=152, shortcut_type='B', datatype='imagenet')
   for depth in [18, 34, 50, 101, 152]:
-    print '\n\ntesting depth:', depth
+    print('\n\ntesting depth:', depth)
     nn = build_resnet(input_shape=(3, 224, 224), depth=depth, shortcut_type='B', datatype='imagenet')
     nn = build_resnet(input_shape=(3, 32, 32), depth=depth, shortcut_type='A', datatype='cifar10')

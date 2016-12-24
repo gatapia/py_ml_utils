@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import sklearn
 from .. import misc
 from IPython.nbformat import v4 as nbf
@@ -37,7 +39,7 @@ class Utils(object):
   def do_target_description(self, target_var, show_pca_graphs, target_var_name='Target Variable'):
     if len(target_var.shape) == 2 and target_var.shape[1] > 1:
       for col_idx in range(target_var.shape[1]):
-        self.do_target_description_impl(target_var.ix[:, col_idx], show_pca_graphs, target_var_name + ' - ' + `col_idx`, target_var.name + '.ix[:,' + `col_idx` + ']')  
+        self.do_target_description_impl(target_var.ix[:, col_idx], show_pca_graphs, target_var_name + ' - ' + repr(x), target_var.name + '.ix[:,' + repr(x) + ']')  
     else: 
       self.do_target_description_impl(target_var, show_pca_graphs, target_var_name, target_var.name)
 
@@ -88,7 +90,7 @@ class Utils(object):
         self.code(
 '''
 matrix = metrics.confusion_matrix(y_true == %d, y_pred.ix[:,%d] > 0.5)
-print 'Confusion Matrix Target Variable - %d'\n
+print('Confusion Matrix Target Variable - %d')\n
 print_confusion_matrix(matrix, ['True', 'False'])
 plot_confusion_matrix(matrix)
 plt.show()

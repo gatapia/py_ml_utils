@@ -1,9 +1,12 @@
+from __future__ import print_function, absolute_import
+
 import pandas as pd, numpy as np
-import itertools, random, gzip, gc, ast_parser, scipy, \
+import itertools, random, gzip, gc, scipy, \
   sklearn, sklearn.manifold, sklearn.cluster, os
+from sympy.parsing import ast_parser
 from .. import misc
 from ..lib import smote
-import utils
+from . import utils
 
 def _df_categoricals(self): return filter(lambda c: self[c].is_categorical(), self.columns)
 def _df_indexes(self): return filter(lambda c: self[c].is_index(), self.columns)
@@ -26,7 +29,7 @@ def _df_ensure_unique_names(self):
     unique_idx = 1
     tmp = n
     while tmp in uniques:
-      tmp = n + '_' + `unique_idx`
+      tmp = n + '_' + repr(x)
       unique_idx += 1
     uniques.append(tmp)
   self.columns = uniques
@@ -42,7 +45,7 @@ def _df_one_hot_encode(self, columns=None, dtype=np.float):
     self.to_indexes(columns=columns)    
     if columns is not None: columns = ['i_' for c in columns]
 
-  misc.start('one_hot_encoding data frame with ' + `self.shape[1]` + \
+  misc.start('one_hot_encoding data frame with ' + repr([self.shape[1]]) + \
     ' columns. \n\tNOTE: this resturns a sparse array and empties' + \
     ' the initial array.')  
 
@@ -62,7 +65,7 @@ def _df_one_hot_encode(self, columns=None, dtype=np.float):
 
   ohe_sparse = None
   for i, c in enumerate(columns):
-    misc.debug('one hot encoding column: ' + `c`)
+    misc.debug('one hot encoding column: ' + repr(c))
     col_ohe = sklearn.preprocessing.OneHotEncoder(categorical_features=[0], dtype=dtype).\
       fit_transform(categorical_df[[c]])
     if ohe_sparse == None: ohe_sparse = col_ohe
@@ -138,15 +141,15 @@ def _df_cats_to_stat(self, y, stat='mean',
   return self
 
 def _df_bin(self, n_bins=100, drop_origianls=False):
-  misc.start('binning data into ' + `n_bins` + ' bins')  
+  misc.start('binning data into ' + repr(s) + ' bins')  
   for n in self.numericals():
     self['c_binned_' + n] = self[n].bin(n_bins)
     if drop_origianls: self.drop(n, 1, inplace=True)
-  misc.stop('done binning data into ' + `n_bins` + ' bins')  
+  misc.stop('done binning data into ' + repr(s) + ' bins')  
   return self
 
 def _df_group_rare(self, columns=None, limit=30, rare_val=None):
-  misc.start('grouping rare categorical columns, limit: ' + `limit`)  
+  misc.start('grouping rare categorical columns, limit: ' + repr(t))  
   if columns is None: columns = self.categorical_like()
   for c in columns: self[c].group_rare(limit, rare_val=rare_val)
   misc.stop('done grouping rare categorical')  
@@ -206,7 +209,7 @@ def _df_normalise(self, columns=None):
   return self.scale(columns, min_max=(0, 1))
 
 def _df_missing(self, categorical_fill='none', numerical_fill='none'):  
-  misc.start('replacing missing data categorical[' + `categorical_fill` + '] numerical[' + `numerical_fill` + ']')
+  misc.start('replacing missing data categorical[' + repr(l) + '] numerical[' + repr(l) + ']')
   
   # Do numerical constants on whole DF for performance
   if type(numerical_fill) != str:
@@ -240,13 +243,13 @@ def _df_missing(self, categorical_fill='none', numerical_fill='none'):
   return self
 
 def _df_outliers(self, stds=3):  
-  misc.start('restraining outliers, standard deviations: ' + `stds`)
+  misc.start('restraining outliers, standard deviations: ' + repr(s))
   for n in self.numericals(): self[n] = self[n].outliers(stds)
   misc.stop('done restraining outliers')
   return self
 
 def _df_categorical_outliers(self, min_size=0.01, fill_mode='mode'):      
-  misc.start('grouping categorical outliers, min_size: ' + `min_size`)
+  misc.start('grouping categorical outliers, min_size: ' + repr(e))
   for c in self.categorical_like(): self[c].categorical_outliers(min_size, fill_mode)
   misc.stop('done grouping categorical outliers')
   return self
@@ -274,7 +277,7 @@ def _df_append_right(self, df_or_s):
       columns = df_or_s.columns.tolist()
       right = df_or_s.values
     else:
-      columns = [`i` + '_2' for i in range(df_or_s.shape[1])]
+      columns = [repr(i) + '_2' for i in range(df_or_s.shape[1])]
       right = df_or_s
     self = pd.DataFrame(np.hstack((self.values, right)), 
         columns=self.columns.tolist() + columns)
@@ -357,7 +360,7 @@ def _df_split(self, y, stratified=False, train_fraction=0.5):
   if type(y) is not pd.Series: y = pd.Series(y)
   train_size = int(self.shape[0] * train_fraction)
   test_size = int(self.shape[0] * (1.0-train_fraction))  
-  misc.start('splitting train_size: ' + `train_size` + ' test_size: ' + `test_size`)
+  misc.start('splitting train_size: ' + repr(e) + ' test_size: ' + repr(e))
   if stratified:
     train_indexes, test_indexes = list(sklearn.cross_validation.StratifiedShuffleSplit(y, 1, test_size, train_size, random_state=misc.cfg['sys_seed']))[0]  
   else:
@@ -386,8 +389,8 @@ def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, f
     scoring = 'roc_auc'
   score_name = scoring or misc.cfg['scoring']
   if hasattr(score_name, '__name__'): score_name = score_name.__name__
-  misc.start('starting ' + `n_iter` + ' fold cross validation (' + 
-      `n_samples` + ' samples) w/ metric: ' + str(score_name))
+  misc.start('starting ' + repr(r) + ' fold cross validation (' + 
+      repr(s) + ' samples) w/ metric: ' + str(score_name))
   cv = misc.do_cv(clf, X, y, n_samples, n_iter=n_iter, scoring=scoring, 
     quiet=prefix is None, n_jobs=n_jobs, fit_params=fit_params, prefix=prefix)
   misc.stop('done cross validation:\n  [CV]: ' + ("{0:.5f} (+/-{1:.5f})").format(cv[0], cv[1]))  
@@ -396,7 +399,7 @@ def _df_cv_impl_(X, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, f
 def _df_pca(self, n_components, whiten=False):  
   misc.start('pca')
   new_X = sklearn.decomposition.PCA(n_components, whiten=whiten).fit_transform(self)
-  columns = map(lambda i: 'n_pca_' + `i`, range(n_components))
+  columns = map(lambda i: 'n_pca_' + repr(i), range(n_components))
   misc.start('done pca')
   return pd.DataFrame(columns=columns, data=new_X)
 
@@ -405,7 +408,7 @@ def _df_tsne(self, n_components=2):
   # barnes_hut not in sklearn master yet. but put in once there
   # new_X = sklearn.manifold.TSNE(n_components, method='barnes_hut').fit_transform(self)
   new_X = sklearn.manifold.TSNE(n_components).fit_transform(self)
-  columns = map(lambda i: 'n_tsne_' + `i`, range(n_components))
+  columns = map(lambda i: 'n_tsne_' + repr(i), range(n_components))
   misc.start('done tsne')
   return pd.DataFrame(columns=columns, data=new_X)
 
@@ -431,7 +434,7 @@ def _df_tree_features(self, tree_ensemble, y):
     return _make_tree_bins(tree_ensemble.fit(X, y), X2)
 
   tree_features = self.self_chunked_op(y, op)
-  tree_features.columns = ['i_c_tree_feature_' + `i+1` for i in range(tree_features.shape[1])]  
+  tree_features.columns = ['i_c_tree_feature_' + repr(1) for i in range(tree_features.shape[1])]  
   misc.stop('done tree_features')
   return tree_features
 
@@ -440,7 +443,7 @@ def _df_append_fit_transformer(self, fit_transformer, method='transform'):
   if 'fit' not in method: fit_transformer.fit(self)
   new_X = getattr(fit_transformer, method)(self)
   if utils.is_sparse(new_X): new_X = new_X.todense()
-  columns = map(lambda i: 'n_new_col_' + `i`, range(new_X.shape[1]))
+  columns = map(lambda i: 'n_new_col_' + repr(i), range(new_X.shape[1]))
   new_df = pd.DataFrame(new_X, columns=columns)
   X = self.copy().append_right(new_df)
   misc.start('done append_fit_transformer')
@@ -506,7 +509,7 @@ def _df_nbytes(self):
     sum(map(lambda c: self[c].nbytes, self.columns))
 
 def _df_compress_size(self, aggresiveness=0, sparsify=False):  
-  misc.start('compressing dataset with ' + `len(self.columns)` + ' columns')    
+  misc.start('compressing dataset with ' + repr(self.shape[1]) + ' columns')
 
   def _format_bytes(num):
       for x in ['bytes','KB','MB','GB']:
@@ -623,7 +626,7 @@ def _df_to_dates(self, columns, remove_originals=True, cache=True):
   return self
 
 def _df_floats_to_ints(self, decimals=5):
-  misc.start('float_to_int decimals: ' + `decimals`)
+  misc.start('float_to_int decimals: ' + repr(s))
   for c in self.numericals(): self[c] = self[c].floats_to_ints(decimals)
   misc.stop('float_to_int done')
   return self

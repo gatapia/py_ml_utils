@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from sklearn.base import BaseEstimator, TransformerMixin
 import sys
 sys.path.append('utils')
@@ -10,6 +12,6 @@ class FileEnsembler(BaseEstimator, TransformerMixin):
     if type(first) is str: 
       loaded = [load(f) for f in files]
       if loaded[0] is None: raise Exception('could not load files')
-      print 'loaded:', len(loaded)
+      print('loaded:', len(loaded))
       return loaded
     return files

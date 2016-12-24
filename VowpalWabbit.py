@@ -1,5 +1,5 @@
+from __future__ import print_function, absolute_import
 
-from __future__ import absolute_import
 import os, sys, subprocess, shlex, tempfile, time, sklearn.base, math
 import numpy as np
 import pandas as pd
@@ -358,7 +358,7 @@ class VW:
       return self.vw_base_command([self.vw], True) + ' --passes %d -c -i %s' \
         % (self.passes, self.get_model_file())
     else:
-      print 'No existing model file or not options.incremental'
+      print('No existing model file or not options.incremental')
       return self.vw_base_command([self.vw], True) + ' --passes %d -c' \
           % (self.passes)
 
@@ -446,7 +446,7 @@ class VW:
     
     commands = shlex.split(str(command))
     commands += ['-d', file]
-    print 'Running command: "%s"' % str(commands)
+    print('Running command: "%s"' % str(commands))
     result = subprocess.Popen(commands, 
         stdout=stdout, stderr=stderr, 
         close_fds=sys.platform != "win32", 

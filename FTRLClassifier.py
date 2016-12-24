@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from sklearn.base import BaseEstimator, ClassifierMixin
 import pandas as pd
 import sys, tempfile, shlex, os, subprocess
@@ -9,9 +11,9 @@ def save_reusable_ftrl_csv(tmpdir, X, columns=None, opt_y=None):
   filename = 'reusable_' + str(abs(X.hashcode(opt_y))) + 'csv.gz'
   filename = tmpdir + '/' + filename
   if os.path.isfile(filename): 
-    print 'reusing past file:', filename
+    print('reusing past file:', filename)
     return filename
-  print 'creating new ftrl compatible file:', filename
+  print('creating new ftrl compatible file:', filename)
   return save_ftrl_csv(filename, X, columns, opt_y)
 
 def save_ftrl_csv(out_file, X, columns=None, opt_y=None):
@@ -87,17 +89,17 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def _do_train_command(self, train_file):    
     self._model_file = self._get_tmp_file('model', 'model')
     cmd = 'pypy ' + self.ftrl_default_path + ' train -t ' + train_file + \
-      ' -o ' + self._model_file + ' --alpha ' + `self.alpha` + \
-      ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
-      ' --bits ' + `self.bits` + \
-      ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` + \
-      ' --dropout ' + `self.dropout` + \
+      ' -o ' + self._model_file + ' --alpha ' + repr(a) + \
+      ' --beta ' + repr(a) + ' --L1 ' + repr(1) + ' --L2 ' + repr(2) + \
+      ' --bits ' + repr(s) + \
+      ' --n_epochs ' + repr(s) + ' --holdout ' + repr(t) + \
+      ' --dropout ' + repr(t) + \
       ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names)
 
     if self.interaction: cmd += ' --interactions'
     if self.sparse: cmd += ' --sparse'
-    if self.leave_out_day >= 0: cmd += ' --leave_out_day ' + `self.leave_out_day`
+    if self.leave_out_day >= 0: cmd += ' --leave_out_day ' + repr(y)
     self._make_subprocess(cmd)
 
   def _do_test_command(self, test_file):    
@@ -112,16 +114,16 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def _do_train_test_command(self, train_file, test_file):    
     predictions_file = self._get_tmp_file('predictions')
     cmd = 'pypy ' + self.ftrl_default_path + ' train_predict -t ' + train_file + \
-      ' --test ' + test_file + ' --alpha ' + `self.alpha` + \
-      ' --beta ' + `self.beta` + ' --L1 ' + `self.L1` + ' --L2 ' + `self.L2` + \
-      ' --bits ' + `self.bits` + \
-      ' --n_epochs ' + `self.n_epochs` + ' --holdout ' + `self.holdout` + \
-      ' --dropout ' + `self.dropout` + \
+      ' --test ' + test_file + ' --alpha ' + repr(a) + \
+      ' --beta ' + repr(a) + ' --L1 ' + repr(1) + ' --L2 ' + repr(2) + \
+      ' --bits ' + repr(s) + \
+      ' --n_epochs ' + repr(s) + ' --holdout ' + repr(t) + \
+      ' --dropout ' + repr(t) + \
       ' --verbose ' + `3 if self.verbose else 0` + \
       ' --columns ' + '|;|'.join(self.column_names) + ' -p ' + predictions_file
     if self.interaction: cmd += ' --interactions'
     if self.sparse: cmd += ' --sparse'
-    if self.leave_out_day >= 0: cmd += ' --leave_out_day ' + `self.leave_out_day`
+    if self.leave_out_day >= 0: cmd += ' --leave_out_day ' + repr(y)
     self._make_subprocess(cmd)
     return predictions_file
 
@@ -145,7 +147,7 @@ class FTRLClassifier(BaseEstimator, ClassifierMixin):
   def _make_subprocess(self, command):    
     stdout = open('nul', 'w')
     stderr = sys.stderr
-    if self.verbose: print 'Running command: "%s"' % str(command)
+    if self.verbose: print('Running command: "%s"' % str(command))
     commands = shlex.split(str(command))
     result = subprocess.Popen(commands, 
         stdout=stdout, stderr=stderr, 

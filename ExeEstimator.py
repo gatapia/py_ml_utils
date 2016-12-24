@@ -1,4 +1,5 @@
-from __future__ import absolute_import
+from __future__ import print_function, absolute_import
+
 import os, sys, subprocess, shlex, tempfile, time, sklearn.base
 import numpy as np
 import pandas as pd
@@ -49,7 +50,7 @@ class ExeEstimator(sklearn.base.BaseEstimator):
     stdout = open('nul', 'w')
     stderr = sys.stderr
 
-    print 'running command: "%s"' % str(command)
+    print('running command: "%s"' % str(command))
     commands = shlex.split(str(command))
     result = subprocess.Popen(commands, 
         stdout=stdout, stderr=stderr, 

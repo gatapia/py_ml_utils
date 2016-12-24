@@ -1,6 +1,27 @@
+from __future__ import print_function, absolute_import
+
 import os, math
 import numpy as np
 from PIL import Image, ImageChops
+from keras import backend as K
+
+def prepare_imgs(X):
+  '''
+  turns monochrome image into a single channeled 4D tensor suitable for keras
+  '''
+  if (len(X.shape) != 3): 
+    print ('images are not monochrome 2 dimension images, not touching them')
+    return X
+    
+  if K.image_dim_ordering() == 'th': X =  X.reshape(X.shape[0], 1, X.shape[1], X.shape[2])
+  else: X = X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)
+  X = X.astype('float32')
+  X /= X.max()
+  return X
+
+def dataset_shape(X):
+  if (len(X.shape) != 4): return None
+  else: return X.shape[1:]
 
 def load_imgs(path, files=None, grayscale=False):
   if files is None: 
@@ -11,22 +32,39 @@ def load_imgs(path, files=None, grayscale=False):
   files = [os.path.join(path, f) for f in files]
   return [Image.open(f).convert("L" if grayscale else "RGB") for f in files]
 
-def save_imgs(filename, imgs, size=800):
+def save_imgs_sample(imgs, filename='sample.png', sample_size=100, image_size=800):
+  sample = imgs[np.random.randint(imgs.shape[0], size=sample_size), :]
+  save_imgs(sample, filename, image_size)
+
+def save_imgs(imgs, filename='images.png', image_size=800):
+  mode, bgcol = 'RGB', (255, 255, 255)
+  if (imgs.shape[-1] == 1): 
+    mode, bgcol = 'L', 255
+    imgs = imgs.reshape(-1, imgs.shape[1], imgs.shape[2])
+  
+  if imgs.max() <= 1: imgs = imgs * 255
+  imgs = imgs.astype('uint8')
+
   if '.' not in filename: filename += '.png'
-  new_im = Image.new('RGB', (size, size))  
-  rows = cols = math.ceil(math.sqrt(len(imgs)))
+  
+  new_im = Image.new(mode, (image_size, image_size))  
+  rows = cols = math.ceil(math.sqrt(len(imgs)))  
   if (rows - 1) * cols >= len(imgs): rows -= 1
-  size_s = int(math.ceil(size / float(cols))) 
+  size_s = int(math.ceil(image_size / float(cols)))
   idx = 0 
-  for y in xrange(0, size, size_s):
-    for x in xrange(0, size, size_s):
-      if idx == len(imgs): continue      
-      im = Image.fromarray(imgs[idx])
-      w_border = Image.new("RGB", (size_s, size_s), (255, 255, 255))
-      im = im.resize((size_s - 2, size_s - 2))
+  for y in range(0, image_size, size_s):
+    for x in range(0, image_size, size_s):
+      if idx == len(imgs): 
+        continue 
+      im = Image.fromarray(imgs[idx], mode)      
+      w_border = Image.new(mode, (size_s, size_s), bgcol)
+      new_size = size_s - 2
+      if im.size[0] != new_size or im.size[1] != new_size: 
+        im = im.resize((new_size, new_size))
       w_border.paste(im, (1, 1))      
       idx += 1      
       new_im.paste(w_border, (x, y))
+      new_im.paste(im, (x, y))
   new_im.save(filename)
 
 def save_img(filename, img):

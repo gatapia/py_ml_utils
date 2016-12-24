@@ -65,13 +65,13 @@ def SMOTE(T, N, k, h = 1.0):
     neigh.fit(T)
     
     #Calculate synthetic samples    
-    for n in xrange(int(math.ceil(N))):
+    for n in range(int(math.ceil(N))):
         if n == math.ceil(N):
             sample_size = int(n_minority_samples - (n*100))
         else:
             sample_size = int(n_minority_samples)
         T2 = T[np.random.choice(len(T), sample_size)]
-        for i in xrange(T2.shape[0]):
+        for i in range(T2.shape[0]):
             nn = neigh.kneighbors(T2[i], return_distance=False)
             nn_index = choice(nn[0])
             #NOTE: nn includes T[i], we don't want to select it 
@@ -116,7 +116,7 @@ def borderlineSMOTE(X, y, minority_target, N, k):
     safe_minority_indices = list()
     danger_minority_indices = list()
     
-    for i in xrange(n_samples):
+    for i in range(n_samples):
         if y[i] != minority_target: continue
         
         nn = neigh.kneighbors(X[i], return_distance=False)

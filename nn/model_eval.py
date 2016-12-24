@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from keras.models import *
 from keras.optimizers import *
 import time
@@ -52,9 +54,9 @@ def fit_evaluate(nn, X, y,
   try:
     best = np.min(history.history['val_loss'])
     best_epoch = np.argmin(history.history['val_loss'])
-    print '\nEvaluation Summary:\nCompile Time: %.1fs\nTrain Time: %.1fs\nHoldout Eval Time: %.1fs\nBest Epoch: %d\nBest Validation Score: %.5f\nHoldout Score: %.5f\nHoldout Accuracy: %.5f' % (compile_time, fit_time, eval_time, best_epoch, best, holdout_score, accuracy)
+    print('\nEvaluation Summary:\nCompile Time: %.1fs\nTrain Time: %.1fs\nHoldout Eval Time: %.1fs\nBest Epoch: %d\nBest Validation Score: %.5f\nHoldout Score: %.5f\nHoldout Accuracy: %.5f' % (compile_time, fit_time, eval_time, best_epoch, best, holdout_score, accuracy))
   except Exception as e:
-    print 'Error getting best: ', e
+    print('Error getting best: ', e)
   return (holdout_score, history)
 
 

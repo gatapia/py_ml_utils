@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import
 
 import inspect, warnings, sklearn, psutil, numpy, re, time
 import numpy as np
@@ -64,25 +65,25 @@ def try_all_classifiers(X, y, classifiers=None, scoring=None,
   global all_scores, cached_classifiers
   all_scores = []
   if classifiers is None: 
-    print 'calling get_classifiers'    
+    print('calling get_classifiers')    
     if cached_classifiers is None:
       classifiers = get_classifiers(sklearn)
       cached_classifiers = classifiers
     else:
       classifiers = cached_classifiers
-    print 'got ' + `len(classifiers)` + ' classifiers'
+    print('got ' + repr(len(classifiers)) + ' classifiers')
 
   for classifier in classifiers:    
     if classifier.__name__ in ignore: continue    
     try:
-      print 'testing classifier:', classifier.__name__
+      print('testing classifier:', classifier.__name__)
       t0 = time.time()
       clf = classifier()
       if classification == True and not isinstance(clf, sklearn.base.ClassifierMixin): 
-        print 'is classification and classifier is not a ClassifierMixin'
+        print('is classification and classifier is not a ClassifierMixin')
         continue
       if classification == False and not isinstance(clf, sklearn.base.RegressorMixin): 
-        print 'is NOT classification and classifier is not a RegressorMixin'
+        print('is NOT classification and classifier is not a RegressorMixin')
         continue
       if hasattr(clf, 'n_estimators'): clf.n_estimators = 200
       if use_proba and not hasattr(clf, 'predict_proba'):
@@ -93,13 +94,13 @@ def try_all_classifiers(X, y, classifiers=None, scoring=None,
       score, sem = do_cv(clf, X.copy(), y, len(y), n_iter=3, scoring=scoring, quiet=True)
       took = (time.time() - t0) / 60.
       all_scores.append({'name':classifier.__name__, 'score': score, 'sem': sem, 'took': took})      
-      print 'classifier:', classifier.__name__, 'score:', score, 'sem:', sem, 'took: %.1fm' % took
+      print('classifier:', classifier.__name__, 'score:', score, 'sem:', sem, 'took: %.1fm' % took)
     except Exception, e:
-      print 'classifier:', classifier.__name__, 'error - not included in results - ' + str(e)
+      print('classifier:', classifier.__name__, 'error - not included in results - ' + str(e))
   all_scores = sorted(all_scores, key=lambda t: t['score'], reverse=True)  
-  print '\t\tsuccessfull classifiers\n', '\n'.join(
+  print('\t\tsuccessfull classifiers\n', '\n').join(
     map(lambda d: '{:>35}{:10.4f}(+-{:5.4f}){:10.2f}m'.format(d['name'], d['score'], d['sem'], d['took']), all_scores))
-  print all_scores
+  print (all_scores)
 
 def parse_classifier_meta(classifier):
   doc = classifier.__doc__
@@ -116,7 +117,7 @@ def parse_classifier_meta(classifier):
         curr_arg = { 'name': name_type[0], 'type': name_type[1], 'description': '' }
         args.append(curr_arg)
       elif l:
-        if not curr_arg: print 'invalid line [%s] doc: %s' % (l, doc)
+        if not curr_arg: print('invalid line [%s] doc: %s' % (l, doc))
         curr_arg['description'] += l
   return {'classifier': classifier, 'args': args }
 

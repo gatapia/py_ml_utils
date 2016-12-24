@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn import preprocessing
 import numpy as np
@@ -45,7 +47,7 @@ class TransformYClassifier(BaseEstimator, ClassifierMixin):
       return np.arcsinh(y)
     elif self.transform_on_fit == 'pseudoLog10':
       return np.arcsinh(y/2.)/np.log(10)
-    else: raise Exception('Not Supported: ' + `self.transform_on_fit`)    
+    else: raise Exception('Not Supported: ' + repr(t))    
 
   def _post_predict_transform(self, X, y):
     if not self.anti_transform_on_predict: return y

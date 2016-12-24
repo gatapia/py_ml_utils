@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import inspect
 from keras.models import *
 from theano import function

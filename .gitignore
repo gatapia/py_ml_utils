@@ -4,3 +4,4 @@ nosetests.xml
 .coverage
 coverage.xml
 pylint.out
+output.log

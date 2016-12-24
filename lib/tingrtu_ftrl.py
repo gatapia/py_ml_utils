@@ -58,8 +58,8 @@ class ftrl_proximal(object):
     if self.interaction:
       D = self.D
       L = len(x)
-      for i in xrange(1, L):  # skip bias term, so we start at 1
-        for j in xrange(i+1, L):
+      for i in range(1, L):  # skip bias term, so we start at 1
+        for j in range(i+1, L):
           # one-hot encode interactions with hash trick
           yield abs(hash(str(x[i]) + '_' + str(x[j]))) % D
 
@@ -121,7 +121,7 @@ class ftrl_proximal(object):
     if dropout == 1:
       dropped = None
     else:
-      dropped = [random.random() > dropout for i in xrange(0,len(ind))]
+      dropped = [random.random() > dropout for i in range(0,len(ind))]
     
     p = self.predict(x, dropped)
 
@@ -283,7 +283,7 @@ def train_learner(train, args):
                sparse = args.sparse)
       
     # start training
-  for e in xrange(args.n_epochs):
+  for e in range(args.n_epochs):
      loss = 0.
      count = 0
      next_report = 10000

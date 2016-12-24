@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 from PIL import Image
 from img_utils import *
 import matplotlib as plt

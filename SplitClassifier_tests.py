@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import unittest, sklearn, sklearn.dummy, numpy as np
 from SplitClassifier import SplitClassifier
 

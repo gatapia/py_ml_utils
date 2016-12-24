@@ -1,12 +1,14 @@
+from __future__ import print_function, absolute_import
+
 import inspect
-from keras.models import Graph
 from keras.layers import *
+from keras.layers.containers import Graph
 
 from theano import function
-from debug import to_str
-from model_eval import fit_evaluate
+from .debug import to_str
+from .model_eval import fit_evaluate
 
-class NN(Graph):
+class NN(containers.Graph):
   def __init__(self, seed=0): 
     super(NN, self).__init__()
     np.random.seed(0)    
@@ -17,7 +19,7 @@ class NN(Graph):
     self.branch = None
     self.last_name = None
 
-    print 'add_branch w/ %d layers' % len(layers)
+    print('add_branch w/ %d layers' % len(layers))
     self._create_branch(layers[0].input_shape)
     for layer in layers: self._add_layer(layer)
     return self
@@ -26,14 +28,14 @@ class NN(Graph):
     if len(self.outputs) > 0: raise Exception('NN already has an output layer')
     if not isinstance(layer, Layer): raise Exception('_add_layer expects a keras.layers.Layer as input')
     name = self.branch + ':' + type(layer).__name__ + ':' + str(len(self.nodes))
-    print 'add_layer - layer: %s' % to_str(layer)
+    print('add_layer - layer: %s' % to_str(layer))
     self.add_node(layer, name, self.last_name, **kw)   
     self.last_name = name
     return self    
 
   def add_output_layers(self, layers, merge_mode='concat'):
     if len(self.get_output()) > 0: raise Exception('Only single output branch supported')
-    print 'add_output_layers w/ %d layers' % len(layers)
+    print('add_output_layers w/ %d layers' % len(layers))
 
     all_inputs = [n['input'] for n in self.node_config if n['input'] != '']
     all_finals = [n['name'] for n in self.node_config if n['name'] not in all_inputs]
@@ -59,7 +61,7 @@ class NN(Graph):
       epochs=3, batch_size=128, 
       loss='binary_crossentropy', optimizer='rmsprop', 
       compile_args={}, fit_args={}):
-    print 'evaluating...'
+    print('evaluating...')
     if len(self.inputs) == 0: raise Exception('NN has no branches')
     if len(self.outputs) == 0: self._add_output_impl()
 

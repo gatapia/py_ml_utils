@@ -1,5 +1,5 @@
+from __future__ import print_function, absolute_import
 
-from __future__ import absolute_import
 import os, sys, subprocess, shlex, tempfile, time, sklearn.base, math
 import numpy as np
 import pandas as pd
@@ -45,9 +45,9 @@ class LibFFMClassifier(ExeEstimator, sklearn.base.ClassifierMixin):
     # self._model_file = self.save_tmp_file(X, '_libffm_model', True)
     self._model_file = self.tmpfile('_libffm_model')
 
-    command = 'utils/lib/ffm-train.exe' + ' -l ' + `self.lambda_v` + \
-      ' -k ' + `self.factor` + ' -t ' + `self.iteration` + ' -r ' + `self.eta` + \
-      ' -s ' + `self.nr_threads`
+    command = 'utils/lib/ffm-train.exe' + ' -l ' + repr(v) + \
+      ' -k ' + repr(r) + ' -t ' + repr(n) + ' -r ' + repr(a) + \
+      ' -s ' + repr(s)
     if self.quiet: command += ' --quiet'
     if self.normalize: command += ' --norm'
     if self.no_rand: command += ' --no-rand'  

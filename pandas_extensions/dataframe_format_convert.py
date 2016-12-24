@@ -1,4 +1,6 @@
-import utils
+from __future__ import print_function, absolute_import
+
+from . import utils
 
 def __df_to_lines(df, 
     out_file_or_y=None, 
@@ -45,8 +47,8 @@ def __df_to_lines(df,
       if convert_zero_ys and label == '0.0': label = '-1.0'
       if weights is not None and idx < len(weights):      
         w = weights[idx]
-        if w != 1: label += ' ' + `w`
-        label += ' \'' + `idx`
+        if w != 1: label += ' ' + repr(w)
+        label += ' \'' + repr(x)
       
       new_line = []
       add_cols(new_line, df.numericals(), True)
@@ -102,7 +104,7 @@ def _df_to_libffm(self, out_file_or_y=None, y=None):
     new_line = [label]     
     for col_idx, c in enumerate(numericals):
       cis = str(col_idx)
-      new_line.append(cis + ':0:' + `0 if row[c] == 0  else row[c]`)
+      new_line.append(cis + ':0:' + repr(0 if row[c] == 0  else row[c]))
     line = ' '.join(new_line)
     if outfile is not None: outfile.write(line + '\n')
     else: lines.append(line)
