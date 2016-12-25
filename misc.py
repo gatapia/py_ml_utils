@@ -2,7 +2,7 @@ from __future__ import print_function, absolute_import
 
 import sys, gzip, time, datetime, random, os, logging, gc, \
     scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
-    sklearn.utils, sklearn.externals.joblib, inspect
+    sklearn.utils, sklearn.externals.joblib, inspect, bcolz
 import numpy as np, pandas as pd
 from pandas import Series, DataFrame
 
@@ -126,6 +126,10 @@ def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3,
   stop('done grid search')
   dbg(gs.best_params_, gs.best_score_)  
   return gs
+
+def save_array(fname, arr): c=bcolz.carray(arr, rootdir=fname, mode='w'); c.flush()
+
+def load_array(fname): return bcolz.open(fname)[:]
 
 def dump(file, data, force=False):  
   if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')

@@ -32,11 +32,20 @@ def load_imgs(path, files=None, grayscale=False):
   files = [os.path.join(path, f) for f in files]
   return [Image.open(f).convert("L" if grayscale else "RGB") for f in files]
 
-def save_imgs_sample(imgs, filename='sample.png', sample_size=100, image_size=800):
-  sample = imgs[np.random.randint(imgs.shape[0], size=sample_size), :]
+def save_imgs_sample(
+    imgs, 
+    filename='sample.png', 
+    sample_size=100, 
+    image_size=800,
+    shuffle=True):
+  sample = np.random.permutation(imgs)[:sample_size] \
+      if shuffle else imgs
   save_imgs(sample, filename, image_size)
 
-def save_imgs(imgs, filename='images.png', image_size=800):
+def save_imgs(
+    imgs, 
+    filename='images.png', 
+    image_size=800):
   mode, bgcol = 'RGB', (255, 255, 255)
   if (imgs.shape[-1] == 1): 
     mode, bgcol = 'L', 255
