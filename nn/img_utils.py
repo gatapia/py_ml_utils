@@ -1,9 +1,40 @@
 from __future__ import print_function, absolute_import
 
-import os, math
+import os, math, shutil
 import numpy as np
 from PIL import Image, ImageChops
+from keras.preprocessing import image
 from keras import backend as K
+
+def split_train_directory_into_train_and_valid(dir, 
+    dest_train_dir='data\\train_subset',
+    dest_valid_dir='data\\valid_subset',
+    validation_perc=.2, extension='*.jpg'):  
+  images = [y for x in os.walk(dir) for y in glob(os.path.join(x[0], extension))]
+  np.random.shuffle(images)
+  split = math.floor(len(images) * validation_perc)
+  
+  valid = images[:split]
+  train = images[split:] 
+
+  def _copy(images, dest_dir):
+    for img in images: 
+      to_file = img.replace(dir, dest_dir)
+      img_dir = os.path.dirname(to_file)
+      if not os.path.exists(img_dir): os.makedirs(img_dir)
+      shutil.copy(img, to_file)
+
+  _copy(valid, dest_valid_dir)
+  _copy(train, dest_train_dir)
+
+def get_batches(dirname, gen=image.ImageDataGenerator(), shuffle=True, 
+      batch_size=4, class_mode='categorical', target_size=(224,224)):
+  return gen.flow_from_directory(dirname, target_size=target_size,
+      class_mode=class_mode, shuffle=shuffle, batch_size=batch_size)
+
+def get_data(path, target_size=(224,224)):
+    batches = get_batches(path, shuffle=False, batch_size=1, class_mode=None, target_size=target_size)
+    return np.concatenate([batches.next() for i in range(batches.nb_sample)])
 
 def prepare_imgs(X, convert_to_rgb=True):
   '''
@@ -52,10 +83,13 @@ def save_imgs(
     filename='images.png', 
     image_size=800):
   mode, bgcol = 'RGB', (255, 255, 255)
-  if (imgs.shape[-1] == 1): 
+  channel_axis = 1 if K.image_dim_ordering() == 'th' else 3
+  if (imgs.shape[channel_axis] == 1): 
     mode, bgcol = 'L', 255
-    imgs = imgs.reshape(-1, imgs.shape[1], imgs.shape[2])
   
+  if channel_axis == 1:      
+    imgs = np.swapaxes(imgs, 1, 3)
+
   if imgs.max() <= 1: imgs = imgs * 255
   imgs = imgs.astype('uint8')
 
@@ -65,11 +99,11 @@ def save_imgs(
   rows = cols = math.ceil(math.sqrt(len(imgs)))  
   if (rows - 1) * cols >= len(imgs): rows -= 1
   size_s = int(math.ceil(image_size / float(cols)))
+
   idx = 0 
   for y in range(0, image_size, size_s):
     for x in range(0, image_size, size_s):
-      if idx == len(imgs): 
-        continue 
+      if idx == len(imgs): continue             
       im = Image.fromarray(imgs[idx], mode)      
       w_border = Image.new(mode, (size_s, size_s), bgcol)
       new_size = size_s - 2
