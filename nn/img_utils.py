@@ -5,19 +5,24 @@ import numpy as np
 from PIL import Image, ImageChops
 from keras import backend as K
 
-def prepare_imgs(X):
+def prepare_imgs(X, convert_to_rgb=True):
   '''
   turns monochrome image into a single channeled 4D tensor suitable for keras
   '''
   if (len(X.shape) != 3): 
     print ('images are not monochrome 2 dimension images, not touching them')
     return X
-    
-  if K.image_dim_ordering() == 'th': X =  X.reshape(X.shape[0], 1, X.shape[1], X.shape[2])
-  else: X = X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)
+  
   X = X.astype('float32')
   X /= X.max()
-  return X
+
+  if convert_to_rgb:
+    arrays = [X, X, X]
+    axis = 1 if K.image_dim_ordering() == 'th' else 3
+    return np.stack(arrays, axis=axis)
+  else:
+    if K.image_dim_ordering() == 'th': return X.reshape(X.shape[0], 1, X.shape[1], X.shape[2])
+    else: return X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)  
 
 def dataset_shape(X):
   if (len(X.shape) != 4): return None
