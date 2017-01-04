@@ -1,66 +1,12 @@
 from __future__ import print_function, absolute_import
 
-import os, math, shutil, glob, keras
+import math
 import numpy as np
-from PIL import Image, ImageChops
+from PIL import Image
 from keras.preprocessing import image
 from keras import backend as K
 
-def load_test_imgs(dir):
-  tmp_class = dir.split('\\')[-1]
-  parent = os.path.join(dir, '..')
-  batches = get_batches(parent, batch_size=1, class_mode=None, shuffle=False, classes=[tmp_class])
-  data = np.concatenate([batches.next() for i in range(batches.nb_sample)])    
-  return data, [f.split('\\')[-1] for f in batches.filenames]
-
-def split_train_directory_into_train_and_valid(source_dir,
-    dest_train_dir='data\\train_subset',
-    dest_valid_dir='data\\valid_subset',
-    validation_perc=.15, extension='*.jpg'):  
-  if (os.path.exists(dest_train_dir)): os.rmdir(dest_train_dir)
-  if (os.path.exists(dest_valid_dir)): os.rmdir(dest_valid_dir)
-  if (not os.path.exists(dest_train_dir)): os.makedirs(dest_train_dir)
-  if (not os.path.exists(dest_valid_dir)): os.makedirs(dest_valid_dir)
-
-  batches = get_batches(source_dir)
-  classes = batches.classes
-  filenames = np.array(batches.filenames)
-  indexes = np.random.permutation(len(classes))
-  split = int(math.floor(len(filenames) * validation_perc))
-  
-  valid = filenames[indexes][:split]
-  train = filenames[indexes][split:] 
-  valid_classes = classes[indexes][:split]
-  train_classes = classes[indexes][split:]
-
-  def _copy(images, dest_dir):
-    for img in images: 
-      to_file = dest_dir + '\\' + img
-      img_dir = os.path.dirname(to_file)
-      if not os.path.exists(img_dir): os.makedirs(img_dir)
-      shutil.copy(source_dir + '\\' + img, to_file)
-
-  _copy(valid, dest_valid_dir)
-  _copy(train, dest_train_dir)
-
-  train_batches = get_batches(dest_train_dir, batch_size=1, class_mode=None, shuffle=False)
-  valid_batches = get_batches(dest_valid_dir, batch_size=1, class_mode=None, shuffle=False)
-  train_data = np.concatenate([train_batches.next() for i in range(train_batches.nb_sample)])
-  valid_data = np.concatenate([valid_batches.next() for i in range(valid_batches.nb_sample)])
-
-  return (train_data, train_batches.classes, valid_data, valid_batches.classes)
-
-def get_batches(dirname, gen=image.ImageDataGenerator(), shuffle=True, 
-      batch_size=4, class_mode='categorical', target_size=(224,224), classes=None):
-  return gen.flow_from_directory(dirname, target_size=target_size,
-      class_mode=class_mode, shuffle=shuffle, batch_size=batch_size, classes=classes)
-
-def get_data(path, target_size=(224,224)):
-    batches = get_batches(path, shuffle=False, 
-        batch_size=1, class_mode=None, target_size=target_size)
-    return np.concatenate([batches.next() for i in range(batches.nb_sample)])
-
-def prepare_imgs(X, convert_to_rgb=True):
+def prepare_monochrome_images(X, convert_to_rgb=True):
   '''
   turns monochrome image into a single channeled 4D tensor suitable for keras
   '''
@@ -79,30 +25,23 @@ def prepare_imgs(X, convert_to_rgb=True):
     if K.image_dim_ordering() == 'th': return X.reshape(X.shape[0], 1, X.shape[1], X.shape[2])
     else: return X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)  
 
-def dataset_shape(X):
-  if (len(X.shape) != 4): return None
-  else: return X.shape[1:]
-
-def load_imgs(path, files=None, grayscale=False):
-  if files is None: 
-    def isimg(f):
-      ext = f.split('.')[-1]
-      return ext in ['jpg', 'gif', 'png', 'bmp']      
-    files = [f for f in os.listdir(path) if isimg(f)]
-  files = [os.path.join(path, f) for f in files]
-  return [Image.open(f).convert("L" if grayscale else "RGB") for f in files]
-
-def save_imgs_sample_for_classes(imgs, filename_prefix, classes, sample_size=100, image_size=800, shuffle=True):
+def save_imgs_sample_for_classes(
+    imgs, 
+    filename_prefix, 
+    classes, 
+    sample_size=100, 
+    image_size=800, 
+    shuffle=True):
   for cls in range(max(classes)):
     save_imgs_sample(imgs[classes==cls], filename_prefix + '_' + str(cls) + '.png', sample_size, image_size, shuffle)
 
 def save_imgs_sample(
     imgs, 
-    filename='sample.png', 
+    filename='viz\\sample.png', 
     sample_size=100, 
     image_size=800,
     shuffle=True):
-  if type(imgs) is keras.preprocessing.image.NumpyArrayIterator: 
+  if type(imgs) is image.NumpyArrayIterator: 
     tmp = imgs.next()[0]
     while(len(tmp)) < sample_size: tmp = tmp + imgs.next()[0]
     imgs = tmp
@@ -152,70 +91,3 @@ def save_img(filename, img):
   if '.' not in filename: filename += '.png'
   if type(img) is np.array: img = Image.fromarray(img)
   img.save(filename)
-
-def resize_imgs(imgs, size):
-  return [resize_img(i, size) for i in imgs]
-
-def resize_img(img, size):
-  img = img.copy()
-  img.thumbnail(size, Image.ANTIALIAS)
-  new_size = img.size
-  img = img.crop( (0, 0, size[0], size[1]))
-
-  offset_x = max( (size[0] - new_size[0]) / 2, 0 )
-  offset_y = max( (size[1] - new_size[1]) / 2, 0 )
-
-  return ImageChops.offset(img, offset_x, offset_y)  
-
-def rotate_imgs(imgs, angle=20): return [rotate_img(i, angle) for i in imgs]
-
-def rotate_img(img, angle=20): return img.rotate(_get_rng_from_min_max(angle))
-
-def toarr_imgs(imgs, keras_style=True):
-  arr = np.array([np.asarray(img) for img in imgs])
-  if keras_style: arr = np.swapaxes(arr,3,1)
-  return arr
-
-def flip_imgs(imgs, horizontal=True):
-  return [flip_img(img, horizontal) for img in imgs]
-
-def flip_img(img, horizontal=True):
-  return img.transpose(Image.FLIP_LEFT_RIGHT if horizontal else Image.FLIP_TOP_BOTTOM)
-
-def zoom_imgs(imgs, factor=10):
-  return np.array([zoom_img(i, factor) for i in imgs])
-
-def zoom_img(img, factor=10):
-  rows, cols = img.shape[:2]  
-  if isinstance(factor, (list, tuple)): factor = np.random.uniform(factor[0], factor[1])
-  else: factor = np.random.uniform(factor/2., factor)
-  pts1 = np.float32([[factor,factor],[cols-factor,factor],[factor,rows-factor],[cols-factor, rows-factor]])
-  pts2 = np.float32([[0,0],[cols,0],[0,rows],[cols,rows]])
-  M = cv2.getPerspectiveTransform(pts1, pts2)
-  return cv2.warpPerspective(img,M,(rows,cols))
-
-def save_history_loss(filename, history):
-  if '.' not in filename: filename += '.png'
-
-  losses = {'loss': history['loss']}
-  if 'val_loss' in history: losses.add('val_loss', history['val_loss'])
-  
-  save_losses(filename, losses)
-  
-def save_losses(filename, losses):
-  if '.' not in filename: filename += '.png'
-
-  x = history['epoch']
-  legend = losses.keys
-
-  for v in losses.values: plt.plot(np.arange(len(v)) + 1, v, marker='.')
-
-  plt.title('Loss over epochs')
-  plt.xlabel('Epochs')
-  plt.xticks(history['epoch'], history['epoch'])
-  plt.legend(legend, loc = 'upper right')
-  plt.savefig(filename)
-
-def _get_rng_from_min_max(num):
-  if isinstance(num, (list, tuple)): return np.random.uniform(num[0], num[1])
-  else: return np.random.uniform(-num, num)
