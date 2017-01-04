@@ -1,39 +1,63 @@
 from __future__ import print_function, absolute_import
 
-import os, math, shutil
+import os, math, shutil, glob, keras
 import numpy as np
 from PIL import Image, ImageChops
 from keras.preprocessing import image
 from keras import backend as K
 
-def split_train_directory_into_train_and_valid(dir, 
+def load_test_imgs(dir):
+  tmp_class = dir.split('\\')[-1]
+  parent = os.path.join(dir, '..')
+  batches = get_batches(parent, batch_size=1, class_mode=None, shuffle=False, classes=[tmp_class])
+  data = np.concatenate([batches.next() for i in range(batches.nb_sample)])    
+  return data, [f.split('\\')[-1] for f in batches.filenames]
+
+def split_train_directory_into_train_and_valid(source_dir,
     dest_train_dir='data\\train_subset',
     dest_valid_dir='data\\valid_subset',
-    validation_perc=.2, extension='*.jpg'):  
-  images = [y for x in os.walk(dir) for y in glob(os.path.join(x[0], extension))]
-  np.random.shuffle(images)
-  split = math.floor(len(images) * validation_perc)
+    validation_perc=.15, extension='*.jpg'):  
+  if (os.path.exists(dest_train_dir)): os.rmdir(dest_train_dir)
+  if (os.path.exists(dest_valid_dir)): os.rmdir(dest_valid_dir)
+  if (not os.path.exists(dest_train_dir)): os.makedirs(dest_train_dir)
+  if (not os.path.exists(dest_valid_dir)): os.makedirs(dest_valid_dir)
+
+  batches = get_batches(source_dir)
+  classes = batches.classes
+  filenames = np.array(batches.filenames)
+  indexes = np.random.permutation(len(classes))
+  split = int(math.floor(len(filenames) * validation_perc))
   
-  valid = images[:split]
-  train = images[split:] 
+  valid = filenames[indexes][:split]
+  train = filenames[indexes][split:] 
+  valid_classes = classes[indexes][:split]
+  train_classes = classes[indexes][split:]
 
   def _copy(images, dest_dir):
     for img in images: 
-      to_file = img.replace(dir, dest_dir)
+      to_file = dest_dir + '\\' + img
       img_dir = os.path.dirname(to_file)
       if not os.path.exists(img_dir): os.makedirs(img_dir)
-      shutil.copy(img, to_file)
+      shutil.copy(source_dir + '\\' + img, to_file)
 
   _copy(valid, dest_valid_dir)
   _copy(train, dest_train_dir)
 
+  train_batches = get_batches(dest_train_dir, batch_size=1, class_mode=None, shuffle=False)
+  valid_batches = get_batches(dest_valid_dir, batch_size=1, class_mode=None, shuffle=False)
+  train_data = np.concatenate([train_batches.next() for i in range(train_batches.nb_sample)])
+  valid_data = np.concatenate([valid_batches.next() for i in range(valid_batches.nb_sample)])
+
+  return (train_data, train_batches.classes, valid_data, valid_batches.classes)
+
 def get_batches(dirname, gen=image.ImageDataGenerator(), shuffle=True, 
-      batch_size=4, class_mode='categorical', target_size=(224,224)):
+      batch_size=4, class_mode='categorical', target_size=(224,224), classes=None):
   return gen.flow_from_directory(dirname, target_size=target_size,
-      class_mode=class_mode, shuffle=shuffle, batch_size=batch_size)
+      class_mode=class_mode, shuffle=shuffle, batch_size=batch_size, classes=classes)
 
 def get_data(path, target_size=(224,224)):
-    batches = get_batches(path, shuffle=False, batch_size=1, class_mode=None, target_size=target_size)
+    batches = get_batches(path, shuffle=False, 
+        batch_size=1, class_mode=None, target_size=target_size)
     return np.concatenate([batches.next() for i in range(batches.nb_sample)])
 
 def prepare_imgs(X, convert_to_rgb=True):
@@ -68,12 +92,21 @@ def load_imgs(path, files=None, grayscale=False):
   files = [os.path.join(path, f) for f in files]
   return [Image.open(f).convert("L" if grayscale else "RGB") for f in files]
 
+def save_imgs_sample_for_classes(imgs, filename_prefix, classes, sample_size=100, image_size=800, shuffle=True):
+  for cls in range(max(classes)):
+    save_imgs_sample(imgs[classes==cls], filename_prefix + '_' + str(cls) + '.png', sample_size, image_size, shuffle)
+
 def save_imgs_sample(
     imgs, 
     filename='sample.png', 
     sample_size=100, 
     image_size=800,
     shuffle=True):
+  if type(imgs) is keras.preprocessing.image.NumpyArrayIterator: 
+    tmp = imgs.next()[0]
+    while(len(tmp)) < sample_size: tmp = tmp + imgs.next()[0]
+    imgs = tmp
+
   sample = np.random.permutation(imgs)[:sample_size] \
       if shuffle else imgs
   save_imgs(sample, filename, image_size)
