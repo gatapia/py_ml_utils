@@ -3,7 +3,8 @@ from __future__ import print_function, absolute_import
 import sys, gzip, time, datetime, random, os, logging, gc, \
     scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
     sklearn.utils, sklearn.externals.joblib, inspect, bcolz
-import numpy as np, pandas as pd
+import numpy as np
+import pandas as pd
 from pandas import Series, DataFrame
 
 def debug(msg): 
@@ -151,16 +152,16 @@ def load(file, opt_fallback=None):
   stop('done loading file: ' + file)
   return data
   
-def read_df(file, nrows=None):
+def read_df(file, nrows=None, sheetname=None):
   start('reading dataframe: ' + file)
   if file.endswith('.pickle'): 
     df = load(file)
   else:
-
     sep = '\t' if '.tsv' in file else ','
-    if file.endswith('.7z'):
+    if file.endswith('.xls') or file.endswith('.xlsx'):  
+      df = pd.read_excel(file, sheetname=sheetname, nrows=nrows);
+    elif file.endswith('.7z'):
       import libarchive
-   
       with libarchive.reader(file) as reader:
         df = pd.read_csv(reader, nrows=nrows, sep=sep);
     elif file.endswith('.zip'):

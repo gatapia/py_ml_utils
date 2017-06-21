@@ -21,6 +21,9 @@ Instructions:
     - ml [git submodule to this lib]
   - To run a script use `python -m src.script01`
   - Or in ipython `import src.utils` to get going
+- Jupyter Notebook
+  - ml will need to live in the src directory
+  - "from ml import *"
 
 This will inject all the required libraries into your environment 
 including:
