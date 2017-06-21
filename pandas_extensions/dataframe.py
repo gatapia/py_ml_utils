@@ -455,8 +455,8 @@ def _df_predict(self, clf, y, X_test=None):
 def _df_predict_proba(self, clf, y, X_test=None):    
   return __df_clf_method_impl(self, clf, y, X_test, 'predict_proba')
 
-def _df_transform(self, clf, y, X_test=None):    
-  return __df_clf_method_impl(self, clf, y, X_test, 'transform')
+def _df_do_transform(self, clf, y, X_test=None):    
+  return __df_clf_method_impl(self, clf, y, X_test, 'do_transform')
 
 def _df_decision_function(self, clf, y, X_test=None):    
   return __df_clf_method_impl(self, clf, y, X_test, 'decision_function')
