@@ -133,19 +133,20 @@ def save_array(fname, arr): c=bcolz.carray(arr, rootdir=fname, mode='w'); c.flus
 def load_array(fname): return bcolz.open(fname)[:]
 
 def dump(file, data, force=False):  
-  if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
+  if not '/' in file: 
+    if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
+    file = 'data/pickles/' + file  
   if not '.' in file: file += '.pickle'
-  if os.path.isfile(file) and not force:
-    raise Exception('file: ' + file + ' already exists. Set force=True to overwrite.')
-  sklearn.externals.joblib.dump(data, 'data/pickles/' + file);  
+  if os.path.isfile(file) and not force:  raise Exception('file: ' + file + ' already exists. Set force=True to overwrite.')
+  sklearn.externals.joblib.dump(data, file);  
 
 def load(file, opt_fallback=None):
   start('loading file: ' + file)
-  full_file = 'data/pickles/' + file
-  if not '.' in full_file: full_file += '.pickle'
-  if os.path.isfile(full_file): 
-    if full_file.endswith('.npy'): return np.load(full_file)
-    else: return sklearn.externals.joblib.load(full_file);
+  if not '/' in file: file = 'data/pickles/' + file
+  if not '.' in file: file += '.pickle'
+  if os.path.isfile(file): 
+    if file.endswith('.npy'): return np.load(file)
+    else: return sklearn.externals.joblib.load(file);
   if opt_fallback is None: return None
   data = opt_fallback()
   dump(file, data)
