@@ -6,12 +6,12 @@ from . import utils
 from .. import misc
 
 def _s_one_hot_encode(self):
-  misc.start('one_hot_encoding column')  
+  misc.start('one_hot_encoding column')
 
   arr = self.values
   col_ohe = sklearn.preprocessing.OneHotEncoder().fit_transform(arr.reshape((len(arr), 1)))
 
-  misc.stop('done one_hot_encoding column converted to ' + repr(col_ohe.shape[1]) + ' columns')  
+  misc.stop('done one_hot_encoding column converted to ' + repr(col_ohe.shape[1]) + ' columns')
   return col_ohe
 
 def _s_bin(self, n_bins=100):
@@ -19,11 +19,11 @@ def _s_bin(self, n_bins=100):
 
 def _s_group_rare(self, limit=30, rare_val=None):
   vcs = self.value_counts()
-  rare = vcs[vcs <= limit].keys()  
+  rare = vcs[vcs <= limit].keys()
   if rare_val is None:
-    rare_val = 'rare' 
+    rare_val = 'rare'
     if self.is_numerical(): rare_val = -1
-    elif self.is_index(): 
+    elif self.is_index():
       print('self.max():', self.max(), self)
       self.max() + 1
 
@@ -41,29 +41,29 @@ def _s_sigma_limits(self, sigma):
 
 def _s_to_indexes(self):
   cat = pd.Categorical.from_array(self)
-  lbls = cat.codes if hasattr(cat, 'codes') else cat.labels    
+  lbls = cat.codes if hasattr(cat, 'codes') else cat.labels
   return pd.Series(lbls, index=self.index, dtype=utils.get_optimal_numeric_type('int', 0, len(lbls) + 1))
 
-def _s_append_bottom(self, s):  
+def _s_append_bottom(self, s):
   if type(s) is not pd.Series: s = pd.Series(s)
   return pd.concat([self, s], ignore_index=True)
 
-def _s_missing(self, fill='none'):  
-  misc.start('replacing series missing data fill[' + repr(l) + ']')
-  val = utils.get_col_aggregate(self, fill)    
+def _s_missing(self, fill='none'):
+  misc.start('replacing series missing data fill[' + repr(fill) + ']')
+  val = utils.get_col_aggregate(self, fill)
   self.fillna(val, inplace=True)
-  self.replace([np.inf, -np.inf], val, inplace=True)  
+  self.replace([np.inf, -np.inf], val, inplace=True)
 
   misc.stop('replacing series missing data')
   return self
 
-def _s_normalise(self):  
+def _s_normalise(self):
   return self.scale(min_max=(0, 1))
 
-def _s_scale(self, min_max=None):  
+def _s_scale(self, min_max=None):
   s = self
   if min_max:
-    s -= s.min()  
+    s -= s.min()
     s /= s.max()
     s *= (min_max[1] - min_max[0])
     s += min_max[0]
@@ -89,7 +89,7 @@ def _s_is_index(self):
 def _s_is_binary(self):
   if self.is_valid_name(): return self.name.startswith('b_')
   uniques = self.unique()
-  if len(uniques) == 1: 
+  if len(uniques) == 1:
     misc.dbg('\n!!! columns: ' + self.name + ' has only 1 unique value and hence has no information and should be removed\n')
   return len(uniques) == 2
 
@@ -119,40 +119,40 @@ def _s_infer_col_name(self):
   dtype = str(self.dtype)
   if self.is_date(): prefix = 'd_'
   elif self.is_binary(): prefix = 'b_'
-  elif self.is_numerical(): prefix = 'n_'  
+  elif self.is_numerical(): prefix = 'n_'
   else: prefix = 'c_'
   self.name = prefix + name
   return self
 
-def _s_outliers(self, stds=3):  
+def _s_outliers(self, stds=3):
   mean, offset = self.mean(), stds * self.std()
   min, max = mean - offset, mean + offset
   return self.clip(min, max)
 
-def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):     
-  threshold = float(len(self)) * min_size if type(min_size) is float else min_size 
+def _s_categorical_outliers(self, min_size=0.01, fill_mode='mode'):
+  threshold = float(len(self)) * min_size if type(min_size) is float else min_size
   fill = utils.get_col_aggregate(self, fill_mode)
   vc = self.value_counts()
-  under = vc[vc <= threshold]    
-  if under.shape[0] > 0: 
+  under = vc[vc <= threshold]
+  if under.shape[0] > 0:
     misc.debug('column [' + str(self.name) + '] threshold[' + repr(d) + '] fill[' + repr(l) + '] num of rows[' + repr(len(s)) + ']')
     self[self.isin(under.index)] = fill
   return self
 
-def _s_compress_size(self, aggresiveness=0, sparsify=False):      
+def _s_compress_size(self, aggresiveness=0, sparsify=False):
   '''
   Always returns a new Series as inplace type change is not allowed
   '''
   c = self.copy()
   if c.is_numerical() or c.is_index():
-    if c.is_index() or str(c.dtype).startswith('int'):        
+    if c.is_index() or str(c.dtype).startswith('int'):
       c = c.astype(utils.get_optimal_numeric_type('int', min(c), max(c)))
-      return c if not sparsify else c.to_sparse(fill_value=int(c.mode()))    
+      return c if not sparsify else c.to_sparse(fill_value=int(c.mode()))
     elif str(c.dtype).startswith('float'):
       return c.astype(utils.get_optimal_numeric_type(c.dtype, min(c), max(c), aggresiveness=aggresiveness))
     else:
       raise Exception(str(c.name) + ' expected "int" or "float" type got: ', str(c.dtype))
-  else : 
+  else :
     misc.dbg(c.name + ' is not supported, ignored during compression')
   return c
 
@@ -191,7 +191,7 @@ def _s_to_count_of_binary_target(self, y, positive_class=None):
   if len(classes) != 2: raise Exception('only binary target is supported')
   if positive_class is None: positive_class = np.max(classes)
   for val in self.unique():
-    this_y = y[self == val]    
+    this_y = y[self == val]
     self[self==val] = len(this_y[this_y == positive_class])
   return self
 
@@ -202,26 +202,26 @@ def _s_to_ratio_of_binary_target(self, y, positive_class=None):
   if len(classes) != 2: raise Exception('only binary target is supported')
   if positive_class is None: positive_class = np.max(classes)
   for val in self.unique():
-    this_y = y[self == val]    
+    this_y = y[self == val]
     ratio = len(this_y[this_y == positive_class]) / float(len(this_y))
     self[self==val] = ratio
   return self
 
-def _s_to_stat(self, y, stat='mean', 
-      missing_value='missing', missing_treatment='missing-category', 
+def _s_to_stat(self, y, stat='mean',
+      missing_value='missing', missing_treatment='missing-category',
       noise_level=None):
   # if not self.is_categorical_like(): raise Exception('only supported for categorical like columns')
-  if type(y) is not pd.Series: y = pd.Series(y)  
-  train = self[:len(y)] 
+  if type(y) is not pd.Series: y = pd.Series(y)
+  train = self[:len(y)]
   test = self[len(y):]
   df = pd.DataFrame({'c_1' : train, 'n_y': y.values})
-  
+
   def iqm(x): return np.mean(np.percentile(x, [75 ,25]))
 
   s = df.groupby('c_1')['n_y'].\
       transform(iqm if stat == 'iqm' else stat)
-  if len(test) > 0:   
-    _, not_in_train = train.difference_with(test, quiet=True)  
+  if len(test) > 0:
+    _, not_in_train = train.difference_with(test, quiet=True)
     transformer = dict(zip(train, s))
 
     test[test.isin(not_in_train)] = missing_value if \
@@ -229,8 +229,8 @@ def _s_to_stat(self, y, stat='mean',
 
     if (missing_treatment != 'missing-category' or missing_value not in transformer):
       transformer['use-whole-set'] = utils.get_col_aggregate(y, stat)
-    s =  s.append_bottom(test.map(transformer))  
-    
+    s =  s.append_bottom(test.map(transformer))
+
   if noise_level > 0: s = s.add_noise(noise_level, 'gaussian')
   return s
 
@@ -245,7 +245,7 @@ def _s_boxcox(self):
   return scipy.stats.boxcox(self)[0]
 
 def _s_vc(self):
-  counts = self.value_counts(dropna=False)  
+  counts = self.value_counts(dropna=False)
   misc.dbg(counts, '\n', len(counts), 'uniques')
 
 def _s_floats_to_ints(self, decimals=5):
@@ -265,8 +265,8 @@ def _s_difference_with(self, other, quiet=False):
   intersection = len(self_s.intersection(other_s))
   actual_diffs = self_s.difference(other_s)
   difference = len(actual_diffs)
-  if not quiet: misc.dbg('same:', intersection, 
-        'diff:', difference, 
+  if not quiet: misc.dbg('same:', intersection,
+        'diff:', difference,
         '%% diff: %.1f' % (100. * difference / (intersection + difference)))
   in_self = self_s - other_s
   in_other = other_s - self_s
@@ -277,4 +277,4 @@ def _s_difference_with(self, other, quiet=False):
 '''
 Add new methods manually using:
 pandas_extensions._extend_s('group_rare', _s_group_rare)
-'''    
+'''
