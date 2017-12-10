@@ -1,0 +1,6 @@
+sklearn==0.18.1
+pydot_ng=1.0.0
+graphviz=0.8
+pillow-simd=4.2.1
+bcolz=1.1.2
+tqdm=4.15.0

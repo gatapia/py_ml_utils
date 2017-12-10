@@ -1,4 +1,6 @@
 data/
+*.egg-info/
+.eggs/
 *.pyc
 nosetests.xml
 .coverage

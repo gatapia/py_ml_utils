@@ -10,17 +10,17 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     s = pd.Series([1, 2, 3])
     s2 = s.one_hot_encode().todense()
     np.testing.assert_array_equal(s2, np.array([
-      [1., 0., 0.], 
-      [0., 1., 0.], 
+      [1., 0., 0.],
+      [0., 1., 0.],
       [0., 0., 1.]], 'object'))
 
   def test_binning(self):
-    s = pd.Series([1., 2., 3.])    
+    s = pd.Series([1., 2., 3.])
     s2 = s.bin(2)
     self.eq(s2, ['(0.998, 2]', '(0.998, 2]', '(2, 3]'])
 
   def test_group_rare(self):
-    s = pd.Series(['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10)    
+    s = pd.Series(['a', 'b', 'c'] * 100 + ['d', 'e', 'f'] * 10)
     s2 = s.copy().group_rare()
     self.eq(s2, ['a', 'b', 'c'] * 100 + ['rare'] * 30)
 
@@ -71,8 +71,8 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.close(s[50], 0.4451432058306285)
 
   def test_scale(self):
-    self.eq(pd.Series([1, 2, 3]).scale(), [-1, 0, 1])    
-    self.eq(pd.Series([1, 2, 3]).scale((0, 100)), [0, 50, 100])    
+    self.eq(pd.Series([1, 2, 3]).scale(), [-1, 0, 1])
+    self.eq(pd.Series([1, 2, 3]).scale((0, 100)), [0, 50, 100])
 
   def test_normalise(self):
     self.eq(pd.Series([1, 2, 3]).normalise(), [0, .5, 1])
@@ -133,29 +133,29 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     cols = ['a', 'b', 'c', 'd'] * 100000 + ['d', 'f', 'g'] * 10000
     s = pd.Series(cols)
     s.categorical_outliers(0.1, 'mode')
-    
+
     exp = ['a', 'b', 'c', 'd'] * 100000 + ['d', 'd', 'd'] * 10000
     self.eq(exp, s)
 
   def test_compress_size_with_0_aggresiveness(self):
     s = pd.Series(np.random.normal(size=10000))
-    self.assertEquals(str(s.dtype), 'float64')
+    self.assertEqual(str(s.dtype), 'float64')
     s2 = s.compress_size(aggresiveness=0)
-    self.assertEquals(str(s2.dtype), 'float64')
+    self.assertEqual(str(s2.dtype), 'float64')
     self.eq(s, s2)
 
   def test_compress_size_with_1_aggresiveness(self):
     s = pd.Series(np.random.normal(size=10000))
-    self.assertEquals(str(s.dtype), 'float64')
+    self.assertEqual(str(s.dtype), 'float64')
     s2 = s.compress_size(aggresiveness=1)
-    self.assertEquals(str(s2.dtype), 'float32')
+    self.assertEqual(str(s2.dtype), 'float32')
     self.assertTrue(s.all_close(s2))
 
   def test_compress_size_with_2_aggresiveness(self):
     s = pd.Series(np.random.normal(size=10000))
-    self.assertEquals(str(s.dtype), 'float64')
+    self.assertEqual(str(s.dtype), 'float64')
     s2 = s.compress_size(aggresiveness=2)
-    self.assertEquals(str(s2.dtype), 'float16')
+    self.assertEqual(str(s2.dtype), 'float16')
     self.assertTrue(s.all_close(s2, .01))
 
   def test_hashcode_float(self):
@@ -213,30 +213,30 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
   def test_to_ratio_of_samples(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
     s.to_ratio_of_samples()
-    self.eq(s, [1/2., 1/2., 1/2., 1/3., 1/3., 1/6.])  
+    self.eq(s, [1/2., 1/2., 1/2., 1/3., 1/3., 1/6.])
 
   def test_to_stat(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.]), [2, 2, 2, 4.5, 4.5, 6])  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.]), [2, 2, 2, 4.5, 4.5, 6])
 
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'median'), [2, 2, 2, 4.5, 4.5, 6])  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'median'), [2, 2, 2, 4.5, 4.5, 6])
 
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'min'), [1, 1, 1, 4, 4, 6])  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'min'), [1, 1, 1, 4, 4, 6])
 
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'max'), [3, 3, 3, 5, 5, 6])  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'max'), [3, 3, 3, 5, 5, 6])
 
   def test_to_stat_iqm(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'])
-    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'iqm'), [2. ,  2. ,  2. ,  4.5,  4.5,  6.])  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'iqm'), [2. ,  2. ,  2. ,  4.5,  4.5,  6.])
 
   def test_to_stat_with_test(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2)
-    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.]), 
-        [2, 2, 2, 4.5, 4.5, 6] * 2)  
-    
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.]),
+        [2, 2, 2, 4.5, 4.5, 6] * 2)
+
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2)
     self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'median'), [2, 2, 2, 4.5, 4.5, 6] * 2)
 
@@ -247,13 +247,13 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'max'), [3, 3, 3, 5, 5, 6] * 2)
 
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2)
-    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'iqm'), [2. ,  2. ,  2. ,  4.5,  4.5,  6.] * 2)  
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.], 'iqm'), [2. ,  2. ,  2. ,  4.5,  4.5,  6.] * 2)
 
   def test_to_stat_with_test_with_missing_vals(self):
     s = pd.Series(['a', 'a', 'a', 'b', 'b', 'c'] * 2 + ['d', 'd'])
-    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.]), 
-        [2, 2, 2, 4.5, 4.5, 6] * 2 + [3.5, 3.5])  
-    
+    self.eq(s.to_stat([1., 2., 3., 4., 5., 6.]),
+        [2, 2, 2, 4.5, 4.5, 6] * 2 + [3.5, 3.5])
+
   def test_to_stat_larger_data(self):
     s = pd.Series(np.random.random(100000) * 10).astype(int)
     y = np.random.random(100000)
@@ -281,10 +281,10 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     s = pd.Series([5, 2, 7, 3, 5, 8, 1])
     rank = s.to_rank(False)
     self.eq(rank, [4.5, 2., 6., 3., 4.5, 7., 1.])
-    
+
     rank = s.to_rank(True)
     self.close(rank, [0.583333,0.166667,0.833333,0.333333,0.583333,1.,0.])
-  
+
   def test_boxcox(self):
     s = pd.Series([1, 2, 3, 4, 5])
     bc = s.boxcox()
@@ -294,7 +294,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
     s = pd.Series([1, 2, 3, 4, -1])
     bc = s.boxcox()
     self.close(bc, [2.151, 3.301,4.484,5.694, 0.])
-  
+
   def test_floats_to_ints(self):
     s = pd.Series(np.random.normal(size=100))
     s = s.floats_to_ints()
