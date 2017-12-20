@@ -7,12 +7,12 @@ import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
 
-def debug(msg): 
+def debug(msg):
   if not cfg['debug']: return
   log.info(msg)
 
 _message_timers = {}
-def start(msg, id=None): 
+def start(msg, id=None):
   if not cfg['debug']: return
   if id is None:
     s = inspect.stack()
@@ -21,7 +21,7 @@ def start(msg, id=None):
   _message_timers[id] = time.time()
   log.info(msg)
 
-def stop(msg, id=None): 
+def stop(msg, id=None):
   if not cfg['debug']: return
   if id is None:
     s = inspect.stack()
@@ -37,24 +37,24 @@ def stop(msg, id=None):
 def reseed(clf):
   if clf is not None: clf.random_state = cfg['sys_seed']
   random.seed(cfg['sys_seed'])
-  np.random.seed(cfg['sys_seed']) 
+  np.random.seed(cfg['sys_seed'])
   return clf
 
 def seed(seed):
   cfg['sys_seed'] = seed
   reseed(None)
 
-def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False, 
+def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
       scoring=None, stratified=False, n_jobs=-1, fit_params=None, prefix='CV'):
   if not quiet: start('starting ' + prefix)
   reseed(clf)
-  
+
   if n_samples is None: n_samples = len(y)
   if X.shape[0] > len(y): X = X[:len(y)]
   elif type(n_samples) is float: n_samples = int(n_samples)
   if scoring is None: scoring = cfg['scoring']
   if test_size is None: test_size = 1./n_iter
-  
+
   try:
     if (n_samples > X.shape[0]): n_samples = X.shape[0]
   except: pass
@@ -69,7 +69,7 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   if n_jobs == -1 and cfg['cv_n_jobs'] > 0: n_jobs = cfg['cv_n_jobs']
 
   test_scores = sklearn.cross_validation.cross_val_score(
-      clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs, 
+      clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs,
       fit_params=fit_params)
   score_desc = ("{0:.5f} (+/-{1:.5f})").format(np.mean(test_scores), scipy.stats.sem(test_scores))
   if not quiet: stop('done %s: %s' % (prefix, score_desc))
@@ -77,12 +77,12 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
 
 def score_classifier_vals(prop, vals, clf, X, y, n_iter=3):
   results = []
-  for v in vals:  
+  for v in vals:
     clf = sklearn.base.clone(clf)
     target_clf = clf.base_classifier if hasattr(clf, 'base_classifier') else clf
-    setattr(target_clf, prop, v)    
+    setattr(target_clf, prop, v)
     score = do_cv(clf, X, y, n_iter=n_iter, prefix='CV - prop[%s] val[%s]' % (prop, str(v)))
-    results.append({'prop': prop, 'v':v, 'score': score})  
+    results.append({'prop': prop, 'v':v, 'score': score})
   sorted_results = sorted(results, key=lambda r: r['score'][0], reverse=True)
   best = {'prop': prop, 'value': sorted_results[0]['v'], 'score': sorted_results[0]['score']}
   dbg('\n\n\n\n', best)
@@ -97,7 +97,7 @@ def score_operations_on_cols(clf, X, y, columns, operations, operator, n_iter=5)
     col_best = best
     col_best_op = 'no-op'
     for op in operations:
-      X2 = operator(X.copy(), c, op)      
+      X2 = operator(X.copy(), c, op)
       score = X2.cv(clf, y, n_iter=n_iter)
       if not cfg['scoring_higher_better']: score *= -1
       if score[0] < col_best[0]:
@@ -108,43 +108,43 @@ def score_operations_on_cols(clf, X, y, columns, operations, operator, n_iter=5)
     dbg(r)
   return results
 
-def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3, 
-    n_jobs=-2, scoring=None, fit_params=None, 
+def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3,
+    n_jobs=-2, scoring=None, fit_params=None,
     random_iterations=None):
   start('starting grid search')
   if type(n_samples) is float: n_samples = int(len(y) * n_samples)
   reseed(clf)
   cv = sklearn.cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, random_state=cfg['sys_seed'])
   if random_iterations is None:
-    gs = sklearn.grid_search.GridSearchCV(clf, params, cv=cv, 
+    gs = sklearn.grid_search.GridSearchCV(clf, params, cv=cv,
       n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
   else:
-    gs = sklearn.grid_search.RandomizedSearchCV(clf, params, random_iterations, cv=cv, 
-      n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], 
+    gs = sklearn.grid_search.RandomizedSearchCV(clf, params, random_iterations, cv=cv,
+      n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'],
       fit_params=fit_params, refit=False)
-  X2, y2 = sklearn.utils.shuffle(X, y, random_state=cfg['sys_seed'])  
+  X2, y2 = sklearn.utils.shuffle(X, y, random_state=cfg['sys_seed'])
   gs.fit(X2[:n_samples], y2[:n_samples])
   stop('done grid search')
-  dbg(gs.best_params_, gs.best_score_)  
+  dbg(gs.best_params_, gs.best_score_)
   return gs
 
 def save_array(fname, arr): c=bcolz.carray(arr, rootdir=fname, mode='w'); c.flush()
 
 def load_array(fname): return bcolz.open(fname)[:]
 
-def dump(file, data, force=False):  
-  if not '/' in file: 
+def dump(file, data, force=False):
+  if not '/' in file:
     if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
-    file = 'data/pickles/' + file  
+    file = 'data/pickles/' + file
   if not '.' in file: file += '.pickle'
   if os.path.isfile(file) and not force:  raise Exception('file: ' + file + ' already exists. Set force=True to overwrite.')
-  sklearn.externals.joblib.dump(data, file);  
+  sklearn.externals.joblib.dump(data, file);
 
 def load(file, opt_fallback=None):
   start('loading file: ' + file)
   if not '/' in file: file = 'data/pickles/' + file
   if not '.' in file: file += '.pickle'
-  if os.path.isfile(file): 
+  if os.path.isfile(file):
     if file.endswith('.npy'): return np.load(file)
     else: return sklearn.externals.joblib.load(file);
   if opt_fallback is None: return None
@@ -152,15 +152,21 @@ def load(file, opt_fallback=None):
   dump(file, data)
   stop('done loading file: ' + file)
   return data
-  
-def read_df(file, nrows=None, sheetname=None):
-  start('reading dataframe: ' + file)
-  if file.endswith('.pickle'): 
+
+def read_df(file, nrows=None, sheetname=None, header=0):
+  start('reading dataframe 2: ' + file)
+  if file.endswith('.pickle'):
     df = load(file)
   else:
     sep = '\t' if '.tsv' in file else ','
-    if file.endswith('.xls') or file.endswith('.xlsx'):  
-      df = pd.read_excel(file, sheetname=sheetname, nrows=nrows);
+    if file.endswith('.xls') or file.endswith('.xlsx'):
+      skip_footer = 0
+      if nrows is not None:
+        xl = pd.ExcelFile(file)
+        total_rows = xl.book.sheet_by_index(0).nrows
+        if sheetname is not None: total_rows = xl.book.sheet_by_name(sheetname).nrows
+        skip_footer = total_rows - nrows
+      df = pd.read_excel(file, sheetname=sheetname, skip_footer=skip_footer, header=header);
     elif file.endswith('.7z'):
       import libarchive
       with libarchive.reader(file) as reader:
@@ -173,7 +179,7 @@ def read_df(file, nrows=None, sheetname=None):
         df = pd.read_csv(reader, nrows=nrows, sep=sep);
     else:
       compression = 'gzip' if file.endswith('.gz') else None
-      nrows = None if nrows == None else int(nrows)  
+      nrows = None if nrows == None else int(nrows)
       df = pd.read_csv(file, compression=compression, nrows=nrows, sep=sep);
   stop('done reading dataframe')
   return df
@@ -181,31 +187,31 @@ def read_df(file, nrows=None, sheetname=None):
 def optimise(predictions, y, scorer):
   def scorer_func(weights):
     means = np.average(predictions, axis=0, weights=weights)
-    s = scorer(y, means)  
+    s = scorer(y, means)
     if cfg['scoring_higher_better']: s *= -1
     return s
 
   starting_values = [0.5]*len(predictions)
   cons = ({'type':'eq','fun':lambda w: 1-sum(w)})
   bounds = [(0,1)]*len(predictions)
-  res = scipy.optimize.minimize(scorer_func, starting_values, 
+  res = scipy.optimize.minimize(scorer_func, starting_values,
       method='Nelder-Mead', bounds=bounds, constraints=cons)
   dbg('Ensamble Score: {best_score}'.format(best_score=res['fun']))
   dbg('Best Weights: {weights}'.format(weights=res['x']))
 
-def calibrate(y_train, y_true, y_test=None, method='platt'):      
-  if method == 'platt':    
+def calibrate(y_train, y_true, y_test=None, method='platt'):
+  if method == 'platt':
     clf = sklearn.linear_model.LogisticRegression()
     if y_test is None:
       return pd.DataFrame({'train': y_train, 'const': np.ones(len(y_train))}).self_predict_proba(clf, y_true)
     else:
-      return pd.DataFrame(y_train).predict_proba(clf, y_true, y_test)      
-  elif method == 'isotonic':    
-    clf = sklearn.isotonic.IsotonicRegression(out_of_bounds='clip')    
-    if len(y_train.shape) == 2 and y_train.shape[1] > 1:            
+      return pd.DataFrame(y_train).predict_proba(clf, y_true, y_test)
+  elif method == 'isotonic':
+    clf = sklearn.isotonic.IsotonicRegression(out_of_bounds='clip')
+    if len(y_train.shape) == 2 and y_train.shape[1] > 1:
       all_preds = []
       for target in range(y_train.shape[1]):
-        y_train_target = pd.DataFrame(y_train[:,target])        
+        y_train_target = pd.DataFrame(y_train[:,target])
         y_true_target = (y_true == target).astype(int)
         if y_test is None:
           preds = y_train_target.self_transform(clf, y_true_target)
@@ -214,7 +220,7 @@ def calibrate(y_train, y_true, y_test=None, method='platt'):
           preds = y_train_target.transform(clf, y_true_target, y_test_target)
         all_preds.append(preds)
       return np.asarray(all_preds).T
-    else:      
+    else:
       if y_test is None:
         res = pd.DataFrame(y_train).self_transform(clf, y_true).T[0]
       else:
@@ -223,9 +229,9 @@ def calibrate(y_train, y_true, y_test=None, method='platt'):
 
 def xgb_picker(clf, X, y):
   clf = sklearn.base.clone(clf)
-  def do(prop, vals):    
+  def do(prop, vals):
     target = clf.base_classifier if hasattr(clf, 'base_classifier') else clf
-    v = score_classifier_vals(prop, vals, clf, X, y, 5)[0]['v']  
+    v = score_classifier_vals(prop, vals, clf, X, y, 5)[0]['v']
     setattr(target, prop, v)
   do('max_depth', range(3, 10))
   do('learning_rate', [.001, .01, .025, .1, .2, .5])
@@ -236,41 +242,41 @@ def xgb_picker(clf, X, y):
   return clf
 
 
-def self_predict(clf, X, y, cv=5):    
+def self_predict(clf, X, y, cv=5):
   return self_predict_impl(clf, X, y, cv, 'predict')
 
-def self_predict_proba(clf, X, y, cv=5):    
+def self_predict_proba(clf, X, y, cv=5):
   return self_predict_impl(clf, X, y, cv, 'predict_proba')
 
-def self_transform(clf, X, y, cv=5):    
+def self_transform(clf, X, y, cv=5):
   return self_predict_impl(clf, X, y, cv, 'transform')
 
-def self_predict_impl(clf, X, y, cv, method):    
+def self_predict_impl(clf, X, y, cv, method):
   if type(y) is not pd.Series: y = pd.Series(y)
   if y is not None and X.shape[0] != len(y): X = X[:len(y)]
   start('self_' + method +' with ' + 'cv' + ' chunks starting')
   reseed(clf)
-      
+
   def op(X, y, X2):
-    if len(X.shape) == 2 and X.shape[1] == 1: 
+    if len(X.shape) == 2 and X.shape[1] == 1:
       if hasattr(X, 'values'): X = X.values
       X = X.T[0]
-    if len(X2.shape) == 2 and X2.shape[1] == 1: 
+    if len(X2.shape) == 2 and X2.shape[1] == 1:
       if hasattr(X2, 'values'): X2 = X2.values
       X2 = X2.T[0]
-    
+
     this_clf = sklearn.base.clone(clf)
-    this_clf.fit(X, y)  
+    this_clf.fit(X, y)
     new_predictions = getattr(this_clf, method)(X2)
-    if new_predictions.shape[0] == 1:      
+    if new_predictions.shape[0] == 1:
       new_predictions = new_predictions.reshape(-1, 1)
-    return new_predictions    
-  
+    return new_predictions
+
   predictions = self_chunked_op(X, y, op, cv)
-  stop('self_predict completed')  
+  stop('self_predict completed')
   return predictions.values
 
-def self_chunked_op(X, y, op, cv=5):    
+def self_chunked_op(X, y, op, cv=5):
   if y is not None and hasattr(y, 'values'): y = y.values
   if cv is None: cv = 5
   if type(cv) is int: cv = sklearn.cross_validation.StratifiedKFold(y, cv, shuffle=True, random_state=cfg['sys_seed'])
@@ -286,7 +292,7 @@ def self_chunked_op(X, y, op, cv=5):
   df = pd.DataFrame(data=chunks, index=indexes)
   return df.sort()
 
-def dbg(*args): 
+def dbg(*args):
   if cfg['debug']: print(*args)
 
 cfg = {
