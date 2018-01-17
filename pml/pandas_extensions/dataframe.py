@@ -497,9 +497,10 @@ def _df_trim_on_y(self, y, min_y=None, max_y=None):
 def _df_save_csv(self, file, header=True, force=False):
   if os.path.isfile(file) and not force:
     raise Exception('File: ' + file + ' already exists.  To overwrite set force=True')
-  if file.endswith('.pickle'):
+  if file.endswith('.pickle') or file.endswith('.pickle.gz'):
     dump(file, self)
     return self
+
   compression = None
   if file.endswith('.gz'): compression='gzip'
   self.to_csv(file, index=False, header=header, compression=compression)
