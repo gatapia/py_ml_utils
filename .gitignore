@@ -7,3 +7,4 @@ nosetests.xml
 coverage.xml
 pylint.out
 output.log
+build/

@@ -146,12 +146,14 @@ def dump(file, data, force=False):
   if os.path.isfile(file) and not force:  raise Exception('file: ' + file + ' already exists. Set force=True to overwrite.')
   sklearn.externals.joblib.dump(data, file);
 
-def load(file, opt_fallback=None):
+def load(file, opt_fallback=None, fail_if_missing=False):
   start('loading file: ' + file)
   if not '/' in file: file = 'data/pickles/' + file
   if not '.' in file: file += '.pickle'
   if not os.path.isfile(file):
-      if opt_fallback is None: return None
+      if opt_fallback is None:
+          if fail_if_missing: raise Exception('could not find the file: %s' % file)
+          return None
       data = opt_fallback()
       dump(file, data)
       return data
