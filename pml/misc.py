@@ -1,8 +1,9 @@
 from __future__ import print_function, absolute_import
 
 import sys, gzip, time, datetime, random, os, logging, gc, \
+
     scipy, sklearn, sklearn.model_selection,\
-    sklearn.utils, sklearn.externals.joblib, inspect, bcolz
+    sklearn.utils, sklearn.externals.joblib, inspect, bcolz, pickle
 import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
@@ -12,8 +13,8 @@ def debug(msg):
   log.info(msg)
 
 _message_timers = {}
-def start(msg, id=None):
-  if not cfg['debug']: return
+def start(msg, id=None, force=False):
+  if not force and not cfg['debug']: return
   if id is None:
     s = inspect.stack()
     if len(s) > 0 and len(s[1]) > 2: id = s[1][3]
@@ -21,8 +22,8 @@ def start(msg, id=None):
   _message_timers[id] = time.time()
   log.info(msg)
 
-def stop(msg, id=None):
-  if not cfg['debug']: return
+def stop(msg, id=None, force=False):
+  if not force and not cfg['debug']: return
   if id is None:
     s = inspect.stack()
     if len(s) > 0 and len(s[1]) > 2: id = s[1][3]
@@ -133,6 +134,12 @@ def save_array(fname, arr): c=bcolz.carray(arr, rootdir=fname, mode='w'); c.flus
 def load_array(fname): return bcolz.open(fname)[:]
 
 def dump(file, data, force=False):
+  if file.endswith('.pickle.gz'):
+    if os.path.isfile(file) and not force:  raise Exception('file: ' + file + ' already exists. Set force=True to overwrite.')
+    with gzip.open(file,'wb') as f:
+      pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+      return
+
   if not '/' in file:
     if not os.path.isdir('data/pickles'): os.makedirs('data/pickles')
     file = 'data/pickles/' + file
@@ -144,16 +151,19 @@ def load(file, opt_fallback=None, fail_if_missing=False):
   start('loading file: ' + file)
   if not '/' in file: file = 'data/pickles/' + file
   if not '.' in file: file += '.pickle'
-  if os.path.isfile(file):
-    if file.endswith('.npy'): return np.load(file)
-    else: return sklearn.externals.joblib.load(file);
-  if opt_fallback is None:
-      if fail_if_missing: raise Exception('could not find the file: %s' % file)
-      return None
-  data = opt_fallback()
-  dump(file, data)
-  stop('done loading file: ' + file)
-  return data
+  if not os.path.isfile(file):
+      if opt_fallback is None:
+          if fail_if_missing: raise Exception('could not find the file: %s' % file)
+          return None
+      data = opt_fallback()
+      dump(file, data)
+      return data
+
+  if file.endswith('.pickle.gz'):
+    with gzip.open(file,'rb') as f: return pickle.load(f)
+
+  if file.endswith('.npy'): return np.load(file)
+  else: return sklearn.externals.joblib.load(file);
 
 def read_df(file, nrows=None, sheetname=None, header=0):
   start('reading dataframe 2: ' + file)
