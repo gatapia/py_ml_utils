@@ -362,9 +362,9 @@ def _df_split(self, y, stratified=False, train_fraction=0.5):
   test_size = int(self.shape[0] * (1.0-train_fraction))
   misc.start('splitting train_size: ' + repr(e) + ' test_size: ' + repr(e))
   if stratified:
-    train_indexes, test_indexes = list(sklearn.cross_validation.StratifiedShuffleSplit(y, 1, test_size, train_size, random_state=misc.cfg['sys_seed']))[0]
+    train_indexes, test_indexes = list(sklearn.model_selection.StratifiedShuffleSplit(y, 1, test_size, train_size, random_state=misc.cfg['sys_seed']))[0]
   else:
-    train_indexes, test_indexes = list(sklearn.cross_validation.ShuffleSplit(len(y), 1, test_size, train_size, random_state=misc.cfg['sys_seed']))[0]
+    train_indexes, test_indexes = list(sklearn.model_selection.ShuffleSplit(len(y), 1, test_size, train_size, random_state=misc.cfg['sys_seed']))[0]
   new_set = (
     self.iloc[train_indexes],
     y.iloc[train_indexes],

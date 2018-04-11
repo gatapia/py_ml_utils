@@ -1,7 +1,7 @@
 from __future__ import print_function, absolute_import
 
 import sys, gzip, time, datetime, random, os, logging, gc, \
-    scipy, sklearn, sklearn.cross_validation, sklearn.grid_search,\
+    scipy, sklearn, sklearn.model_selection,\
     sklearn.utils, sklearn.externals.joblib, inspect, bcolz
 import numpy as np
 import pandas as pd
@@ -62,13 +62,13 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   if cfg['custom_cv'] is not None:
     cv = cfg['custom_cv']
   elif stratified:
-    cv = sklearn.cross_validation.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
+    cv = sklearn.model_selection.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
   else:
-    cv = sklearn.cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed'])
+    cv = sklearn.model_selection.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed'])
 
   if n_jobs == -1 and cfg['cv_n_jobs'] > 0: n_jobs = cfg['cv_n_jobs']
 
-  test_scores = sklearn.cross_validation.cross_val_score(
+  test_scores = sklearn.model_selection.cross_val_score(
       clf, X, y, cv=cv, scoring=scoring, n_jobs=n_jobs,
       fit_params=fit_params)
   score_desc = ("{0:.5f} (+/-{1:.5f})").format(np.mean(test_scores), scipy.stats.sem(test_scores))
@@ -114,12 +114,12 @@ def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3,
   start('starting grid search')
   if type(n_samples) is float: n_samples = int(len(y) * n_samples)
   reseed(clf)
-  cv = sklearn.cross_validation.ShuffleSplit(n_samples, n_iter=n_iter, random_state=cfg['sys_seed'])
+  cv = sklearn.model_selection.ShuffleSplit(n_samples, n_iter=n_iter, random_state=cfg['sys_seed'])
   if random_iterations is None:
-    gs = sklearn.grid_search.GridSearchCV(clf, params, cv=cv,
+    gs = sklearn.model_selection.GridSearchCV(clf, params, cv=cv,
       n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'], fit_params=fit_params)
   else:
-    gs = sklearn.grid_search.RandomizedSearchCV(clf, params, random_iterations, cv=cv,
+    gs = sklearn.model_selection.RandomizedSearchCV(clf, params, random_iterations, cv=cv,
       n_jobs=n_jobs, verbose=2, scoring=scoring or cfg['scoring'],
       fit_params=fit_params, refit=False)
   X2, y2 = sklearn.utils.shuffle(X, y, random_state=cfg['sys_seed'])
@@ -281,7 +281,7 @@ def self_predict_impl(clf, X, y, cv, method):
 def self_chunked_op(X, y, op, cv=5):
   if y is not None and hasattr(y, 'values'): y = y.values
   if cv is None: cv = 5
-  if type(cv) is int: cv = sklearn.cross_validation.StratifiedKFold(y, cv, shuffle=True, random_state=cfg['sys_seed'])
+  if type(cv) is int: cv = sklearn.model_selection.StratifiedKFold(y, cv, shuffle=True, random_state=cfg['sys_seed'])
   indexes=None
   chunks=None
   for train_index, test_index in cv:
