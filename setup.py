@@ -8,7 +8,5 @@ setup(name='pml',
   author='Guido Tapia',
   author_email='guido.tapia@picnet.com.au',
   url='http://picnet.com.au/predictive-analytics-service/',
-  packages=['pml'],
-  setup_requires=['pytest-runner'],
-  tests_require=['pytest']
+  packages=['pml']
 )

@@ -2,8 +2,7 @@ from __future__ import print_function, absolute_import
 
 import pandas as pd, numpy as np
 import sklearn, datetime, scipy
-from . import utils
-from .. import misc
+from . import utils, misc
 
 def _s_one_hot_encode(self):
   misc.start('one_hot_encoding column')

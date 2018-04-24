@@ -78,7 +78,7 @@ class FeatSel():
       selected.append(this_best)
 
       feats = map(lambda s: self.column_names[s['feature']], selected) 
-      print('iteration %d took: %.2fm - [%.4f] features: %s' % (len(selected), (time.time() - t_iter)/60, this_best['score')], feats)
+      # print('iteration %d took: %.2fm - [%.4f] features: %s' % (len(selected), (time.time() - t_iter)/60, this_best['score')], feats)
 
       if improvement <= self.tol: 
         print('improvement of %.3f is less than tol: %.3f, exiting...' % (improvement, self.tol))

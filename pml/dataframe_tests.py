@@ -354,16 +354,16 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
 
   def test_shuffle(self):
     df = pd.DataFrame({'c_1':['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'n_1': [1, 2, 3, 4, 5, 6, 7]})
-    y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])
+    y = pd.Series([1., 2., 3., 4., 5., 6., 7.])
     misc.cfg['sys_seed'] = 0
     df2, y2 = df.shuffle(y)
 
     # Originals did not change
-    self.eq(df, np.array([['a', 1L], ['b', 2L], ['c', 3L], ['d', 4L], ['e', 5L], ['f', 6L], ['g', 7L]], dtype='object'))
+    self.eq(df, np.array([['a', 1.], ['b', 2.], ['c', 3.], ['d', 4.], ['e', 5.], ['f', 6.], ['g', 7.]], dtype='object'))
     self.eq(y, [1, 2, 3, 4, 5, 6, 7])
 
     # Changed
-    self.eq(df2, np.array([['g', 7L], ['a', 1L], ['d', 4L], ['b', 2L], ['c', 3L], ['e', 5L], ['f', 6L]], dtype='object'))
+    self.eq(df2, np.array([['g', 7.], ['a', 1.], ['d', 4.], ['b', 2.], ['c', 3.], ['e', 5.], ['f', 6.]], dtype='object'))
     self.eq(y2, [7, 1, 4, 2, 3, 5, 6])
 
   def test_to_indexes(self):
@@ -378,7 +378,7 @@ class T(base_pandas_extensions_tester.BasePandasExtensionsTester):
 
   def test_cv(self):
     df = pd.DataFrame({'n_1': [1, 2, 3, 4, 5, 6, 7]})
-    y = pd.Series([1L, 2L, 3L, 4L, 5L, 6L, 7L])
+    y = pd.Series([1., 2., 3., 4., 5., 6., 7.])
     df.cv(sklearn.linear_model.LinearRegression(), y)
 
   def test_cv_ohe(self):

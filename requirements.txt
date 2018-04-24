@@ -4,3 +4,4 @@ graphviz=0.8
 pillow-simd=4.2.1
 bcolz=1.1.2
 tqdm=4.15.0
+sympy=1.1.1

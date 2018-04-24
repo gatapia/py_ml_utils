@@ -135,7 +135,7 @@ def load_array(fname): return bcolz.open(fname)[:]
 def dump(file, data, force=False):
   if file.endswith('.pickle.gz'):
     if os.path.isfile(file) and not force:  raise Exception('file: ' + file + ' already exists. Set force=True to overwrite.')
-    with gzip.open(file,'wb') as f:
+    with gzip.open(file, 'wb') as f: # c
       pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
       return
 

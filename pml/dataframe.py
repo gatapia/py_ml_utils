@@ -3,10 +3,7 @@ from __future__ import print_function, absolute_import
 import pandas as pd, numpy as np
 import itertools, random, gzip, gc, scipy, \
   sklearn, sklearn.manifold, sklearn.cluster, os
-from sympy.parsing import ast_parser
-from .. import misc
-from ..lib import smote
-from . import utils
+from . import misc, utils
 
 def _df_categoricals(self): return filter(lambda c: self[c].is_categorical(), self.columns)
 def _df_indexes(self): return filter(lambda c: self[c].is_index(), self.columns)
@@ -568,25 +565,6 @@ def _df_numerical_stats(self, columns=None):
   self['n_sum'] = X2.sum(1)
   misc.stop('done row numerical stats')
   return self
-
-def _df_smote(self, y, percentage_multiplier, n_neighbors, opt_target=None):
-  misc.start('smoting by : ' + str(percentage_multiplier) + '%')
-  if type(y) is not pd.Series: y = pd.Series(y)
-  misc.reseed(None)
-  vcs = y.value_counts(dropna=False)
-  if len(vcs) != 2: raise Exception('DataFrame.smote only works on binary classifiers')
-  min_value = opt_target if opt_target is not None else vcs.argmin()
-  minorities = self[y == min_value]
-
-  new_minorities = smote.SMOTE(minorities.values, percentage_multiplier, n_neighbors)
-  new_len = self.shape[0] + new_minorities.shape[0]
-  new_y_data = np.append(y.values, np.array([min_value] * len(new_minorities)))
-  y2 = pd.Series(new_y_data, index=np.arange(new_len))
-  minorities_df = pd.DataFrame(new_minorities, columns=self.columns)
-  new_df = self.copy().append_bottom(minorities_df)
-  new_df.index = np.arange(new_len)
-  misc.stop('done smote')
-  return (new_df, y2)
 
 def _df_boxcox(self):
   misc.start('box-cox converting numerical columns')
