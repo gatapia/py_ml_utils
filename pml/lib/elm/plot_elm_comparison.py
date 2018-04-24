@@ -69,7 +69,7 @@ import pylab as pl
 from matplotlib.colors import ListedColormap
 from sklearn.datasets import make_moons, make_circles, make_classification
 from sklearn.preprocessing import StandardScaler
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 
 from elm import GenELMClassifier

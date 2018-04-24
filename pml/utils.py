@@ -51,12 +51,12 @@ def get_optimal_numeric_type(dtype, min, max, aggresiveness=0):
     if not dtype.startswith('float'): raise Exception('Unsupported type: ' + dtype)
     current = int(dtype[-2:])
     if aggresiveness == 0: return dtype
-    if aggresiveness == 1: 
+    if aggresiveness == 1:
       if current == 64: return 'float32'
       elif current <= 32: return 'float16'
       elif current == 16: return 'float16'
       else: raise Exception('Unsupported type: ' + dtype)
-    if aggresiveness >= 2: return 'float16'  
+    if aggresiveness >= 2: return 'float16'
 
 def get_col_aggregate(col, mode):
   '''
@@ -64,11 +64,11 @@ def get_col_aggregate(col, mode):
   mode: One of <constant>|mode|mean|iqm|median|min|max
   '''
   if type(mode) != str: return mode
-  if mode == 'mode': return col.mode().iget(0) 
+  if mode == 'mode': return col.mode().iget(0)
   if mode == 'mean': return col.mean()
-  if mode == 'iqm': 
+  if mode == 'iqm':
     to_replace = np.isnan(col) | np.isinf(col) | np.isneginf(col)
-    if np.any(to_replace): 
+    if np.any(to_replace):
       col[to_replace] = col.mean()
       iqm = np.mean(np.percentile(col, [75 ,25]))
       col[to_replace] = np.nan
@@ -81,14 +81,12 @@ def get_col_aggregate(col, mode):
   return mode
 
 def is_sparse(o):
-  return type(o) is pd.sparse.frame.SparseDataFrame or \
-    type(o) is pd.sparse.series.SparseSeries or \
-    scipy.sparse.issparse(o)
+  return pd.api.types.is_sparse(o)
 
 def create_df_from_templage(template, data, index=None):
   df = pd.DataFrame(columns=template.columns, data=data, index=index)
   for c in template.columns:
-    if template[c].dtype != df[c].dtype: 
+    if template[c].dtype != df[c].dtype:
       df[c] = df[c].astype(template[c].dtype)
   return df
 
