@@ -46,14 +46,15 @@ class VotingEnsemble(BaseEstimator, ClassifierMixin):
         self.voter == 'max' or self.voter == 'min':
         for i, m in enumerate(self.models):
           if self.use_proba:
-            all_preds.append(m.predict_proba(X[i]).T[1])
+              m_preds = m.predict_proba(X[i]).reshape(-1)
           else:
-            all_preds.append(m.predict(X[i]))
+              m.predict(X[i])
+          all_preds.append(m_preds)
     else:
       all_preds = [m.predict(X[i]) for i, m in enumerate(self.models)]
-
-    predictions = np.empty(X[0].shape[0], dtype=type(all_preds[0][0]));
-    for i in range(X[0].shape[0]):
+    n_samples = X[0].shape[0]
+    predictions = np.empty(n_samples, dtype=float)
+    for i in range(n_samples):
       i_preds = [ps[i] for ps in all_preds]
 
       if (self.voter == 'majority'): predictions[i] = stats.mode(i_preds)[0]

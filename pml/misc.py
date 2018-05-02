@@ -62,9 +62,9 @@ def do_cv(clf, X, y, n_samples=None, n_iter=3, test_size=None, quiet=False,
   if cfg['custom_cv'] is not None:
     cv = cfg['custom_cv']
   elif stratified:
-    cv = sklearn.model_selection.StratifiedShuffleSplit(y, n_iter, train_size=n_samples, test_size=test_size, random_state=cfg['sys_seed'])
+    cv = sklearn.model_selection.StratifiedShuffleSplit(n_iter, test_size=test_size, random_state=cfg['sys_seed'])
   else:
-    cv = sklearn.model_selection.ShuffleSplit(n_samples, n_iter=n_iter, test_size=test_size, random_state=cfg['sys_seed'])
+    cv = sklearn.model_selection.ShuffleSplit(n_iter, test_size=test_size, random_state=cfg['sys_seed'])
 
   if n_jobs == -1 and cfg['cv_n_jobs'] > 0: n_jobs = cfg['cv_n_jobs']
 
@@ -130,7 +130,13 @@ def do_gs(clf, X, y, params, n_samples=1.0, n_iter=3,
 
 def save_array(fname, arr): c=bcolz.carray(arr, rootdir=fname, mode='w'); c.flush()
 
-def load_array(fname): return bcolz.open(fname)[:]
+def load_array(fname, opt_fallback=None):
+  if not os.path.isdir(fname):
+    arr = opt_fallback()
+    if hasattr(arr, 'values'): arr = arr.values
+    save_array(fname, arr)
+    return arr
+  return bcolz.open(fname)[:]
 
 def dump(file, data, force=False):
   if file.endswith('.pickle.gz'):
