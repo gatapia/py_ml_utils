@@ -16,16 +16,18 @@ def _s_one_hot_encode(self):
 def _s_bin(self, n_bins=100):
   return pd.Series(pd.cut(self, n_bins), index=self.index)
 
-def _s_group_rare(self, limit=30, rare_val=None):
+def _s_group_rare(self, limit=None, top_x=None, rare_val=None):
+  if limit is None and top_x is None: raise Exception('either limit or top_x need to be specified')
+  if limit is not None and top_x is not None: raise Exception('only one of limit or top_x need to be specified, not both')
   vcs = self.value_counts()
-  rare = vcs[vcs <= limit].keys()
+  
+  if limit is not None:  rare = vcs[vcs <= limit].keys()
+  else: rare = vcs[top_x:].keys()
+
   if rare_val is None:
     rare_val = 'rare'
     if self.is_numerical(): rare_val = -1
-    elif self.is_index():
-      print('self.max():', self.max(), self)
-      self.max() + 1
-
+    elif self.is_index(): rare_val = self.max() + 1
   self[self.isin(rare)] = rare_val
   return self
 

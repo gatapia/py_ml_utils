@@ -145,10 +145,11 @@ def _df_bin(self, n_bins=100, drop_origianls=False):
   misc.stop('done binning data into ' + repr(s) + ' bins')
   return self
 
-def _df_group_rare(self, columns=None, limit=30, rare_val=None):
-  misc.start('grouping rare categorical columns, limit: ' + repr(t))
+def _df_group_rare(self, columns=None, limit=None, top_x=None, rare_val=None):
+  misc.start('grouping rare categorical columns, limit')
   if columns is None: columns = self.categorical_like()
-  for c in columns: self[c].group_rare(limit, rare_val=rare_val)
+  for c in columns: 
+    self[c] = self[c].group_rare(limit=limit, top_x=top_x, rare_val=rare_val)
   misc.stop('done grouping rare categorical')
   return self
 

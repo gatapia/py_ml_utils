@@ -7,6 +7,20 @@ import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
 
+def S(arr, *args, **kargs):
+    if hasattr(arr, 'data'): arr = arr.data
+    if hasattr(arr, 'cpu'): arr = arr.cpu()
+    if hasattr(arr, 'numpy'): arr = arr.numpy()
+    if isinstance(arr, memoryview): arr = np.asarray(arr)
+    return pd.Series(arr.reshape(-1), *args, **kargs)
+
+def DF(arr, *args, **kargs):
+    if hasattr(arr, 'data'): arr = arr.data
+    if hasattr(arr, 'cpu'): arr = arr.cpu()
+    if hasattr(arr, 'numpy'): arr = arr.numpy()
+    if isinstance(arr, memoryview): arr = np.asarray(arr)
+    return pd.DataFrame(arr, *args, **kargs)
+
 def debug(msg):
   if not cfg['debug']: return
   log.info(msg)
@@ -35,9 +49,17 @@ def stop(msg, id=None, force=False):
   return msg
 
 def reseed(clf):
-  if clf is not None: clf.random_state = cfg['sys_seed']
-  random.seed(cfg['sys_seed'])
-  np.random.seed(cfg['sys_seed'])
+  s = cfg['sys_seed']
+  if clf is not None: 
+    clf.random_state = s
+  random.seed(s)
+  np.random.seed(s)
+  try:
+    import torch
+    torch.manual_seed(s)
+    if torch.cuda.is_available():
+      torch.cuda.manual_seed_all(s)
+  except ImportError:pass  
   return clf
 
 def seed(seed):
@@ -379,6 +401,7 @@ cfg = {
   'custom_cv': None
 }
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s', filename='output.log', filemode='w')
+# disable for now
+# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s', filename='output.log', filemode='w')
 log = logging.getLogger(__name__)
 reseed(None)
