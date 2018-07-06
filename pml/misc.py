@@ -7,20 +7,6 @@ import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
 
-def S(arr, *args, **kargs):
-    if hasattr(arr, 'data'): arr = arr.data
-    if hasattr(arr, 'cpu'): arr = arr.cpu()
-    if hasattr(arr, 'numpy'): arr = arr.numpy()
-    if isinstance(arr, memoryview): arr = np.asarray(arr)
-    return pd.Series(arr.reshape(-1), *args, **kargs)
-
-def DF(arr, *args, **kargs):
-    if hasattr(arr, 'data'): arr = arr.data
-    if hasattr(arr, 'cpu'): arr = arr.cpu()
-    if hasattr(arr, 'numpy'): arr = arr.numpy()
-    if isinstance(arr, memoryview): arr = np.asarray(arr)
-    return pd.DataFrame(arr, *args, **kargs)
-
 def debug(msg):
   if not cfg['debug']: return
   log.info(msg)
