@@ -13,8 +13,8 @@ def _s_one_hot_encode(self):
   misc.stop('done one_hot_encoding column converted to ' + repr(col_ohe.shape[1]) + ' columns')
   return col_ohe
 
-def _s_bin(self, n_bins=100):
-  return pd.Series(pd.cut(self, n_bins), index=self.index)
+def _s_bin(self, n_bins=100, labels=True):
+  return pd.Series(pd.cut(self, n_bins, labels=labels), index=self.index)
 
 def _s_group_rare(self, limit=None, top_x=None, rare_val=None):
   if limit is None and top_x is None: raise Exception('either limit or top_x need to be specified')

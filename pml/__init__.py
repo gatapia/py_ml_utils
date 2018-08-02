@@ -1,6 +1,9 @@
 __version__ = '0.1.0'
 
 from contextlib import contextmanager
+from .misc import *
+from .pandas_extensions_init import *
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +12,7 @@ import builtins, time
 plt.style.use('dark_background')
 
 @contextmanager
-def timer(title):
+def time_op(title):
     t0 = time.time()
     yield
     print("{} - took {:.0f}s".format(title, time.time() - t0))
@@ -29,7 +32,7 @@ def NP(x, *args, **kargs):
 builtins.NP = NP
 builtins.S = S
 builtins.DF = DF
-builtins.timer = timer
+builtins.time_op = time_op
 builtins.pd = pd
 builtins.np = np
 builtins.plt = plt
