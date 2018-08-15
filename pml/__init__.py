@@ -36,3 +36,6 @@ builtins.time_op = time_op
 builtins.pd = pd
 builtins.np = np
 builtins.plt = plt
+
+
+print('pml initialised')

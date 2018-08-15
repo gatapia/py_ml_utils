@@ -78,7 +78,8 @@ class AdamHD(Optimizer):
                     # Hypergradient for Adam:
                     h = torch.dot(grad.view(-1), torch.div(exp_avg, exp_avg_sq.sqrt().add_(group['eps'])).view(-1)) * math.sqrt(prev_bias_correction2) / prev_bias_correction1
                     # Hypergradient descent of the learning rate:
-                    group['lr'] += group['hypergrad_lr'] * h
+                    tmp = group['hypergrad_lr'] * h
+                    group['lr'] += tmp.double().cpu()
 
                 # Decay the first and second moment running average coefficient
                 exp_avg.mul_(beta1).add_(1 - beta1, grad)
