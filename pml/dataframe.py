@@ -358,7 +358,6 @@ def _df_split(self, y, stratified=False, train_fraction=0.5):
   if type(y) is not pd.Series: y = pd.Series(y)
   train_size = int(self.shape[0] * train_fraction)
   test_size = int(self.shape[0] * (1.0-train_fraction))
-  misc.start('splitting train_size: ' + repr(e) + ' test_size: ' + repr(e))
   if stratified:
     train_indexes, test_indexes = list(sklearn.model_selection.StratifiedShuffleSplit(y, 1, test_size, train_size, random_state=misc.cfg['sys_seed']))[0]
   else:
@@ -369,7 +368,6 @@ def _df_split(self, y, stratified=False, train_fraction=0.5):
     self.iloc[test_indexes],
     y.iloc[test_indexes]
   )
-  misc.stop('splitting done')
   return new_set
 
 def _df_cv(self, clf, y, n_samples=None, n_iter=3, scoring=None, n_jobs=-1, fit_params=None, prefix=None):
